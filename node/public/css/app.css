@@ -1,69 +1,121 @@
-/* Mobile-first: esto se usa con una mano, con guantes, al sol y en la playa.
-   Targets grandes, contraste alto, nada de hover como unica senal. */
+/* Tema alineado con la TTFA Intranet: misma paleta oscura, mismos badges de
+   estado (pill con punto), mismos chips, misma nav con pill activo.
+   La app tiene que parecer una seccion mas del sistema, no un injerto.
+
+   Los nombres de clase son los mismos que usa app.js: no cambiarlos sin
+   tocar tambien tarjeta() y pintarCatalogos(). */
 
 :root {
-  --fondo: #f1f5f9;
-  --papel: #ffffff;
-  --texto: #0f172a;
-  --tenue: #64748b;
-  --borde: #e2e8f0;
-  --acento: #1d4ed8;
-  --malo: #dc2626;
-  --bueno: #16a34a;
-  --aviso: #b45309;
-  --barra: #0f172a;
-}
+  --pagina:   #0a0a0b;
+  --panel:    #161719;
+  --panel-2:  #1c1d20;
+  --borde:    rgba(255, 255, 255, .07);
+  --borde-2:  rgba(255, 255, 255, .12);
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --fondo: #0b1120;
-    --papel: #111827;
-    --texto: #e5e7eb;
-    --tenue: #94a3b8;
-    --borde: #1f2937;
-    --acento: #60a5fa;
-  }
+  --texto:    #e8e9ea;
+  --tenue:    #8b9099;
+  --debil:    #6b7079;
+
+  --azul:     #2563eb;
+  --azul-alt: #3b82f6;
+  --azul-txt: #60a5fa;
+
+  --verde:    #22c55e;
+  --ambar:    #f59e0b;
+  --rojo:     #ef4444;
+
+  --bg-verde: rgba(34, 197, 94, .12);
+  --bg-ambar: rgba(245, 158, 11, .12);
+  --bg-rojo:  rgba(239, 68, 68, .12);
+  --bg-azul:  rgba(59, 130, 246, .14);
+
+  --radio: 10px;
 }
 
 * { box-sizing: border-box; }
 
 body {
   margin: 0;
-  font: 16px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  background: var(--fondo);
+  font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  background: var(--pagina);
   color: var(--texto);
   padding-bottom: env(safe-area-inset-bottom);
+  -webkit-font-smoothing: antialiased;
 }
 
+/* ------------------------------------------------------------ barra superior */
+
 .barra {
-  background: var(--barra);
-  color: #fff;
-  padding: 12px 16px calc(12px + env(safe-area-inset-top));
-  padding-top: calc(12px + env(safe-area-inset-top));
+  background: var(--panel);
+  border-bottom: 1px solid var(--borde);
+  padding: 10px 14px;
+  padding-top: calc(10px + env(safe-area-inset-top));
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   position: sticky;
   top: 0;
   z-index: 5;
 }
-.barra h1 { font-size: 17px; margin: 0; font-weight: 600; }
 
-.estado {
-  margin-left: auto;
-  font-size: 12px;
-  padding: 4px 10px;
-  border-radius: 999px;
-  background: #334155;
-  white-space: nowrap;
+/* cuadradito azul, igual que el de "TTFA Intranet" */
+.marca {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  background: var(--azul-alt);
+  flex: 0 0 16px;
 }
-.estado.malo  { background: var(--malo); }
-.estado.bueno { background: var(--bueno); }
-.estado.aviso { background: var(--aviso); }
+
+.barra h1 { font-size: 15px; margin: 0; font-weight: 600; letter-spacing: -.01em; }
+
+.avatar {
+  margin-left: auto;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--panel-2);
+  border: 1px solid var(--borde-2);
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--tenue);
+  flex: 0 0 30px;
+}
+
+/* pill de estado de sincronizacion, mismo lenguaje que los badges de la tabla */
+.estado {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 4px 9px 4px 7px;
+  border-radius: 999px;
+  background: var(--panel-2);
+  color: var(--tenue);
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.estado::before {
+  content: "";
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  flex: 0 0 5px;
+}
+.estado.malo  { background: var(--bg-rojo);  color: var(--rojo); }
+.estado.bueno { background: var(--bg-verde); color: var(--verde); }
+.estado.aviso { background: var(--bg-ambar); color: var(--ambar); }
+
+/* --------------------------------------------------------------------- nav */
 
 .tabs {
   display: flex;
-  background: var(--papel);
+  gap: 4px;
+  padding: 8px 10px;
+  background: var(--pagina);
   border-bottom: 1px solid var(--borde);
   position: sticky;
   top: 0;
@@ -71,131 +123,170 @@ body {
 }
 .tab {
   flex: 1;
-  padding: 14px 8px;
+  padding: 9px 8px;
   border: 0;
+  border-radius: 8px;
   background: none;
   color: var(--tenue);
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 500;
-  border-bottom: 3px solid transparent;
+  font-family: inherit;
 }
-.tab.activo { color: var(--acento); border-bottom-color: var(--acento); }
+.tab.activo { background: rgba(255, 255, 255, .08); color: var(--texto); }
 
-main { padding: 12px; }
-.nota { color: var(--tenue); font-size: 14px; padding: 8px 4px; }
+main { padding: 12px 10px; }
+.nota { color: var(--debil); font-size: 13px; padding: 14px 4px; }
+
+/* ----------------------------------------------------------------- filtros */
 
 .filtros { display: flex; gap: 8px; margin-bottom: 12px; }
 .filtros select, .filtros input {
   flex: 1;
-  padding: 12px;
+  padding: 10px 12px;
   font-size: 16px; /* menos de 16px hace que iOS haga zoom al enfocar */
+  font-family: inherit;
   border: 1px solid var(--borde);
-  border-radius: 10px;
-  background: var(--papel);
+  border-radius: var(--radio);
+  background: var(--panel);
   color: var(--texto);
 }
-
-.resumen {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 12px;
+.filtros select:focus, .filtros input:focus {
+  outline: none;
+  border-color: var(--azul);
 }
+
+/* ------------------------------------------------- tarjetas de metrica */
+
+.resumen { display: flex; gap: 8px; margin-bottom: 12px; }
 .resumen div {
   flex: 1;
-  background: var(--papel);
+  background: var(--panel);
   border: 1px solid var(--borde);
   border-radius: 12px;
-  padding: 12px;
+  padding: 12px 10px;
   text-align: center;
 }
-.resumen b { display: block; font-size: 22px; }
-.resumen span { font-size: 12px; color: var(--tenue); }
-.resumen .malo b { color: var(--malo); }
-.resumen .bueno b { color: var(--bueno); }
+.resumen b {
+  display: block;
+  font-size: 24px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.resumen span { font-size: 11px; color: var(--tenue); }
+.resumen .malo  { border-color: rgba(239, 68, 68, .3); }
+.resumen .bueno { border-color: rgba(34, 197, 94, .3); }
+.resumen .malo b  { color: var(--rojo); }
+.resumen .bueno b { color: var(--verde); }
 
-.lista { display: flex; flex-direction: column; gap: 8px; }
+/* ------------------------------------------------------------------ lista */
 
+.lista { display: flex; flex-direction: column; gap: 6px; }
+
+/* barra de acento a la izquierda, como las filas de Cargas y Fichadas */
 .item {
   display: flex;
-  gap: 12px;
-  background: var(--papel);
+  gap: 10px;
+  background: var(--panel);
   border: 1px solid var(--borde);
-  border-left: 4px solid var(--borde);
-  border-radius: 12px;
+  border-left: 3px solid var(--borde-2);
+  border-radius: 0 10px 10px 0;
   padding: 10px;
 }
-.item.ng { border-left-color: var(--malo); }
-.item.ok { border-left-color: var(--bueno); }
+.item.ng { border-left-color: var(--rojo); }
+.item.ok { border-left-color: var(--verde); }
 
 .item img, .sin-foto {
-  width: 64px;
-  height: 64px;
+  width: 56px;
+  height: 56px;
   object-fit: cover;
   border-radius: 8px;
-  flex: 0 0 64px;
-  background: var(--fondo);
+  flex: 0 0 56px;
+  background: var(--panel-2);
 }
 .sin-foto {
   display: grid;
   place-items: center;
-  color: var(--tenue);
-  border: 1px dashed var(--borde);
+  color: var(--debil);
+  border: 1px dashed var(--borde-2);
 }
 
 .item-txt { min-width: 0; flex: 1; }
 .item-cab { display: flex; align-items: center; gap: 8px; }
-.item-cab strong { font-size: 17px; }
-.item-cab small { margin-left: auto; color: var(--tenue); font-size: 12px; }
+.item-cab strong {
+  font-size: 16px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+.item-cab small { margin-left: auto; color: var(--debil); font-size: 11px; }
+
+/* badge de resultado con punto, igual que Aprobado/Pendiente/Rechazado */
 .chip-res {
   font-size: 11px;
-  font-weight: 700;
-  padding: 2px 6px;
-  border-radius: 4px;
-  background: var(--fondo);
+  font-weight: 500;
+  padding: 2px 8px 2px 6px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--panel-2);
+  color: var(--tenue);
 }
-.item.ng .chip-res { background: var(--malo); color: #fff; }
-.item.ok .chip-res { background: var(--bueno); color: #fff; }
-.item-desvio { font-size: 14px; margin-top: 2px; word-break: break-word; }
-.item-pie { color: var(--tenue); font-size: 12px; }
+.chip-res::before {
+  content: "";
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.item.ng .chip-res { background: var(--bg-rojo);  color: var(--rojo); }
+.item.ok .chip-res { background: var(--bg-verde); color: var(--verde); }
+
+.item-desvio { font-size: 13px; margin-top: 3px; word-break: break-word; color: var(--texto); }
+.item-desvio em { color: var(--debil); font-style: normal; }
+.item-pie { color: var(--debil); font-size: 11px; }
+
+/* ------------------------------------------------------------------ botones */
 
 .fab {
   position: fixed;
   right: 16px;
   bottom: calc(16px + env(safe-area-inset-bottom));
-  width: 60px;
-  height: 60px;
+  width: 56px;
+  height: 56px;
   border-radius: 50%;
   border: 0;
-  background: var(--acento);
+  background: var(--azul);
   color: #fff;
-  font-size: 30px;
+  font-size: 28px;
   line-height: 1;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, .3);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, .5);
   z-index: 6;
 }
 
 .btn, .btn-secundario {
-  padding: 12px 18px;
-  border-radius: 10px;
+  padding: 10px 16px;
+  border-radius: var(--radio);
   border: 0;
-  font-size: 15px;
-  font-weight: 600;
+  font-size: 14px;
+  font-weight: 500;
+  font-family: inherit;
 }
-.btn { background: var(--acento); color: #fff; }
+.btn { background: var(--azul); color: #fff; }
 .btn-secundario {
   width: 100%;
   margin-top: 12px;
-  background: var(--papel);
-  color: var(--acento);
+  background: var(--panel);
+  color: var(--azul-txt);
   border: 1px solid var(--borde);
 }
 
-/* ----------------------------------------------------------- formulario */
+/* --------------------------------------------------------------- formulario */
 
 .modal {
   position: fixed;
   inset: 0;
-  background: var(--fondo);
+  background: var(--pagina);
   z-index: 10;
   display: flex;
   flex-direction: column;
@@ -203,54 +294,68 @@ main { padding: 12px; }
 .form { display: flex; flex-direction: column; height: 100%; }
 
 .form-barra {
-  background: var(--papel);
+  background: var(--panel);
   border-bottom: 1px solid var(--borde);
-  padding: 12px 16px calc(12px);
-  padding-top: calc(12px + env(safe-area-inset-top));
+  padding: 11px 14px;
+  padding-top: calc(11px + env(safe-area-inset-top));
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
 }
+.form-barra strong { font-size: 14px; font-weight: 600; }
 .link {
   background: none;
   border: 0;
-  color: var(--acento);
-  font-size: 16px;
+  color: var(--azul-txt);
+  font-size: 15px;
+  font-family: inherit;
   padding: 4px;
 }
-.link.fuerte { font-weight: 700; }
-.link:disabled { opacity: .5; }
+.link.fuerte { font-weight: 600; }
+.link:disabled { opacity: .45; }
 
 .form-cuerpo {
   overflow-y: auto;
-  padding: 16px;
+  padding: 16px 14px;
   padding-bottom: calc(32px + env(safe-area-inset-bottom));
   display: flex;
   flex-direction: column;
   gap: 16px;
 }
 
-.form-cuerpo label {
+/* etiquetas en mayusculas y espaciadas, como los headers de tabla */
+.form-cuerpo label,
+.segmento legend {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  font-size: 13px;
+  gap: 7px;
+  font-size: 11px;
   font-weight: 600;
+  letter-spacing: .05em;
+  text-transform: uppercase;
   color: var(--tenue);
 }
+
 .form-cuerpo select,
 .form-cuerpo input[type=number],
 .form-cuerpo input[type=file],
 .form-cuerpo textarea {
-  padding: 13px;
+  padding: 12px;
   font-size: 16px;
   font-weight: 400;
+  font-family: inherit;
+  letter-spacing: normal;
+  text-transform: none;
   color: var(--texto);
   border: 1px solid var(--borde);
-  border-radius: 10px;
-  background: var(--papel);
+  border-radius: var(--radio);
+  background: var(--panel);
 }
+.form-cuerpo select:focus,
+.form-cuerpo input:focus,
+.form-cuerpo textarea:focus { outline: none; border-color: var(--azul); }
+.form-cuerpo input[type=file] { color: var(--tenue); font-size: 13px; }
 
 .segmento {
   border: 0;
@@ -260,30 +365,40 @@ main { padding: 12px; }
   flex-flow: row wrap;
   gap: 8px;
 }
-.segmento legend { width: 100%; font-size: 13px; font-weight: 600; color: var(--tenue); padding: 0; }
+.segmento legend { width: 100%; padding: 0; margin-bottom: 7px; }
 .seg { flex: 1; }
 .seg input { position: absolute; opacity: 0; pointer-events: none; }
 .seg span {
   display: block;
   text-align: center;
-  padding: 14px;
+  padding: 13px;
   border: 1px solid var(--borde);
-  border-radius: 10px;
-  background: var(--papel);
-  font-size: 16px;
+  border-radius: var(--radio);
+  background: var(--panel);
+  font-size: 15px;
   font-weight: 600;
   color: var(--texto);
 }
-.seg input:checked + span { background: var(--acento); color: #fff; border-color: var(--acento); }
+.seg input:checked + span { background: var(--azul); color: #fff; border-color: var(--azul); }
+/* NG en rojo: el color ya dice que resultado es, sin leer */
+.seg input[value="NG"]:checked + span { background: var(--rojo); border-color: var(--rojo); }
 
-.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+/* chips de desvio, mismo tamano y radio que los "5 h al 50%" de Fichadas */
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .chip {
-  padding: 10px 12px;
-  border-radius: 999px;
+  padding: 8px 11px;
+  border-radius: 7px;
   border: 1px solid var(--borde);
-  background: var(--papel);
+  background: var(--panel);
   color: var(--texto);
-  font-size: 14px;
+  font-size: 13px;
+  font-family: inherit;
   text-align: left;
+  letter-spacing: normal;
+  text-transform: none;
 }
-.chip.sel { background: var(--acento); color: #fff; border-color: var(--acento); }
+.chip.sel {
+  background: var(--bg-azul);
+  color: var(--azul-txt);
+  border-color: rgba(59, 130, 246, .45);
+}

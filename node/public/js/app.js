@@ -58,8 +58,32 @@ function opciones(sel, items, vacio) {
     items.map((i) => `<option value="${i.id}">${i.nombre}</option>`).join('');
 }
 
+/**
+ * Iniciales para el avatar, mismo criterio que la intranet ("TP").
+ * Con nombre: primera letra de las dos primeras palabras.
+ * Sin nombre: las dos primeras letras del usuario del email, que para
+ * tpozo@ttfasa.com da "TP" y no "TT" (que es lo que saldria si se partiera
+ * el email por el arroba).
+ */
+function iniciales(u) {
+  if (!u) return '';
+  const nombre = (u.nombre || '').trim();
+  if (nombre) {
+    const p = nombre.split(/\s+/).filter(Boolean);
+    return (p.length > 1 ? p[0][0] + p[1][0] : p[0].slice(0, 2)).toUpperCase();
+  }
+  const local = (u.email || '').split('@')[0];
+  return local.slice(0, 2).toUpperCase();
+}
+
 function pintarCatalogos() {
   if (!CAT) return;
+
+  const av = $('#avatar');
+  if (CAT.usuario) {
+    av.textContent = iniciales(CAT.usuario);
+    av.title = CAT.usuario.email;
+  }
   opciones($('[name=responsable_id]'), CAT.responsables, false);
   opciones($('[name=tipo_desvio_id]'), CAT.tipos_desvio, false);
   opciones($('[name=demora_id]'), CAT.demoras, true);

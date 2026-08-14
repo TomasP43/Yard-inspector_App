@@ -42,6 +42,11 @@ async function todos(req, res, next) {
       ]);
 
     const payload = {
+      // Quien esta logueado, para mostrarlo en la barra igual que la intranet.
+      // El Auditor no se elige: sale de la sesion de ttfa (en AppSheet era
+      // USEREMAIL()), asi que el inspector tiene que poder ver con que cuenta
+      // esta cargando antes de firmar una observacion.
+      usuario: { email: req.usuario.email, nombre: req.usuario.nombre },
       responsables,
       tipos_desvio: tipos,
       desvios,
