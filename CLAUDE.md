@@ -35,6 +35,21 @@ Igual que TENKO: **no hay login propio**, se usa la sesion de ttfa.
 
 **Ojo con la sesion vencida durante el offline.** La API devuelve `401 {"error":"sesion_invalida"}` en JSON en vez de redirigir al login. Si redirigiera, el `fetch` del service worker recibiria un 200 con el HTML del login y daria la sincronizacion por exitosa, **borrando de la cola inspecciones que nunca se guardaron**.
 
+**La app necesita HTTPS.** Sin contexto seguro no hay service worker, y sin service worker no hay offline. Si nginx la publica por http en una IP interna, la PWA se degrada a una web comun.
+
+## Regla de la cola de sincronizacion
+
+Una inspeccion **solo sale de la cola cuando el servidor confirma que la guardo**. Los finales posibles:
+
+| Respuesta | Que hace la cola |
+|---|---|
+| 201 / 200 | Guardada. Se saca de la cola |
+| 401 | Frena todo y avisa. No descarta nada |
+| 4xx de validacion | Marca la inspeccion como rechazada y la muestra, pero **no la borra**: que la vea una persona antes de perder trabajo de campo |
+| 5xx o error de red | Queda encolada, se reintenta |
+
+El `uuid` lo genera el dispositivo antes de sincronizar, y `POST /api/inspecciones` es idempotente sobre esa clave: reintentar devuelve 200 con el registro que ya existe, no un 409. Con un 409 el cliente no sabria si puede sacarlo de la cola.
+
 ## Estructura
 
 ```
@@ -47,7 +62,13 @@ yard-inspector/
 │   │   ├── helpers/auth.js  # identidad apoyada en ttfa
 │   │   ├── database/models/
 │   │   └── index.js
-│   ├── public/              # PWA: app shell, service worker, cola IndexedDB
+│   ├── public/
+│   │   ├── index.html       # app shell: 3 vistas + formulario
+│   │   ├── sw.js            # service worker
+│   │   ├── js/db.js         # IndexedDB: catalogos, cola, cache
+│   │   ├── js/camera.js     # captura y compresion de fotos
+│   │   ├── js/sync.js       # cola de sincronizacion
+│   │   └── js/app.js        # UI
 │   └── Dockerfile
 ├── migrations/
 │   └── 001_initial.sql

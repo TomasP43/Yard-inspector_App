@@ -1,0 +1,276 @@
+'use strict';
+
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+
+let CAT = null;              // catalogos
+let seleccionados = new Set(); // desvios elegidos en el formulario
+let offsetHistorial = 0;
+
+// ---------------------------------------------------------------- utilidades
+
+function fmtFecha(iso) {
+  const d = new Date(iso);
+  return d.toLocaleString('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+}
+
+function estado(texto, clase) {
+  const el = $('#estado');
+  if (!texto) { el.hidden = true; return; }
+  el.hidden = false;
+  el.textContent = texto;
+  el.className = 'estado ' + (clase || '');
+}
+
+async function pedir(url) {
+  const r = await fetch(url, { credentials: 'same-origin' });
+  if (r.status === 401) { estado('Sesión vencida — volvé a entrar', 'malo'); throw new Error('401'); }
+  if (!r.ok) throw new Error('http ' + r.status);
+  return r.json();
+}
+
+// ---------------------------------------------------------------- catalogos
+
+async function cargarCatalogos() {
+  // Primero lo cacheado: la app tiene que poder abrir el formulario sin senal.
+  CAT = await DB.leerMeta('catalogos');
+  if (CAT) pintarCatalogos();
+
+  try {
+    const etag = await DB.leerMeta('catalogos_etag');
+    const r = await fetch('api/catalogos', {
+      credentials: 'same-origin',
+      headers: etag ? { 'If-None-Match': etag } : {}
+    });
+    if (r.status === 304) return;
+    if (!r.ok) return;
+    CAT = await r.json();
+    await DB.guardarMeta('catalogos', CAT);
+    await DB.guardarMeta('catalogos_etag', r.headers.get('ETag'));
+    pintarCatalogos();
+  } catch (e) {
+    if (!CAT) estado('Sin catálogos y sin conexión', 'malo');
+  }
+}
+
+function opciones(sel, items, vacio) {
+  sel.innerHTML = (vacio ? '<option value="">—</option>' : '') +
+    items.map((i) => `<option value="${i.id}">${i.nombre}</option>`).join('');
+}
+
+function pintarCatalogos() {
+  if (!CAT) return;
+  opciones($('[name=responsable_id]'), CAT.responsables, false);
+  opciones($('[name=tipo_desvio_id]'), CAT.tipos_desvio, false);
+  opciones($('[name=demora_id]'), CAT.demoras, true);
+  opciones($('[name=controlador_id]'), CAT.controladores, true);
+  opciones($('[name=estado_control_id]'), CAT.estados_control, true);
+
+  $('#desvios').innerHTML = CAT.desvios
+    .map((d) => `<button type="button" class="chip" data-id="${d.id}" data-tipo="${d.tipo_desvio_id || ''}" data-detalle="${d.requiere_detalle ? 1 : 0}">${d.nombre}</button>`)
+    .join('');
+
+  $('#equipos').innerHTML = (CAT.equipos || []).map((c) => `<option value="${c}">`).join('');
+}
+
+// ------------------------------------------------------------------ listados
+
+function tarjeta(i) {
+  const desvios = (i.desvios || []).map((d) => d.nombre).join(', ');
+  const foto = (i.fotos || []).find((f) => f.ruta);
+  const img = foto
+    ? `<img src="uploads/${foto.ruta}" alt="" loading="lazy">`
+    : `<div class="sin-foto" title="La foto está en Drive, todavía no se copió">—</div>`;
+  return `
+    <article class="item ${i.resultado === 'NG' ? 'ng' : 'ok'}">
+      ${img}
+      <div class="item-txt">
+        <div class="item-cab">
+          <strong>${i.equipo ? i.equipo.codigo : 's/equipo'}</strong>
+          <span class="chip-res">${i.resultado}</span>
+          <small>${fmtFecha(i.registrado_en)}</small>
+        </div>
+        <div class="item-desvio">${desvios || '<em>sin desvíos</em>'}</div>
+        <small class="item-pie">${i.responsable ? i.responsable.nombre : ''}</small>
+      </div>
+    </article>`;
+}
+
+function pintarLista(cont, items, vacio) {
+  cont.innerHTML = items.length
+    ? items.map(tarjeta).join('')
+    : `<p class="nota">${vacio}</p>`;
+}
+
+async function verHoy() {
+  try {
+    const d = await pedir('api/inspecciones/hoy');
+    await DB.guardarCache('hoy', d.inspecciones);
+    pintarLista($('#lista-hoy'), d.inspecciones, 'Todavía no hay desvíos cargados hoy.');
+  } catch (e) {
+    const c = await DB.leerCache('hoy');
+    pintarLista($('#lista-hoy'), c || [], 'Sin conexión y nada guardado.');
+    if (c) estado('Mostrando datos guardados', 'aviso');
+  }
+}
+
+async function verHistorial(reiniciar) {
+  if (reiniciar) offsetHistorial = 0;
+  const res = $('#f-resultado').value;
+  const url = `api/inspecciones?limite=50&offset=${offsetHistorial}` + (res ? `&resultado=${res}` : '');
+  try {
+    const d = await pedir(url);
+    const cont = $('#lista-historial');
+    if (reiniciar) cont.innerHTML = '';
+    cont.insertAdjacentHTML('beforeend', d.inspecciones.map(tarjeta).join(''));
+    offsetHistorial += d.inspecciones.length;
+    $('#mas').hidden = offsetHistorial >= d.total;
+    if (!d.total) cont.innerHTML = '<p class="nota">Sin resultados.</p>';
+  } catch (e) {
+    $('#lista-historial').innerHTML = '<p class="nota">Sin conexión.</p>';
+  }
+}
+
+async function verCamion() {
+  const cod = $('#f-equipo').value.trim();
+  if (!cod) return;
+  try {
+    const [resumen, hist] = await Promise.all([
+      pedir(`api/inspecciones/equipo/${cod}`),
+      pedir(`api/inspecciones?equipo=${cod}&limite=200`)
+    ]);
+    $('#resumen-camion').hidden = false;
+    $('#resumen-camion').innerHTML = `
+      <div><b>${resumen.total}</b><span>patrullas</span></div>
+      <div class="malo"><b>${resumen.ng}</b><span>NG</span></div>
+      <div class="bueno"><b>${resumen.ok}</b><span>OK</span></div>`;
+    pintarLista($('#lista-camion'), hist.inspecciones, 'Sin registros.');
+  } catch (e) {
+    $('#resumen-camion').hidden = true;
+    $('#lista-camion').innerHTML = '<p class="nota">No se encontró el camión o no hay conexión.</p>';
+  }
+}
+
+// ---------------------------------------------------------------- formulario
+
+function abrirForm() {
+  seleccionados.clear();
+  $('#form').reset();
+  $$('.chip').forEach((c) => c.classList.remove('sel'));
+  $('#lbl-detalle').hidden = true;
+  $('[name=detalle]').required = false;
+  // Imprescindible: reset() vuelve el resultado a OK pero NO toca los `required`
+  // que pusimos por JS. Si quedan activos dentro del bloque NG oculto, el
+  // navegador bloquea el submit sin mostrar nada y la app se queda muda.
+  alCambiarResultado();
+  $('#modal').hidden = false;
+}
+
+function cerrarForm() { $('#modal').hidden = true; }
+
+function alCambiarResultado() {
+  const ng = $('[name=resultado]:checked').value === 'NG';
+  $('#bloque-ng').hidden = !ng;
+  $('#foto1').required = ng;
+  $('[name=tipo_desvio_id]').required = ng;
+}
+
+function alTocarChip(e) {
+  const chip = e.target.closest('.chip');
+  if (!chip) return;
+  const id = Number(chip.dataset.id);
+  if (seleccionados.has(id)) { seleccionados.delete(id); chip.classList.remove('sel'); }
+  else {
+    seleccionados.add(id);
+    chip.classList.add('sel');
+    // El tipo se prellena con el dominante del desvio, pero queda editable.
+    if (chip.dataset.tipo && seleccionados.size === 1) {
+      $('[name=tipo_desvio_id]').value = chip.dataset.tipo;
+    }
+  }
+  const exige = $$('.chip.sel').some((c) => c.dataset.detalle === '1');
+  $('#lbl-detalle').hidden = !exige;
+  $('[name=detalle]').required = exige;
+}
+
+async function guardar(e) {
+  e.preventDefault();
+  const f = e.target;
+  const ng = f.resultado.value === 'NG';
+
+  if (ng && seleccionados.size === 0) { alert('Elegí al menos un desvío.'); return; }
+
+  const btn = $('.link.fuerte');
+  btn.disabled = true;
+  btn.textContent = 'Guardando…';
+
+  try {
+    const fotos = [];
+    const f1 = $('#foto1').files[0];
+    const f3 = $('#foto3').files[0];
+    if (ng && f1) fotos.push({ blob: await Camara.comprimir(f1), orientacion: 'horizontal' });
+    if (ng && f3) fotos.push({ blob: await Camara.comprimir(f3), orientacion: 'libre' });
+
+    const fchk = $('#foto-checklist').files[0];
+
+    await Sync.encolar({
+      responsable_id: Number(f.responsable_id.value),
+      equipo_codigo: Number(f.equipo_codigo.value),
+      resultado: f.resultado.value,
+      tipo_desvio_id: ng ? Number(f.tipo_desvio_id.value) : null,
+      desvio_ids: ng ? Array.from(seleccionados) : [],
+      demora_id: ng && f.demora_id.value ? Number(f.demora_id.value) : null,
+      detalle: ng ? f.detalle.value.trim() : null,
+      controlador_id: f.controlador_id.value ? Number(f.controlador_id.value) : null,
+      estado_control_id: f.estado_control_id.value ? Number(f.estado_control_id.value) : null,
+      fotos,
+      foto_checklist: fchk ? await Camara.comprimir(fchk) : null
+    });
+
+    cerrarForm();
+    verHoy();
+  } catch (err) {
+    alert('No se pudo guardar: ' + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Guardar';
+  }
+}
+
+// ------------------------------------------------------------------- arranque
+
+function cambiarVista(nombre) {
+  $$('.tab').forEach((t) => t.classList.toggle('activo', t.dataset.vista === nombre));
+  $$('.vista').forEach((v) => { v.hidden = v.id !== 'v-' + nombre; });
+  if (nombre === 'hoy') verHoy();
+  if (nombre === 'historial') verHistorial(true);
+}
+
+Sync.alCambiar((s) => {
+  if (s.tipo === 'sincronizando') estado('Sincronizando…', 'aviso');
+  else if (s.tipo === 'sin_conexion') estado(`Sin conexión — ${s.pendientes || 0} pendiente(s)`, 'aviso');
+  else if (s.tipo === 'sesion_vencida') estado('Sesión vencida — entrá de nuevo, no se perdió nada', 'malo');
+  else if (s.tipo === 'encolada') estado(`Guardada — ${s.pendientes} pendiente(s)`, 'aviso');
+  else if (s.tipo === 'listo') {
+    if (s.pendientes) estado(`${s.pendientes} pendiente(s)`, 'aviso');
+    else { estado('Todo sincronizado', 'bueno'); setTimeout(() => estado(null), 3000); }
+    if (s.enviadas) verHoy();
+  }
+});
+
+$$('.tab').forEach((t) => t.addEventListener('click', () => cambiarVista(t.dataset.vista)));
+$('#nueva').addEventListener('click', abrirForm);
+$('#cancelar').addEventListener('click', cerrarForm);
+$('#form').addEventListener('submit', guardar);
+$$('[name=resultado]').forEach((r) => r.addEventListener('change', alCambiarResultado));
+$('#desvios').addEventListener('click', alTocarChip);
+$('#buscar').addEventListener('click', verCamion);
+$('#f-equipo').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); verCamion(); } });
+$('#f-resultado').addEventListener('change', () => verHistorial(true));
+$('#mas').addEventListener('click', () => verHistorial(false));
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js').catch(() => {});
+}
+
+cargarCatalogos().then(() => { verHoy(); Sync.sincronizar(); });
