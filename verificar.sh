@@ -43,7 +43,10 @@ done
 
 echo
 echo "== Esquema =="
-chequear "tablas creadas" "$(sql "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='${DB_NAME:-yard}'")" "11"
+# table_type: information_schema.tables tambien lista las VIEW, y la 002 crea
+# v_fotos_pendientes. Sin este filtro el conteo da 12 y el chequeo falla.
+chequear "tablas creadas" "$(sql "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='${DB_NAME:-yard}' AND table_type='BASE TABLE'")" "11"
+chequear "vista de fotos pendientes" "$(sql "SELECT COUNT(*) FROM information_schema.views WHERE table_schema='${DB_NAME:-yard}' AND table_name='v_fotos_pendientes'")" "1"
 
 echo
 echo "== Catalogos =="
@@ -58,6 +61,22 @@ chequear "'Otro' exige detalle" "$(sql "SELECT requiere_detalle FROM desvio_cata
 
 # Si los acentos se rompieron en la carga, esto no encuentra nada.
 chequear "acentos intactos" "$(sql "SELECT COUNT(*) FROM desvio_catalogo WHERE nombre LIKE '%xido%' AND nombre NOT LIKE '%Ã%'")" "4"
+
+echo
+echo "== Datos historicos migrados =="
+chequear "inspecciones de appsheet"  "$(sql "SELECT COUNT(*) FROM inspeccion WHERE origen='appsheet'")" "4018"
+chequear "  de las cuales OK"        "$(sql "SELECT COUNT(*) FROM inspeccion WHERE origen='appsheet' AND resultado='OK'")" "721"
+chequear "  de las cuales NG"        "$(sql "SELECT COUNT(*) FROM inspeccion WHERE origen='appsheet' AND resultado='NG'")" "3297"
+chequear "equipos"                   "$(sql 'SELECT COUNT(*) FROM equipo')" "569"
+chequear "vinculos de desvio"        "$(sql 'SELECT COUNT(*) FROM inspeccion_desvio')" "3609"
+chequear "fotos pendientes de copiar" "$(sql 'SELECT COUNT(*) FROM v_fotos_pendientes')" "4810"
+chequear "checklists referenciados"  "$(sql 'SELECT COUNT(*) FROM inspeccion WHERE foto_checklist_origen IS NOT NULL')" "3937"
+
+# Si algun subselect del ETL no encontro su catalogo, quedo un NULL donde no debia.
+chequear "sin responsable huerfano"  "$(sql "SELECT COUNT(*) FROM inspeccion WHERE origen='appsheet' AND responsable_id IS NULL")" "0"
+chequear "sin auditor huerfano"      "$(sql "SELECT COUNT(*) FROM inspeccion WHERE origen='appsheet' AND auditor_id IS NULL")" "0"
+chequear "todo NG tiene desvio"      "$(sql "SELECT COUNT(*) FROM inspeccion i WHERE i.origen='appsheet' AND i.resultado='NG' AND NOT EXISTS (SELECT 1 FROM inspeccion_desvio d WHERE d.inspeccion_id=i.id)")" "0"
+chequear "acentos en datos migrados" "$(sql "SELECT COUNT(*) FROM desvio_catalogo WHERE nombre LIKE '%Ã%'")" "0"
 
 echo
 echo "== CHECK constraint =="
