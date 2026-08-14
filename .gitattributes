@@ -1,0 +1,18 @@
+# Se desarrolla en Windows pero corre en un VPS Linux dentro de contenedores.
+# Sin esto, git hace checkout con CRLF y los scripts fallan con
+# "bad interpreter: /usr/bin/env bash^M". Forzamos LF en todo lo que ejecuta
+# o interpreta Linux.
+* text=auto eol=lf
+
+*.sh    text eol=lf
+*.sql   text eol=lf
+*.js    text eol=lf
+*.json  text eol=lf
+*.yml   text eol=lf
+*.md    text eol=lf
+Dockerfile text eol=lf
+.env.example text eol=lf
+
+*.png binary
+*.jpg binary
+*.xlsx binary

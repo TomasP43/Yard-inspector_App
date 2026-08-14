@@ -1,0 +1,60 @@
+services:
+  yard-backend:
+    build: ./node
+    container_name: yard-backend
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      DB_HOST: db_yard
+      DB_PORT: 3306
+      DB_NAME: ${DB_NAME:-yard}
+      PORT: 3002
+      # Prefijo bajo el que nginx de ttfa publica esta app.
+      BASE_PATH: /yard
+    volumes:
+      # Fotos de las inspecciones. Fuera de la imagen para que sobrevivan al deploy.
+      - yard_uploads:/app/uploads
+    depends_on:
+      db_yard:
+        condition: service_healthy
+    networks:
+      - proxy_net
+      - yard_net
+
+  db_yard:
+    image: mysql:8.0
+    container_name: db_yard
+    restart: unless-stopped
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_0900_ai_ci
+    environment:
+      MYSQL_DATABASE: ${DB_NAME:-yard}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      TZ: America/Argentina/Buenos_Aires
+    volumes:
+      - yard_db:/var/lib/mysql
+      # *.sql de esta carpeta corren solos, en orden, la PRIMERA vez que se
+      # crea el volumen. Si ya existe, no se ejecutan.
+      - ./migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${DB_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - yard_net
+
+volumes:
+  yard_db:
+  yard_uploads:
+
+networks:
+  # Red compartida con ttfa-docker. La declara ttfa en su compose de prod,
+  # por eso aca va como external: si no esta levantado ttfa, esto no arranca.
+  proxy_net:
+    external: true
+  yard_net:
+    driver: bridge

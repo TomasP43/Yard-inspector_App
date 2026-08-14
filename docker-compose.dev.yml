@@ -1,0 +1,28 @@
+# Overrides de desarrollo:
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+#
+# En dev no hay nginx con auth_request, asi que el panel no pide login.
+# El usuario se simula con DEV_USER_EMAIL (ver src/helpers/auth.js).
+services:
+  yard-backend:
+    environment:
+      NODE_ENV: development
+      DEV_USER_EMAIL: ${DEV_USER_EMAIL:-tpozo@ttfasa.com}
+    command: npx nodemon src/index.js
+    volumes:
+      - ./node/src:/app/src
+      - ./node/public:/app/public
+      - yard_uploads:/app/uploads
+    ports:
+      - "3002:3002"
+
+  db_yard:
+    ports:
+      # Expuesta para poder conectarse con un cliente MySQL desde la maquina.
+      - "3309:3306"
+
+# Si no tenes ttfa-docker corriendo, proxy_net no existe y el up falla.
+# Descomentar para que docker la cree localmente en vez de buscarla:
+# networks:
+#   proxy_net:
+#     external: false
