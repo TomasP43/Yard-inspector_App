@@ -261,6 +261,38 @@ async function guardar(e) {
   }
 }
 
+// ---------------------------------------------------------------------- tema
+
+/**
+ * El default es el oscuro de la intranet; el claro existe porque esto se usa
+ * en la playa, al sol. La eleccion se guarda en localStorage y la aplica el
+ * script inline del <head> antes de pintar, para que no haya parpadeo.
+ *
+ * No sigue a prefers-color-scheme: el celular puede estar en modo oscuro y
+ * aun asi el inspector necesitar la pantalla clara porque esta al sol. Manda
+ * el boton, no el sistema.
+ */
+function aplicarTema(claro) {
+  const raiz = document.documentElement;
+  if (claro) raiz.setAttribute('data-tema', 'claro');
+  else raiz.removeAttribute('data-tema');
+
+  $('#tema').setAttribute('aria-label', claro ? 'Cambiar a modo oscuro' : 'Cambiar a modo claro');
+  // que la barra de estado del celular acompane al tema
+  const meta = document.querySelector('meta[name=theme-color]');
+  if (meta) meta.setAttribute('content', claro ? '#f4f5f7' : '#0a0a0b');
+  try { localStorage.setItem('yard-tema', claro ? 'claro' : 'oscuro'); } catch (e) { /* modo privado */ }
+}
+
+$('#tema').addEventListener('click', () => {
+  aplicarTema(document.documentElement.getAttribute('data-tema') !== 'claro');
+});
+
+// El script del <head> ya puso el tema, pero no la etiqueta del boton ni el
+// theme-color. Sin esto, quien vuelve en modo claro ve un boton que dice
+// "cambiar a modo claro" estando ya en claro.
+aplicarTema(document.documentElement.getAttribute('data-tema') === 'claro');
+
 // ------------------------------------------------------------------- arranque
 
 function cambiarVista(nombre) {

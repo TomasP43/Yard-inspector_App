@@ -29,7 +29,39 @@
   --bg-rojo:  rgba(239, 68, 68, .12);
   --bg-azul:  rgba(59, 130, 246, .14);
 
+  --activo: rgba(255, 255, 255, .08);
   --radio: 10px;
+}
+
+/* Modo claro. No sigue a prefers-color-scheme a proposito: el default es el
+   oscuro de la intranet y el inspector lo cambia con el boton de la barra.
+   Existe porque esto se usa en la playa, al sol, donde una pantalla oscura
+   se lee mucho peor que una clara.
+
+   Los tonos de estado se oscurecen respecto del modo oscuro: el mismo verde
+   que contrasta sobre negro es ilegible sobre blanco. */
+[data-tema="claro"] {
+  --pagina:   #f4f5f7;
+  --panel:    #ffffff;
+  --panel-2:  #eceef1;
+  --borde:    rgba(0, 0, 0, .10);
+  --borde-2:  rgba(0, 0, 0, .17);
+
+  --texto:    #14161a;
+  --tenue:    #565c66;
+  --debil:    #71777f;
+
+  --azul-txt: #1d4ed8;
+  --verde:    #15803d;
+  --ambar:    #b45309;
+  --rojo:     #b91c1c;
+
+  --bg-verde: rgba(22, 163, 74, .13);
+  --bg-ambar: rgba(180, 83, 9, .13);
+  --bg-rojo:  rgba(185, 28, 28, .11);
+  --bg-azul:  rgba(37, 99, 235, .11);
+
+  --activo: rgba(0, 0, 0, .07);
 }
 
 * { box-sizing: border-box; }
@@ -69,8 +101,29 @@ body {
 
 .barra h1 { font-size: 15px; margin: 0; font-weight: 600; letter-spacing: -.01em; }
 
-.avatar {
+/* boton de tema: mismo tamano que el avatar para que la barra quede pareja */
+.btn-tema {
   margin-left: auto;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  border-radius: 8px;
+  border: 1px solid var(--borde);
+  background: var(--panel-2);
+  color: var(--tenue);
+  display: grid;
+  place-items: center;
+  padding: 0;
+}
+.btn-tema svg { width: 16px; height: 16px; display: block; }
+/* se muestra el icono del modo al que vas a cambiar, no el actual */
+.btn-tema .ico-sol  { display: block; }
+.btn-tema .ico-luna { display: none; }
+[data-tema="claro"] .btn-tema .ico-sol  { display: none; }
+[data-tema="claro"] .btn-tema .ico-luna { display: block; }
+
+.avatar {
+  margin-left: 0;
   width: 30px;
   height: 30px;
   border-radius: 50%;
@@ -132,7 +185,7 @@ body {
   font-weight: 500;
   font-family: inherit;
 }
-.tab.activo { background: rgba(255, 255, 255, .08); color: var(--texto); }
+.tab.activo { background: var(--activo); color: var(--texto); }
 
 main { padding: 12px 10px; }
 .nota { color: var(--debil); font-size: 13px; padding: 14px 4px; }
