@@ -1,4 +1,8 @@
 node_modules/
+
+# capturas y archivos sueltos de trabajo
+preview-screenshot.png
+*.screenshot.png
 .env
 *.log
 uploads/
