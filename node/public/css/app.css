@@ -455,3 +455,56 @@ main { padding: 12px 10px; }
   color: var(--azul-txt);
   border-color: rgba(59, 130, 246, .45);
 }
+
+/* -------------------------------------------- agregar un desvio que no esta */
+
+.chip-add {
+  margin-top: 8px;
+  border-style: dashed;
+  color: var(--azul-txt);
+}
+.chip-nuevo span { opacity: .6; margin-left: 2px; }
+
+#nuevos:empty { display: none; }
+#nuevos { margin-top: 6px; }
+
+.caja-nuevo {
+  margin-top: 10px;
+  padding: 12px;
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  background: var(--panel);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.caja-nuevo input {
+  width: 100%;
+  padding: 12px;
+  font-size: 16px;
+  font-family: inherit;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--texto);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  background: var(--panel-2);
+}
+.caja-nuevo input:focus { outline: none; border-color: var(--azul); }
+
+.sugerencias { display: flex; flex-wrap: wrap; gap: 6px; }
+.sugerencias:empty { display: none; }
+
+.aviso-sim {
+  width: 100%;
+  margin: 0;
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--ambar);
+}
+.aviso-sim.ok { color: var(--verde); }
+.aviso-sim b { color: var(--texto); }
+
+.acciones-nuevo { display: flex; justify-content: flex-end; align-items: center; gap: 10px; }

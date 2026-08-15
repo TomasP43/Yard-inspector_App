@@ -12,6 +12,7 @@ const SHELL = [
   './index.html',
   './css/app.css',
   './js/db.js',
+  './js/similitud.js',
   './js/camera.js',
   './js/sync.js',
   './js/app.js',

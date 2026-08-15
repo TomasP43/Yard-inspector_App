@@ -46,7 +46,8 @@ echo "== Esquema =="
 # table_type: information_schema.tables tambien lista las VIEW, y la 002 crea
 # v_fotos_pendientes. Sin este filtro el conteo da 12 y el chequeo falla.
 chequear "tablas creadas" "$(sql "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='${DB_NAME:-yard}' AND table_type='BASE TABLE'")" "11"
-chequear "vista de fotos pendientes" "$(sql "SELECT COUNT(*) FROM information_schema.views WHERE table_schema='${DB_NAME:-yard}' AND table_name='v_fotos_pendientes'")" "1"
+chequear "vistas creadas" "$(sql "SELECT COUNT(*) FROM information_schema.views WHERE table_schema='${DB_NAME:-yard}'")" "2"
+chequear "columnas de desvios de usuario" "$(sql "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema='${DB_NAME:-yard}' AND table_name='desvio_catalogo' AND column_name IN ('creado_por_usuario_id','creado_en','revisar')")" "3"
 
 echo
 echo "== Catalogos =="
@@ -140,6 +141,26 @@ chequear "reenvio marcado como duplicada" "$(grep -c '"duplicada":true' /tmp/y2.
 chequear "no se duplico en la DB" "$(sql "SELECT COUNT(*) FROM inspeccion WHERE uuid='$UUID'")" "1"
 
 chequear "patrulla del dia trae el NG" "$(curl -s "$API/api/inspecciones/hoy" | grep -c "$UUID")" "1"
+
+echo
+echo "== Desvios fuera del catalogo =="
+# La colacion de la tabla ignora acentos: pedir el desvio sin tilde tiene que
+# devolver el que ya existe, no crear uno nuevo.
+c=$(curl -s -X POST "$API/api/desvios" -H 'Content-Type: application/json' -d '{"nombre":"Oxido en batea"}')
+chequear "'Oxido' sin tilde reusa el existente" "$(echo "$c" | grep -c '"yaExistia":true')" "1"
+
+# Un nombre parecido pero no igual tiene que frenar y sugerir, no crear.
+c=$(curl -s -o /tmp/y3.json -w '%{http_code}' -X POST "$API/api/desvios" \
+  -H 'Content-Type: application/json' -d '{"nombre":"Oxido en la batea del acoplado"}')
+chequear "un parecido devuelve 409 con sugerencias" "$c" "409"
+chequear "  y trae candidatos" "$(grep -c '"similares"' /tmp/y3.json)" "1"
+
+# Confirmando, se crea y queda marcado para revision.
+curl -s -o /dev/null -X POST "$API/api/desvios" -H 'Content-Type: application/json' \
+  -d '{"nombre":"Desvio de prueba verificar","confirmar":true}'
+chequear "creado y marcado para revisar" "$(sql "SELECT revisar FROM desvio_catalogo WHERE nombre='Desvio de prueba verificar'")" "1"
+chequear "aparece en la cola de revision" "$(sql "SELECT COUNT(*) FROM v_desvios_a_revisar WHERE nombre='Desvio de prueba verificar'")" "1"
+sql "DELETE FROM desvio_catalogo WHERE nombre='Desvio de prueba verificar'" >/dev/null 2>&1
 chequear "historial por camion" "$(curl -s "$API/api/inspecciones?equipo=9999" | grep -c "$UUID")" "1"
 
 # Un OK no debe aparecer en la patrulla del dia

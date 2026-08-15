@@ -92,6 +92,21 @@ El origen era una tabla plana de 13 columnas. Lo que cambio y por que:
 
 El **tipo de desvio** se sigue guardando por inspeccion, pero el catalogo trae un tipo por defecto: en el historico 53 de 77 desvios tenian mas de un tipo asignado segun quien lo cargara, lo que rompia cualquier metrica.
 
+## Desvios que el inspector agrega
+
+Si aparece algo que no esta en la lista, el inspector lo escribe y queda en el catalogo para todos. Para que eso no repita el desorden de AppSheet (78 grafias para 71 conceptos) hay dos controles, y hacen cosas distintas a proposito:
+
+| Caso | Quien lo resuelve |
+|---|---|
+| Mismo nombre con otro acento o mayusculas | **La base**. La colacion `utf8mb4_0900_ai_ci` es insensible a acentos y mayusculas, asi que el UNIQUE sobre `nombre` ya hace chocar `Oxido en batea` con `Óxido en batea` |
+| Parecido pero no igual | **El inspector**. Se le muestran los candidatos antes de crear. Si crea igual, queda con `revisar=1` |
+
+**Nunca se fusiona por parecido.** `Matafuego vencido` y `Matafuego descargado` comparten casi todo y son cosas distintas. Un duplicado visible se arregla despues; un desvio absorbido dentro de otro no se recupera.
+
+El desvio nuevo **viaja como texto junto a la inspeccion**, no como id: se puede escribir sin senal, cuando no hay forma de consultar el catalogo. Lo resuelve el servidor al sincronizar, dentro de la misma transaccion — si la inspeccion falla, no queda un desvio suelto en el catalogo sin nada que lo use.
+
+La comprobacion de parecidos esta duplicada en `public/js/similitud.js` y `src/services/desvioService.js`. Es a proposito: el cliente necesita hacerla offline. **Si cambias la formula de un lado, cambiala del otro**, o la app va a sugerir cosas distintas de las que el servidor termina haciendo.
+
 ## Desarrollo local
 
 ```bash

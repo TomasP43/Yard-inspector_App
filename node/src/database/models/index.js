@@ -58,7 +58,11 @@ const DesvioCatalogo = sequelize.define('desvio_catalogo', {
   tipo_desvio_id: { type: DataTypes.INTEGER.UNSIGNED },
   requiere_detalle: { type: DataTypes.BOOLEAN, defaultValue: false },
   activo: { type: DataTypes.BOOLEAN, defaultValue: true },
-  usos_historicos: { type: DataTypes.INTEGER.UNSIGNED, defaultValue: 0 }
+  usos_historicos: { type: DataTypes.INTEGER.UNSIGNED, defaultValue: 0 },
+  creado_por_usuario_id: { type: DataTypes.INTEGER.UNSIGNED },
+  creado_en: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
+  // 1 = lo agrego un inspector desde la app y nadie lo valido todavia
+  revisar: { type: DataTypes.BOOLEAN, defaultValue: false }
 });
 
 const Demora = sequelize.define('demora', {
@@ -84,6 +88,9 @@ const EstadoControl = sequelize.define('estado_control', {
 const Inspeccion = sequelize.define('inspeccion', {
   id: { type: DataTypes.INTEGER.UNSIGNED, primaryKey: true, autoIncrement: true },
   uuid: { type: DataTypes.CHAR(36), allowNull: false, unique: true },
+  // 'appsheet' = viene de la migracion del historico. Permite distinguirlas y
+  // poder deshacer la migracion sin tocar lo que se cargo desde la app.
+  origen: { type: DataTypes.ENUM('app', 'appsheet'), defaultValue: 'app' },
   registrado_en: { type: DataTypes.DATE, allowNull: false },
   // defaultValue explicito: la tabla tiene DEFAULT CURRENT_TIMESTAMP, pero si
   // el modelo declara la columna sin default Sequelize puede mandarla NULL en
@@ -98,7 +105,10 @@ const Inspeccion = sequelize.define('inspeccion', {
   detalle: { type: DataTypes.TEXT },
   controlador_id: { type: DataTypes.INTEGER.UNSIGNED },
   estado_control_id: { type: DataTypes.INTEGER.UNSIGNED },
-  foto_checklist: { type: DataTypes.STRING(255) }
+  foto_checklist: { type: DataTypes.STRING(255) },
+  // Donde estaba en Drive. Con foto_checklist en NULL significa que el archivo
+  // todavia no se copio al servidor.
+  foto_checklist_origen: { type: DataTypes.STRING(255) }
 });
 
 const InspeccionDesvio = sequelize.define('inspeccion_desvio', {
@@ -110,7 +120,10 @@ const InspeccionFoto = sequelize.define('inspeccion_foto', {
   id: { type: DataTypes.INTEGER.UNSIGNED, primaryKey: true, autoIncrement: true },
   inspeccion_id: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false },
   orden: { type: DataTypes.TINYINT.UNSIGNED, defaultValue: 1 },
-  ruta: { type: DataTypes.STRING(255), allowNull: false },
+  // ruta NULL + ruta_origen con valor = la foto existe en Drive pero todavia
+  // no se copio. El frontend lo usa para mostrar el hueco en vez de un roto.
+  ruta: { type: DataTypes.STRING(255) },
+  ruta_origen: { type: DataTypes.STRING(255) },
   orientacion: { type: DataTypes.ENUM('horizontal', 'vertical', 'libre'), defaultValue: 'libre' },
   bytes: { type: DataTypes.INTEGER.UNSIGNED },
   creado_en: { type: DataTypes.DATE, defaultValue: DataTypes.NOW }

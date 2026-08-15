@@ -15,6 +15,7 @@ const {
   EstadoControl
 } = require('../database/models');
 const fotoService = require('../services/fotoService');
+const desvioService = require('../services/desvioService');
 
 const RE_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -81,10 +82,18 @@ async function crear(req, res, next) {
     }
 
     let desvioIds = [];
+    // Desvios que el inspector escribio porque no estaban en la lista. Vienen
+    // como texto y no como id porque pueden haberse cargado sin conexion, sin
+    // forma de consultar el catalogo. Se resuelven recien al sincronizar.
+    const nuevos = (Array.isArray(b.desvios_nuevos) ? b.desvios_nuevos : [])
+      .map((s) => String(s || '').replace(/\s+/g, ' ').trim())
+      .filter((s) => s.length >= 3)
+      .slice(0, 5);
+
     if (esNG) {
       if (!b.tipo_desvio_id) throw error(400, 'tipo_desvio_requerido');
       desvioIds = [...new Set((b.desvio_ids || []).map(Number).filter(Boolean))];
-      if (desvioIds.length === 0) throw error(400, 'desvio_requerido');
+      if (desvioIds.length === 0 && nuevos.length === 0) throw error(400, 'desvio_requerido');
 
       const encontrados = await DesvioCatalogo.findAll({ where: { id: desvioIds } });
       if (encontrados.length !== desvioIds.length) throw error(400, 'desvio_inexistente');
@@ -148,8 +157,17 @@ async function crear(req, res, next) {
         { transaction: t }
       );
 
-      if (desvioIds.length) {
-        await insp.setDesvios(desvioIds, { transaction: t });
+      // Los desvios escritos a mano se resuelven acá, dentro de la misma
+      // transaccion: si la inspeccion falla no queda un desvio nuevo suelto
+      // en el catalogo sin ninguna inspeccion que lo use.
+      const ids = [...desvioIds];
+      for (const texto of nuevos) {
+        const id = await desvioService.resolverOCrear(texto, req.usuario.id, t);
+        if (id && !ids.includes(id)) ids.push(id);
+      }
+
+      if (ids.length) {
+        await insp.setDesvios(ids, { transaction: t });
       }
       if (fotos.length) {
         await InspeccionFoto.bulkCreate(

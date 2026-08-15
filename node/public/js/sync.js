@@ -39,6 +39,9 @@ const Sync = (() => {
       resultado: item.resultado,
       tipo_desvio_id: item.tipo_desvio_id || null,
       desvio_ids: item.desvio_ids || [],
+      // Texto libre: el servidor decide si ya existe o lo crea. No se resuelve
+      // en el cliente porque puede haberse escrito sin conexion.
+      desvios_nuevos: item.desvios_nuevos || [],
       demora_id: item.demora_id || null,
       detalle: item.detalle || null,
       controlador_id: item.controlador_id || null,

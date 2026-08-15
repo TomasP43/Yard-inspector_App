@@ -5,6 +5,7 @@ const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
 
 let CAT = null;              // catalogos
 let seleccionados = new Set(); // desvios elegidos en el formulario
+let nuevosDesvios = [];        // desvios escritos a mano que no estaban en la lista
 let offsetHistorial = 0;
 
 // ---------------------------------------------------------------- utilidades
@@ -179,8 +180,11 @@ async function verCamion() {
 
 function abrirForm() {
   seleccionados.clear();
+  nuevosDesvios = [];
+  pintarNuevos();
+  cerrarCajaNuevo();
   $('#form').reset();
-  $$('.chip').forEach((c) => c.classList.remove('sel'));
+  $$('#desvios .chip').forEach((c) => c.classList.remove('sel'));
   $('#lbl-detalle').hidden = true;
   $('[name=detalle]').required = false;
   // Imprescindible: reset() vuelve el resultado a OK pero NO toca los `required`
@@ -217,12 +221,111 @@ function alTocarChip(e) {
   $('[name=detalle]').required = exige;
 }
 
+// ------------------------------------------------- desvios fuera del catalogo
+
+/**
+ * El inspector puede agregar un desvio que no esta en la lista, pero antes se
+ * le muestran los parecidos. La comprobacion corre contra el catalogo cacheado
+ * en IndexedDB, no contra el servidor: esto se usa sin senal.
+ *
+ * El desvio no se crea acá. Viaja como texto junto a la inspeccion y lo
+ * resuelve el servidor al sincronizar, que es el unico que puede decidir si
+ * ya existe. Crearlo antes dejaria basura en el catalogo si la inspeccion
+ * despues se descarta.
+ */
+function pintarNuevos() {
+  $('#nuevos').innerHTML = nuevosDesvios
+    .map((n, i) => `<button type="button" class="chip sel chip-nuevo" data-i="${i}">${n} <span aria-hidden="true">&times;</span></button>`)
+    .join('');
+}
+
+function cerrarCajaNuevo() {
+  $('#nuevo-box').hidden = true;
+  $('#nuevo-nombre').value = '';
+  $('#sugerencias').innerHTML = '';
+}
+
+function revisarParecidos() {
+  const texto = $('#nuevo-nombre').value.trim();
+  const cont = $('#sugerencias');
+  if (texto.length < 3 || !CAT) { cont.innerHTML = ''; return; }
+
+  const ya = Similitud.exacto(texto, CAT.desvios);
+  if (ya) {
+    cont.innerHTML = `<p class="aviso-sim">Ya existe como <b>${ya.nombre}</b>.</p>
+      <button type="button" class="chip" data-usar="${ya.id}">Usar ese</button>`;
+    return;
+  }
+
+  const cerca = Similitud.similares(texto, CAT.desvios);
+  if (!cerca.length) { cont.innerHTML = '<p class="aviso-sim ok">No hay ninguno parecido.</p>'; return; }
+
+  cont.innerHTML = '<p class="aviso-sim">¿No será alguno de estos?</p>' +
+    cerca.map((d) => `<button type="button" class="chip" data-usar="${d.id}">${d.nombre}</button>`).join('');
+}
+
+let tSugerencias = null;
+$('#add-desvio').addEventListener('click', () => {
+  $('#nuevo-box').hidden = false;
+  $('#nuevo-nombre').focus();
+});
+$('#nuevo-cancelar').addEventListener('click', cerrarCajaNuevo);
+$('#nuevo-nombre').addEventListener('input', () => {
+  clearTimeout(tSugerencias);
+  tSugerencias = setTimeout(revisarParecidos, 250);
+});
+
+// Elegir una sugerencia marca el desvio existente en vez de crear uno nuevo.
+$('#sugerencias').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-usar]');
+  if (!b) return;
+  const id = Number(b.dataset.usar);
+  seleccionados.add(id);
+  const chip = $(`.chip[data-id="${id}"]`);
+  if (chip) chip.classList.add('sel');
+  cerrarCajaNuevo();
+});
+
+$('#nuevo-ok').addEventListener('click', () => {
+  const texto = $('#nuevo-nombre').value.replace(/\s+/g, ' ').trim();
+  if (texto.length < 3) { alert('Escribí al menos 3 caracteres.'); return; }
+
+  // Coincidencia exacta: se usa el que ya existe, sin crear un duplicado.
+  const ya = CAT && Similitud.exacto(texto, CAT.desvios);
+  if (ya) {
+    seleccionados.add(ya.id);
+    const chip = $(`.chip[data-id="${ya.id}"]`);
+    if (chip) chip.classList.add('sel');
+    cerrarCajaNuevo();
+    return;
+  }
+  if (nuevosDesvios.some((n) => Similitud.normalizar(n) === Similitud.normalizar(texto))) {
+    cerrarCajaNuevo();
+    return;
+  }
+  if (nuevosDesvios.length >= 5) { alert('Máximo 5 desvíos nuevos por inspección.'); return; }
+
+  nuevosDesvios.push(texto);
+  pintarNuevos();
+  cerrarCajaNuevo();
+});
+
+$('#nuevos').addEventListener('click', (e) => {
+  const b = e.target.closest('.chip-nuevo');
+  if (!b) return;
+  nuevosDesvios.splice(Number(b.dataset.i), 1);
+  pintarNuevos();
+});
+
 async function guardar(e) {
   e.preventDefault();
   const f = e.target;
   const ng = f.resultado.value === 'NG';
 
-  if (ng && seleccionados.size === 0) { alert('Elegí al menos un desvío.'); return; }
+  if (ng && seleccionados.size === 0 && nuevosDesvios.length === 0) {
+    alert('Elegí al menos un desvío.');
+    return;
+  }
 
   const btn = $('.link.fuerte');
   btn.disabled = true;
@@ -243,6 +346,7 @@ async function guardar(e) {
       resultado: f.resultado.value,
       tipo_desvio_id: ng ? Number(f.tipo_desvio_id.value) : null,
       desvio_ids: ng ? Array.from(seleccionados) : [],
+      desvios_nuevos: ng ? nuevosDesvios.slice() : [],
       demora_id: ng && f.demora_id.value ? Number(f.demora_id.value) : null,
       detalle: ng ? f.detalle.value.trim() : null,
       controlador_id: f.controlador_id.value ? Number(f.controlador_id.value) : null,

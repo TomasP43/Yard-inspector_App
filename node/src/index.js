@@ -26,6 +26,7 @@ app.use('/api/inspecciones', (req, res, next) => {
 
 app.use('/api/inspecciones', require('./routes/inspecciones'));
 app.use('/api/catalogos', require('./routes/catalogos'));
+app.use('/api/desvios', require('./routes/desvios'));
 
 // Fotos ya subidas. Mismo directorio que usa fotoService.
 app.use(
