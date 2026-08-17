@@ -18,7 +18,40 @@ const { sequelize } = require('./models');
  * que sobre una que ya tiene datos, y lleva registro de lo aplicado.
  */
 
-const DIR = process.env.MIGRATIONS_DIR || path.join(__dirname, '..', '..', '..', 'migrations');
+/**
+ * Donde estan los .sql. Se prueban candidatos en vez de una ruta fija porque
+ * el arbol del contenedor NO es el del repo:
+ *
+ *   repo        node/src/database/migrar.js  ->  <raiz>/migrations   (3 niveles)
+ *   contenedor  /app/src/database/migrar.js  ->  /app/migrations     (2 niveles)
+ *
+ * El Dockerfile copia `src` dentro de /app, asi que se pierde el nivel `node/`.
+ * Fijar 3 niveles hacia arriba funcionaba corriendo desde el repo y en el
+ * contenedor apuntaba a /migrations, que no existe: readdir tiraba ENOENT, esto
+ * explotaba antes del listen y el contenedor quedaba en ciclo de reinicio,
+ * devolviendo 502 en todo, incluido /health.
+ */
+const CANDIDATOS = [
+  process.env.MIGRATIONS_DIR,
+  path.join(__dirname, '..', '..', 'migrations'),
+  path.join(__dirname, '..', '..', '..', 'migrations')
+].filter(Boolean);
+
+let DIR = null;
+
+async function ubicarMigraciones() {
+  if (DIR) return DIR;
+  for (const c of CANDIDATOS) {
+    try {
+      const st = await fs.stat(c);
+      if (st.isDirectory()) { DIR = c; return DIR; }
+    } catch (e) { /* probar el siguiente */ }
+  }
+  throw new Error(
+    'no se encontro la carpeta de migraciones. Probe: ' + CANDIDATOS.join(' | ') +
+    '. Se monta con ./migrations:/app/migrations:ro, o se fija con MIGRATIONS_DIR.'
+  );
+}
 
 async function asegurarTabla() {
   await sequelize.query(`
@@ -93,10 +126,18 @@ async function aplicar(nombre, sql) {
   console.log(`[migrar] ${nombre}: ${sentencias.length} sentencia(s)`);
 
   const conn = await sequelize.connectionManager.getConnection();
+
+  // El objeto que devuelve el pool es la conexion cruda de mysql2, que es de
+  // callbacks y expone .promise(). Se contempla que ya venga promisificada:
+  // depender de una sola forma ata el runner a un detalle interno de Sequelize.
+  const ejecutar = (sql) => (typeof conn.promise === 'function'
+    ? conn.promise().query(sql)
+    : new Promise((res, rej) => conn.query(sql, (e, r) => (e ? rej(e) : res(r)))));
+
   try {
     for (let i = 0; i < sentencias.length; i++) {
       try {
-        await conn.promise().query(sentencias[i]);
+        await ejecutar(sentencias[i]);
       } catch (err) {
         // El DDL de MySQL no es transaccional: lo ya aplicado queda. Se corta
         // aca y se avisa con la sentencia exacta, porque seguir dejaria la base
@@ -126,7 +167,7 @@ async function aplicar(nombre, sql) {
  */
 const BASELINE = process.env.MIGRACION_BASELINE || '004_desvios_de_usuario.sql';
 
-async function adoptarBaseline(archivos) {
+async function adoptarBaseline(archivos, dir) {
   const [[{ n }]] = await sequelize.query(`
     SELECT COUNT(*) AS n FROM information_schema.tables
      WHERE table_schema = DATABASE() AND table_name <> 'migracion_aplicada'
@@ -138,7 +179,7 @@ async function adoptarBaseline(archivos) {
 
   const previas = archivos.filter((f) => f <= BASELINE);
   for (const nombre of previas) {
-    const sql = await fs.readFile(path.join(DIR, nombre), 'utf8');
+    const sql = await fs.readFile(path.join(dir, nombre), 'utf8');
     const checksum = crypto.createHash('sha256').update(sql).digest('hex');
     await sequelize.query(
       'INSERT INTO migracion_aplicada (nombre, checksum) VALUES (?, ?)',
@@ -161,18 +202,21 @@ async function migrar() {
   if (!lock || lock.ok !== 1) throw new Error('no se pudo tomar el lock de migracion');
 
   try {
-    const archivos = (await fs.readdir(DIR))
+    const dir = await ubicarMigraciones();
+    console.log(`[migrar] carpeta de migraciones: ${dir}`);
+
+    const archivos = (await fs.readdir(dir))
       .filter((f) => f.endsWith('.sql'))
       .sort();
 
-    await adoptarBaseline(archivos);
+    await adoptarBaseline(archivos, dir);
 
     const [aplicadas] = await sequelize.query('SELECT nombre, checksum FROM migracion_aplicada');
     const yaEsta = new Map(aplicadas.map((r) => [r.nombre, r.checksum]));
 
     let nuevas = 0;
     for (const nombre of archivos) {
-      const sql = await fs.readFile(path.join(DIR, nombre), 'utf8');
+      const sql = await fs.readFile(path.join(dir, nombre), 'utf8');
       const checksum = crypto.createHash('sha256').update(sql).digest('hex');
 
       if (yaEsta.has(nombre)) {
