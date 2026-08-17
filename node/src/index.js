@@ -29,8 +29,10 @@ app.use('/api/inspecciones', require('./routes/inspecciones'));
 app.use('/api/catalogos', require('./routes/catalogos'));
 app.use('/api/desvios', require('./routes/desvios'));
 
-// Modulo de inspeccion de unidades
+// Modulo de inspeccion de unidades. La ingesta va primero porque tiene su
+// propia autenticacion por token; el resto exige sesion de ttfa.
 app.use('/api/unidades', require('./routes/ingesta'));
+app.use('/api/unidades', require('./routes/unidades'));
 
 // Fotos ya subidas. Mismo directorio que usa fotoService.
 app.use(

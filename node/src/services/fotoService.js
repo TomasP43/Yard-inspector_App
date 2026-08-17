@@ -40,7 +40,7 @@ function decodificar(entrada) {
  * cosa disfrazada de base64. `rotate()` sin argumentos aplica la orientacion
  * EXIF y la descarta; sin eso las fotos de celular se ven acostadas.
  */
-async function guardar(entrada, { uuid, orden }) {
+async function guardar(entrada, { uuid, orden, formato = 'jpeg', maxLado = MAX_LADO }) {
   const buf = decodificar(entrada);
   if (!buf) return null;
 
@@ -53,14 +53,22 @@ async function guardar(entrada, { uuid, orden }) {
 
   // El uuid viene del cliente: no lo usamos crudo como nombre de archivo.
   const sufijo = crypto.randomBytes(4).toString('hex');
-  const nombre = `${uuid.replace(/[^a-zA-Z0-9-]/g, '')}-${orden}-${sufijo}.jpg`;
+  const ext = formato === 'png' ? 'png' : 'jpg';
+  const nombre = `${uuid.replace(/[^a-zA-Z0-9-]/g, '')}-${orden}-${sufijo}.${ext}`;
   const relativa = path.posix.join(subdir.replace(/\\/g, '/'), nombre);
 
-  const salida = await sharp(buf)
+  let pipeline = sharp(buf)
     .rotate()
-    .resize(MAX_LADO, MAX_LADO, { fit: 'inside', withoutEnlargement: true })
-    .jpeg({ quality: CALIDAD, mozjpeg: true })
-    .toBuffer();
+    .resize(maxLado, maxLado, { fit: 'inside', withoutEnlargement: true });
+
+  // Las firmas van en PNG y no en JPEG: se dibujan sobre un canvas
+  // transparente, y JPEG no tiene canal alfa — el trazo quedaria sobre un
+  // fondo negro. Ademas son dos colores, asi que PNG pesa menos que JPEG aca.
+  pipeline = formato === 'png'
+    ? pipeline.png({ compressionLevel: 9, palette: true })
+    : pipeline.jpeg({ quality: CALIDAD, mozjpeg: true });
+
+  const salida = await pipeline.toBuffer();
 
   await fs.writeFile(path.join(DIR, relativa), salida);
   return { ruta: relativa, bytes: salida.length };
