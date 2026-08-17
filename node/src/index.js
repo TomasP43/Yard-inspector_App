@@ -29,6 +29,9 @@ app.use('/api/inspecciones', require('./routes/inspecciones'));
 app.use('/api/catalogos', require('./routes/catalogos'));
 app.use('/api/desvios', require('./routes/desvios'));
 
+// Modulo de inspeccion de unidades
+app.use('/api/unidades', require('./routes/ingesta'));
+
 // Fotos ya subidas. Mismo directorio que usa fotoService.
 app.use(
   '/uploads',
