@@ -123,7 +123,17 @@ async function listarViajes(req, res, next) {
     if (req.query.playa) {
       const playa = await Playa.findOne({ where: { codigo: String(req.query.playa).trim() } });
       if (!playa) return res.status(404).json({ error: 'playa_desconocida' });
-      where.playa_id = playa.id;
+
+      // Un viaje le corresponde a una playa si ALGUNA de sus etapas activas
+      // ocurre ahi, no si nacio ahi. Un Sorocaba -> Zarate descarga en Zarate,
+      // y con `where.playa_id = playa.id` el inspector de Zarate no lo veia.
+      // La etapa puede declarar su playa; si no la declara, es la del viaje.
+      where[Op.and] = [
+        sequelize.literal(
+          'EXISTS (SELECT 1 FROM etapa e WHERE e.flujo_id = `viaje`.`flujo_id` ' +
+          'AND e.activo = 1 AND COALESCE(e.playa_id, `viaje`.`playa_id`) = ' + Number(playa.id) + ')'
+        )
+      ];
     }
     if (req.query.fecha) where.fecha = req.query.fecha;
     if (req.query.desde || req.query.hasta) {
@@ -138,7 +148,9 @@ async function listarViajes(req, res, next) {
         { model: Playa, as: 'playa', attributes: ['id', 'codigo', 'nombre'] },
         {
           model: Flujo, as: 'flujo', attributes: ['id', 'nombre'],
-          include: [{ model: Etapa, as: 'etapas', where: { activo: true }, required: false, attributes: ['id', 'nombre', 'orden'] }]
+          // playa_id viaja siempre: el frontend decide que etapas le muestra al
+          // inspector segun donde esta parado, y el panel las quiere todas.
+          include: [{ model: Etapa, as: 'etapas', where: { activo: true }, required: false, attributes: ['id', 'nombre', 'orden', 'playa_id'] }]
         }
       ],
       order: [['fecha', 'DESC'], ['id', 'DESC']],

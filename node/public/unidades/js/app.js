@@ -222,8 +222,7 @@ async function abrirViaje(uuid) {
   }
 
   VIAJE = v;
-  const etapas = (v.flujo && v.flujo.etapas) || [];
-  ETAPA = etapas[0] || null;
+  ETAPA = etapasDeLaPlaya()[0] || null;
 
   $('#cab-viaje').innerHTML = `
     <div class="eq">${v.equipo_codigo || 's/equipo'}</div>
@@ -234,8 +233,31 @@ async function abrirViaje(uuid) {
   vista('unidades');
 }
 
-function pintarEtapas() {
+/**
+ * Etapas que le tocan al inspector donde esta parado.
+ *
+ * Un viaje Sorocaba -> Zarate tiene precarga y carga en Brasil y la descarga
+ * en Zarate. Con la playa elegida en el filtro se muestran solo las etapas de
+ * esa playa; sin filtro, todas (es la vista del supervisor).
+ *
+ * La etapa puede declarar su playa; si no, ocurre en la del viaje.
+ */
+function etapasDeLaPlaya() {
   const etapas = (VIAJE.flujo && VIAJE.flujo.etapas) || [];
+  const codigo = $('#f-playa').value;
+  if (!codigo) return etapas;
+
+  const playa = (CAT.playas || []).find((p) => p.codigo === codigo);
+  if (!playa) return etapas;
+
+  const propias = etapas.filter((e) => (e.playa_id || VIAJE.playa_id) === playa.id);
+  // Si ninguna etapa le corresponde, se muestran todas antes que una pantalla
+  // vacia sin explicacion.
+  return propias.length ? propias : etapas;
+}
+
+function pintarEtapas() {
+  const etapas = etapasDeLaPlaya();
   $('#etapas').innerHTML = etapas.map((e) => {
     const hechas = (VIAJE.unidades || []).filter((u) =>
       (u.inspecciones || []).some((i) => i.etapa_id === e.id)).length;
@@ -527,8 +549,7 @@ $('#f-fecha').addEventListener('change', verViajes);
 $('#etapas').addEventListener('click', (e) => {
   const b = e.target.closest('[data-etapa]');
   if (!b) return;
-  const etapas = (VIAJE.flujo && VIAJE.flujo.etapas) || [];
-  ETAPA = etapas.find((x) => x.id === Number(b.dataset.etapa));
+  ETAPA = etapasDeLaPlaya().find((x) => x.id === Number(b.dataset.etapa));
   pintarEtapas();
   pintarUnidades();
 });

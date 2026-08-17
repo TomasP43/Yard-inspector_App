@@ -104,6 +104,52 @@ chequeos estáticos sirven para consistencia, no como prueba de funcionamiento.
 
 ---
 
+## D-007 · En qué playa ocurre cada etapa
+
+**Pregunta:** un viaje Sorocaba → Zárate, ¿de qué playa es?
+
+**Evidencia:** la precarga y la carga son en Brasil, la descarga en Zárate. Con
+el modelo original —una playa por viaje, la de origen— el inspector de Zárate
+filtrando por su playa **nunca veía ese viaje**, porque para el sistema era de
+Sorocaba. El hueco apareció al recorrer el flujo de punta a punta, no al
+escribir el modelo.
+
+**Opciones:** (a) la etapa declara su playa, (b) el viaje tiene origen y
+destino, (c) filtrar por flujo en vez de por playa.
+
+**Decisión:** (a). `etapa.playa_id`, con NULL = la playa de origen del viaje.
+
+```
+playa efectiva = COALESCE(etapa.playa_id, viaje.playa_id)
+```
+
+Un viaje le corresponde a una playa si **alguna de sus etapas activas ocurre
+ahí**.
+
+**Motivo:** es lo más fiel a la operación y soporta flujos de tres puntos sin
+cambiar el modelo otra vez. El NULL evita tener que completar el dato en los
+flujos que ocurren enteros en un lugar, que son la mayoría.
+
+**Reversibilidad:** alta mientras no haya inspecciones cargadas contra etapas de
+otra playa.
+
+---
+
+## D-008 · Cuántos cuadrantes tiene una puerta
+
+**Pregunta:** el diagrama marca 10, 11 y 12 sobre el vidrio además de los 9 del
+panel. ¿La puerta tiene 9 o 12?
+
+**Evidencia:** la tabla del estándar 2024 lista las puertas entre las piezas de
+9 cuadrantes, y el riel entre las de 3. Confirmado por el usuario: **el 10 al 12
+son el riel**, que es una pieza aparte.
+
+**Decisión:** la puerta tiene 9. Sin cambios en el catálogo.
+
+**Reversibilidad:** total.
+
+---
+
 ## D-006 · Idempotencia de la cola offline
 
 **Pregunta:** ¿qué devuelve el servidor si llega dos veces la misma inspección?

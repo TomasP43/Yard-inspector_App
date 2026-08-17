@@ -62,6 +62,10 @@ module.exports = function definirUnidades(sequelize, DataTypes, { Usuario }) {
   const Etapa = sequelize.define('etapa', {
     id: { type: DataTypes.INTEGER.UNSIGNED, primaryKey: true, autoIncrement: true },
     flujo_id: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false },
+    // En que playa ocurre. NULL = la de origen del viaje. Existe porque un
+    // viaje Sorocaba -> Zarate descarga en Zarate: sin esto, el inspector de
+    // Zarate no veia el viaje porque para el sistema era de Sorocaba.
+    playa_id: { type: DataTypes.INTEGER.UNSIGNED },
     nombre: { type: DataTypes.STRING(60), allowNull: false },
     orden: { type: DataTypes.SMALLINT, allowNull: false },
     // que le exige al inspector esta etapa. Es configurable por flujo.
@@ -210,6 +214,7 @@ module.exports = function definirUnidades(sequelize, DataTypes, { Usuario }) {
   Flujo.belongsTo(Destino, { as: 'destino', foreignKey: 'destino_id' });
   Flujo.hasMany(Etapa, { as: 'etapas', foreignKey: 'flujo_id' });
   Etapa.belongsTo(Flujo, { as: 'flujo', foreignKey: 'flujo_id' });
+  Etapa.belongsTo(Playa, { as: 'playa', foreignKey: 'playa_id' });
 
   Viaje.belongsTo(Playa, { as: 'playa', foreignKey: 'playa_id' });
   Viaje.belongsTo(Flujo, { as: 'flujo', foreignKey: 'flujo_id' });
