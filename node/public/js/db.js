@@ -36,7 +36,15 @@ const DB = (() => {
       const s = t.objectStore(store);
       let out;
       try { out = fn(s); } catch (e) { rej(e); return; }
-      t.oncomplete = () => res(out && out.result !== undefined ? out.result : out);
+      // Si fn devolvio un IDBRequest, el valor es SIEMPRE su .result, incluso
+      // cuando es undefined porque la clave no existe.
+      //
+      // Antes esto era `out.result !== undefined ? out.result : out`, que ante
+      // una clave inexistente devolvia el propio IDBRequest. Como es truthy,
+      // `if (CAT) pintarCatalogos()` pasaba, `CAT.responsables` era undefined y
+      // el .map() tiraba: la app quedaba muerta antes de la primera sync,
+      // justamente en el navegador que nunca la habia abierto.
+      t.oncomplete = () => res(out instanceof IDBRequest ? out.result : out);
       t.onerror = () => rej(t.error);
       t.onabort = () => rej(t.error);
     }));

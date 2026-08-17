@@ -3,7 +3,8 @@
 
 // Subir esta version invalida el cache viejo en el proximo deploy.
 // v2: se agrego la navegacion entre modulos al app shell.
-const VERSION = 'v2';
+// v3: fix del helper de IndexedDB que dejaba la app muerta al primer arranque.
+const VERSION = 'v3';
 const CACHE = `yard-${VERSION}`;
 
 // El app shell tiene que alcanzar para abrir la app sin conexion. Rutas

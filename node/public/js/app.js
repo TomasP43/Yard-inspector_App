@@ -32,10 +32,21 @@ async function pedir(url) {
 
 // ---------------------------------------------------------------- catalogos
 
+/** Sirve para algo si trae al menos los catalogos que arman el formulario. */
+function catalogoUsable(c) {
+  return !!(c && Array.isArray(c.responsables) && Array.isArray(c.desvios));
+}
+
 async function cargarCatalogos() {
   // Primero lo cacheado: la app tiene que poder abrir el formulario sin senal.
   CAT = await DB.leerMeta('catalogos');
-  if (CAT) pintarCatalogos();
+  if (!catalogoUsable(CAT)) CAT = null;
+
+  // Envuelto: un cache viejo o a medias no puede impedir que despues se pida
+  // el bueno por red. El pintado que falla es recuperable; no arrancar, no.
+  if (CAT) {
+    try { pintarCatalogos(); } catch (e) { console.error('[catalogos] cache inservible', e); CAT = null; }
+  }
 
   try {
     const etag = await DB.leerMeta('catalogos_etag');
@@ -54,9 +65,13 @@ async function cargarCatalogos() {
   }
 }
 
+// `items` va con respaldo a proposito: un catalogo incompleto tiene que dejar
+// la app usable, no matarla. La excepcion cortaba cargarCatalogos() entera, asi
+// que no llegaba a correr ni verHoy() ni la sincronizacion.
 function opciones(sel, items, vacio) {
+  if (!sel) return;
   sel.innerHTML = (vacio ? '<option value="">—</option>' : '') +
-    items.map((i) => `<option value="${i.id}">${i.nombre}</option>`).join('');
+    (items || []).map((i) => `<option value="${i.id}">${i.nombre}</option>`).join('');
 }
 
 /**

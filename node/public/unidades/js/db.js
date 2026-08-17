@@ -38,7 +38,11 @@ const DBU = (() => {
       const t = db.transaction(store, modo);
       let out;
       try { out = fn(t.objectStore(store)); } catch (e) { rej(e); return; }
-      t.oncomplete = () => res(out && out.result !== undefined ? out.result : out);
+      // El valor de un IDBRequest es siempre .result, aunque sea undefined por
+      // clave inexistente. Devolver el request en ese caso lo hace truthy y
+      // rompe cualquier `if (valor)` rio abajo. Ver el mismo comentario en
+      // ../../js/db.js: ahi ese bug dejaba la app muerta al primer arranque.
+      t.oncomplete = () => res(out instanceof IDBRequest ? out.result : out);
       t.onerror = () => rej(t.error);
       t.onabort = () => rej(t.error);
     }));
