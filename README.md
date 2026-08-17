@@ -51,7 +51,7 @@ docker compose -f docker-compose.yml -f docker-compose.dev.yml up
 - En desarrollo **no hay login**: el usuario se simula con `DEV_USER_EMAIL`
 - Si no tenés `ttfa-docker` corriendo, la red `proxy_net` no existe y el `up` falla. Ver el comentario al final de `docker-compose.dev.yml`
 
-Las migraciones de `migrations/` corren solas **la primera vez que se crea el volumen**. Para rehacer la base: `docker compose down -v`.
+Las migraciones las aplica **el backend al arrancar**, llevando registro en `migracion_aplicada`. Agregar una es dejar el `.sql` en `migrations/`. Para rehacer la base desde cero: `docker compose down -v`. Ver [CLAUDE.md](CLAUDE.md#migraciones) para el detalle.
 
 ## Verificar que quedó bien
 

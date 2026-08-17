@@ -118,7 +118,20 @@ docker compose -f docker-compose.yml -f docker-compose.dev.yml up
 - En dev **no hay login**: el usuario se simula con `DEV_USER_EMAIL`.
 - Si no tenes `ttfa-docker` corriendo, la red `proxy_net` no existe y el `up` falla. Ver el comentario al final de `docker-compose.dev.yml`.
 
-Las migraciones de `migrations/` corren solas **la primera vez que se crea el volumen** `yard_db`. Si ya existe, no se ejecutan: para rehacer la base, `docker compose down -v`.
+## Migraciones
+
+Las aplica **el backend al arrancar** (`src/database/migrar.js`), que lleva registro en la tabla `migracion_aplicada`. Agregar una migracion es dejar el `.sql` en `migrations/`: se aplica sola en el proximo deploy.
+
+**No van montadas en `/docker-entrypoint-initdb.d`, a proposito.** Ese mecanismo solo corre la primera vez que se crea el volumen; con la base ya existente, toda migracion nueva quedaba sin aplicar y el codigo terminaba buscando tablas inexistentes. Con el deploy automatico eso se rompe en silencio en cada push. Un solo mecanismo, no dos.
+
+Dos cosas que el runner resuelve y conviene no romper:
+
+- **Cada archivo corre sobre una sola conexion.** `003_datos_historicos.sql` encadena `SET @i = LAST_INSERT_ID()` entre sentencias, y `@i` es de sesion: repartir las sentencias entre conexiones del pool cargaria las inspecciones sin sus desvios ni sus fotos, sin fallar.
+- **Entiende `DELIMITER`**, que es una instruccion del cliente mysql y no SQL. Sin eso, el `;` de adentro de un trigger corta la sentencia al medio.
+
+Sobre bases anteriores a este runner, la primera corrida marca como aplicadas las migraciones hasta `MIGRACION_BASELINE` (por defecto la 004) sin ejecutarlas, porque ya estaban cargadas por el mecanismo viejo.
+
+Para rehacer la base desde cero: `docker compose down -v`.
 
 ## Qué requiere cambios en ttfa-docker
 

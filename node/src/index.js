@@ -5,6 +5,7 @@ const express = require('express');
 const cookieParser = require('cookie-parser');
 
 const { sequelize } = require('./database/models');
+const { migrar } = require('./database/migrar');
 
 const app = express();
 const PORT = process.env.PORT || 3002;
@@ -49,6 +50,11 @@ app.use((err, req, res, next) => {
 async function main() {
   await sequelize.authenticate();
   console.log('[db] conectado');
+
+  // Antes de escuchar: si falta una migracion, la app arrancaria consultando
+  // tablas que no existen y fallaria recien cuando alguien la use.
+  await migrar();
+
   app.listen(PORT, () => console.log(`[http] escuchando en :${PORT}`));
 }
 
