@@ -14,12 +14,17 @@ services:
       - ./node/public:/app/public
       - yard_uploads:/app/uploads
     ports:
-      - "3002:3002"
+      # Atado a localhost a proposito. En dev el login esta DESACTIVADO
+      # (DEV_USER_EMAIL simula al usuario), asi que publicar en 0.0.0.0 dejaria
+      # la app abierta a cualquiera que alcance la maquina. En una notebook es
+      # molesto; en el VPS seria una app sin autenticacion en internet.
+      # Para llegar desde afuera: tunel ssh -L 3002:localhost:3002 usuario@vps
+      - "127.0.0.1:3002:3002"
 
   db_yard:
     ports:
-      # Expuesta para poder conectarse con un cliente MySQL desde la maquina.
-      - "3309:3306"
+      # Para conectarse con un cliente MySQL desde la misma maquina.
+      - "127.0.0.1:3309:3306"
 
 # Si no tenes ttfa-docker corriendo, proxy_net no existe y el up falla.
 # Descomentar para que docker la cree localmente en vez de buscarla:
