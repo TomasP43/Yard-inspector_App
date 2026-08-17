@@ -47,6 +47,7 @@ try {
       <select id="f-playa"></select>
       <input id="f-fecha" type="date">
     </div>
+    <button id="nuevo-viaje" class="btn-secundario" type="button">+ Cargar viaje</button>
     <div id="lista-viajes" class="lista"></div>
   </section>
 
@@ -144,6 +145,51 @@ try {
       </label>
     </div>
   </div>
+</div>
+
+<!-- 5. carga manual de un viaje -->
+<div id="modal-viaje" class="modal" hidden>
+  <form id="form-viaje" class="form">
+    <header class="form-barra">
+      <button type="button" id="viaje-cancelar" class="link">Cancelar</button>
+      <strong>Cargar viaje</strong>
+      <button type="submit" class="link fuerte">Crear</button>
+    </header>
+
+    <div class="form-cuerpo">
+      <p class="nota">
+        En Zárate los viajes llegan solos desde el sistema de solicitudes.
+        Esta pantalla es para las playas que todavía no están integradas, y para
+        corregir a mano.
+      </p>
+
+      <label>Playa *
+        <select name="playa" required></select>
+      </label>
+
+      <label>Flujo *
+        <select name="flujo" required></select>
+      </label>
+
+      <label>Fecha *
+        <input name="fecha" type="date" required>
+      </label>
+
+      <label>Equipo <span class="opcional">(número de camión)</span>
+        <input name="equipo" type="number" inputmode="numeric" placeholder="3595">
+      </label>
+
+      <label>Referencia externa <span class="opcional">(id en el otro sistema)</span>
+        <input name="referencia" type="text" maxlength="60" placeholder="SOL-000123">
+      </label>
+
+      <label>Unidades *
+        <textarea name="unidades" rows="9" required
+          placeholder="Un VIN por línea. Opcional: VIN, modelo, destino&#10;&#10;8AJBA3CD4T8003610, Hilux, TCL&#10;8AJDA8CBXT8108950, Corolla Cross&#10;8AJBA3FS7T0422799"></textarea>
+      </label>
+      <p class="nota" id="viaje-conteo"></p>
+    </div>
+  </form>
 </div>
 
 <script src="../js/similitud.js"></script>

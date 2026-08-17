@@ -4,7 +4,8 @@
 // Scope /yard/unidades/. Cache propio del modulo: se despliega y se invalida
 // aparte del de patrullas.
 // v2: mismo fix del helper de IndexedDB que en patrullas.
-const VERSION = 'v2';
+// v3: pantalla de carga manual de viajes.
+const VERSION = 'v3';
 const CACHE = `yard-unidades-${VERSION}`;
 
 const SHELL = [

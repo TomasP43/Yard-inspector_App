@@ -77,6 +77,93 @@ function pintarCatalogos() {
 
   $('#detalles').innerHTML = (CAT.detalles_dano || [])
     .map((d) => `<option value="${d.nombre}">`).join('');
+
+  // Formulario de carga manual
+  $('[name=playa]').innerHTML = (CAT.playas || [])
+    .map((p) => `<option value="${p.codigo}">${p.nombre}</option>`).join('');
+  $('[name=flujo]').innerHTML = (CAT.flujos || [])
+    .map((f) => `<option value="${f.nombre}">${f.nombre}</option>`).join('');
+}
+
+// -------------------------------------------------- carga manual de un viaje
+
+/**
+ * Una linea por unidad: `VIN` o `VIN, modelo, destino`.
+ *
+ * Se acepta pegar directo desde una planilla, que es como llega la lista en
+ * las playas sin integracion. El VIN se normaliza a mayusculas porque el
+ * servidor deduplica por VIN dentro del viaje.
+ */
+function parsearUnidades(texto) {
+  return String(texto || '')
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter(Boolean)
+    .map((linea, i) => {
+      const p = linea.split(',').map((x) => x.trim());
+      return {
+        vin: (p[0] || '').toUpperCase(),
+        modelo: p[1] || null,
+        destino: p[2] || null,
+        secuencia: i + 1,
+        orden_bajada: i + 1
+      };
+    })
+    .filter((u) => u.vin);
+}
+
+function abrirFormViaje() {
+  const f = $('#form-viaje');
+  f.reset();
+  f.fecha.value = new Date().toISOString().slice(0, 10);
+  $('#viaje-conteo').textContent = '';
+  $('#modal-viaje').hidden = false;
+}
+
+async function crearViaje(e) {
+  e.preventDefault();
+  const f = e.target;
+  const unidades = parsearUnidades(f.unidades.value);
+  if (!unidades.length) { alert('Cargá al menos un VIN.'); return; }
+
+  const btn = f.querySelector('.link.fuerte');
+  btn.disabled = true;
+  btn.textContent = 'Creando…';
+
+  try {
+    const r = await fetch('../api/unidades/viajes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify({
+        playa: f.playa.value,
+        flujo: f.flujo.value,
+        fecha: f.fecha.value,
+        equipo_codigo: f.equipo.value ? Number(f.equipo.value) : null,
+        referencia_externa: f.referencia.value.trim() || null,
+        unidades
+      })
+    });
+
+    const d = await r.json();
+    if (!r.ok) {
+      alert('No se pudo crear: ' + (d.error || r.status) + (d.detalle ? '\n' + d.detalle : ''));
+      return;
+    }
+
+    // Los avisos no son errores, pero alguien los tiene que ver: modelos o
+    // destinos fuera del catalogo, VIN repetidos, unidades conservadas.
+    if (d.avisos && d.avisos.length) {
+      alert('Viaje creado con avisos:\n\n' + d.avisos.join('\n'));
+    }
+    $('#modal-viaje').hidden = true;
+    verViajes();
+  } catch (err) {
+    alert('No se pudo crear: ' + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Crear';
+  }
 }
 
 // ---------------------------------------------------------------- viajes
@@ -427,6 +514,13 @@ $('#lista-viajes').addEventListener('click', (e) => {
   if (a) abrirViaje(a.dataset.uuid);
 });
 $('#volver-viajes').addEventListener('click', () => { vista('viajes'); verViajes(); });
+$('#nuevo-viaje').addEventListener('click', abrirFormViaje);
+$('#viaje-cancelar').addEventListener('click', () => { $('#modal-viaje').hidden = true; });
+$('#form-viaje').addEventListener('submit', crearViaje);
+$('[name=unidades]').addEventListener('input', (e) => {
+  const n = parsearUnidades(e.target.value).length;
+  $('#viaje-conteo').textContent = n ? `${n} unidad(es) detectada(s)` : '';
+});
 $('#f-playa').addEventListener('change', verViajes);
 $('#f-fecha').addEventListener('change', verViajes);
 
