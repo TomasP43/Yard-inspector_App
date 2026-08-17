@@ -4,11 +4,12 @@ WORKDIR /app
 
 # Las deps se instalan en una capa aparte para no reinstalar en cada cambio
 # de codigo. sharp trae binarios precompilados para alpine/musl.
-COPY package*.json ./
+COPY node/package*.json ./
 RUN npm install --omit=dev
 
-COPY src ./src
-COPY public ./public
+COPY migrations/ /migrations/
+COPY node/src ./src
+COPY node/public ./public
 
 # Punto de montaje del volumen yard_uploads
 RUN mkdir -p /app/uploads

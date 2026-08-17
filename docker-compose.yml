@@ -1,6 +1,8 @@
 services:
   yard-backend:
-    build: ./node
+    build:
+      context: .
+      dockerfile: node/Dockerfile
     container_name: yard-backend
     restart: unless-stopped
     env_file: .env
