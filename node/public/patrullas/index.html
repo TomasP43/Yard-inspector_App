@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0b">
+<meta name="color-scheme" content="dark">
+<title>Yard Inspector</title>
+<link rel="manifest" href="./manifest.json">
+<link rel="stylesheet" href="../css/app.css">
+<script>
+/* Se aplica el tema ANTES de pintar. Si esto viviera en app.js (que carga al
+   final del body), la pantalla arrancaria oscura y saltaria a clara: molesto
+   siempre, y peor al sol, que es justo cuando se usa el modo claro. */
+try {
+  var t = localStorage.getItem('yard-tema');
+  if (t === 'claro') document.documentElement.setAttribute('data-tema', 'claro');
+} catch (e) {}
+</script>
+</head>
+<body>
+
+<header class="barra">
+  <span class="marca" aria-hidden="true"></span>
+  <h1>Yard Inspector</h1>
+  <div id="estado" class="estado" hidden></div>
+  <button id="tema" class="btn-tema" type="button" aria-label="Cambiar a modo claro">
+    <svg class="ico-sol" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>
+    </svg>
+    <svg class="ico-luna" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z"/>
+    </svg>
+  </button>
+  <div id="avatar" class="avatar" title="Sesión de TTFA"></div>
+</header>
+
+<nav class="modulos">
+  <a href="../" class="mod">Inicio</a>
+  <a href="./" class="mod activo">Patrullas</a>
+  <a href="../unidades/" class="mod">Unidades</a>
+</nav>
+
+<nav class="tabs">
+  <button class="tab activo" data-vista="hoy">Patrulla</button>
+  <button class="tab" data-vista="historial">Historial</button>
+  <button class="tab" data-vista="camion">Camión</button>
+</nav>
+
+<main>
+  <section id="v-hoy" class="vista">
+    <p class="nota">Desvíos cargados hoy. Los OK no se muestran acá.</p>
+    <div id="lista-hoy" class="lista"></div>
+  </section>
+
+  <section id="v-historial" class="vista" hidden>
+    <div class="filtros">
+      <select id="f-resultado">
+        <option value="">Todos</option>
+        <option value="NG">Solo NG</option>
+        <option value="OK">Solo OK</option>
+      </select>
+    </div>
+    <div id="lista-historial" class="lista"></div>
+    <button id="mas" class="btn-secundario" hidden>Cargar más</button>
+  </section>
+
+  <section id="v-camion" class="vista" hidden>
+    <div class="filtros">
+      <input id="f-equipo" type="number" inputmode="numeric" placeholder="Número de camión" list="equipos">
+      <datalist id="equipos"></datalist>
+      <button id="buscar" class="btn">Buscar</button>
+    </div>
+    <div id="resumen-camion" class="resumen" hidden></div>
+    <div id="lista-camion" class="lista"></div>
+  </section>
+</main>
+
+<button id="nueva" class="fab" aria-label="Nueva inspección">+</button>
+
+<!-- Formulario de carga -->
+<div id="modal" class="modal" hidden>
+  <form id="form" class="form">
+    <header class="form-barra">
+      <button type="button" id="cancelar" class="link">Cancelar</button>
+      <strong>Nueva inspección</strong>
+      <button type="submit" class="link fuerte">Guardar</button>
+    </header>
+
+    <div class="form-cuerpo">
+      <label>Responsable *
+        <select name="responsable_id" required></select>
+      </label>
+
+      <label>Equipo *
+        <input name="equipo_codigo" type="number" inputmode="numeric" required>
+      </label>
+
+      <fieldset class="segmento">
+        <legend>Resultado *</legend>
+        <label class="seg"><input type="radio" name="resultado" value="OK" checked><span>OK</span></label>
+        <label class="seg"><input type="radio" name="resultado" value="NG"><span>NG</span></label>
+      </fieldset>
+
+      <div id="bloque-ng" hidden>
+        <label>Tipo de desvío *
+          <select name="tipo_desvio_id"></select>
+        </label>
+
+        <label>Desvíos *
+          <div id="desvios" class="chips"></div>
+          <div id="nuevos" class="chips"></div>
+          <button type="button" id="add-desvio" class="chip chip-add">+ Otro desvío</button>
+
+          <div id="nuevo-box" class="caja-nuevo" hidden>
+            <input id="nuevo-nombre" type="text" maxlength="160" autocomplete="off"
+                   placeholder="Escribí el desvío que falta">
+            <div id="sugerencias" class="sugerencias"></div>
+            <div class="acciones-nuevo">
+              <button type="button" id="nuevo-cancelar" class="link">Cancelar</button>
+              <button type="button" id="nuevo-ok" class="btn">Agregar</button>
+            </div>
+          </div>
+        </label>
+
+        <label id="lbl-detalle" hidden>Detalle *
+          <textarea name="detalle" rows="2" placeholder="Qué se observó"></textarea>
+        </label>
+
+        <label>Demora
+          <select name="demora_id"><option value="">—</option></select>
+        </label>
+
+        <label>Foto del desvío (horizontal) *
+          <input type="file" accept="image/*" capture="environment" id="foto1">
+        </label>
+
+        <label>Foto adicional
+          <input type="file" accept="image/*" capture="environment" id="foto3">
+        </label>
+      </div>
+
+      <label>Checklist batea (vertical)
+        <input type="file" accept="image/*" capture="environment" id="foto-checklist">
+      </label>
+
+      <label>Controlador
+        <select name="controlador_id"><option value="">—</option></select>
+      </label>
+
+      <label>Estado de control
+        <select name="estado_control_id"><option value="">—</option></select>
+      </label>
+    </div>
+  </form>
+</div>
+
+<script src="./js/db.js"></script>
+<script src="../js/similitud.js"></script>
+<script src="../js/camera.js"></script>
+<script src="./js/sync.js"></script>
+<script src="./js/app.js"></script>
+</body>
+</html>

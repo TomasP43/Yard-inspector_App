@@ -1,36 +1,42 @@
 /* eslint-env serviceworker */
 'use strict';
 
-// Subir esta version invalida el cache viejo en el proximo deploy.
-// v2: se agrego la navegacion entre modulos al app shell.
-// v3: fix del helper de IndexedDB que dejaba la app muerta al primer arranque.
-const VERSION = 'v3';
-const CACHE = `yard-${VERSION}`;
+/**
+ * Service worker del menu de entrada.
+ *
+ * Scope /yard/, que abarca a los dos modulos. No es un problema: cuando hay
+ * varios service workers, gana el de scope mas especifico, asi que
+ * /yard/patrullas/ y /yard/unidades/ los sigue manejando el suyo. Este solo
+ * atiende el menu.
+ *
+ * v4: antes este archivo era el de patrullas, que vivia en la raiz. Al mudarse
+ * el modulo, esta version se instala sobre la anterior y limpia sus caches.
+ */
+const VERSION = 'v4';
+const CACHE = `yard-inicio-${VERSION}`;
 
-// El app shell tiene que alcanzar para abrir la app sin conexion. Rutas
-// relativas a proposito: en produccion la app cuelga de /yard/ y en dev de /.
 const SHELL = [
   './',
   './index.html',
+  './manifest.json',
   './css/app.css',
-  './js/db.js',
-  './js/similitud.js',
-  './js/camera.js',
-  './js/sync.js',
-  './js/app.js',
-  './manifest.json'
+  './css/inicio.css',
+  './js/inicio.js',
+  './icon.svg'
 ];
 
 self.addEventListener('install', (e) => {
-  e.waitUntil(
-    caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting())
-  );
+  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', (e) => {
   e.waitUntil(
     caches.keys()
-      .then((ks) => Promise.all(ks.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
+      // Se borra tambien 'yard-vN', el cache de cuando patrullas vivia aca.
+      .then((ks) => Promise.all(
+        ks.filter((k) => k !== CACHE && (k.startsWith('yard-inicio-') || /^yard-v\d+$/.test(k)))
+          .map((k) => caches.delete(k))
+      ))
       .then(() => self.clients.claim())
   );
 });
@@ -39,58 +45,19 @@ self.addEventListener('fetch', (e) => {
   const req = e.request;
   const url = new URL(req.url);
 
-  // Nunca tocar nada que no sea GET: los POST de la cola tienen que llegar al
-  // servidor o fallar de verdad. Si el SW los "resolviera" desde cache, la app
-  // creeria que sincronizo algo que nunca se guardo.
   if (req.method !== 'GET') return;
   if (url.origin !== self.location.origin) return;
 
-  // La API va siempre a la red. Los datos cacheados los maneja la app en
-  // IndexedDB, que sabe cuales son suyos y cuales estan pendientes.
-  if (url.pathname.includes('/api/')) {
-    e.respondWith(fetch(req));
-    return;
-  }
+  // Los contadores del menu van siempre a la red: un numero cacheado que dice
+  // "3 viajes abiertos" cuando ya no los hay es peor que un guion.
+  if (url.pathname.includes('/api/')) { e.respondWith(fetch(req)); return; }
 
-  // Fotos ya subidas: cache-first, son inmutables.
-  if (url.pathname.includes('/uploads/')) {
-    e.respondWith(
-      caches.open(CACHE).then((c) =>
-        c.match(req).then((hit) =>
-          hit || fetch(req).then((r) => {
-            if (r.ok) c.put(req, r.clone());
-            return r;
-          })
-        )
-      )
-    );
-    return;
-  }
+  // Solo se atiende lo del menu. Lo de los modulos lo maneja su propio SW.
+  if (url.pathname.includes('/patrullas/') || url.pathname.includes('/unidades/')) return;
 
-  // App shell: se sirve del cache y se refresca por atras.
-  e.respondWith(
-    caches.open(CACHE).then((c) =>
-      c.match(req).then((hit) => {
-        const red = fetch(req)
-          .then((r) => {
-            if (r.ok) c.put(req, r.clone());
-            return r;
-          })
-          .catch(() => hit);
-        return hit || red;
-      })
-    )
-  );
-});
-
-// La app avisa cuando hay algo en la cola para que se reintente al volver
-// la conexion, incluso si el inspector cerro la pantalla.
-self.addEventListener('sync', (e) => {
-  if (e.tag === 'yard-sync') {
-    e.waitUntil(
-      self.clients.matchAll({ includeUncontrolled: true }).then((cs) => {
-        cs.forEach((c) => c.postMessage({ tipo: 'sincronizar' }));
-      })
-    );
-  }
+  e.respondWith(caches.open(CACHE).then((c) =>
+    c.match(req).then((hit) => {
+      const red = fetch(req).then((r) => { if (r.ok) c.put(req, r.clone()); return r; }).catch(() => hit);
+      return hit || red;
+    })));
 });
