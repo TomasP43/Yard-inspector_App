@@ -95,8 +95,10 @@ async function verContadores() {
     if (cat && cat.usuario) {
       $('#avatar').textContent = iniciales(cat.usuario);
       $('#avatar').title = cat.usuario.email;
-      const local = (cat.usuario.nombre || (cat.usuario.email || '').split('@')[0] || '').trim();
-      if (local) $('#nombre').textContent = ', ' + local;
+      // Solo si hay un nombre de verdad. El pedazo del email antes del arroba
+      // no es un nombre: "Hola, tpozo" se lee peor que "Hola" a secas.
+      const nombre = (cat.usuario.nombre || '').trim();
+      if (nombre) $('#nombre').textContent = ', ' + nombre.split(/\s+/)[0];
     }
     if (hoy) $('#c-patrullas').textContent = hoy.inspecciones.length;
     if (viajes) $('#c-unidades').textContent = viajes.viajes.length;

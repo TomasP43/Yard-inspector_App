@@ -5,7 +5,7 @@
 // v2: navegacion entre modulos en el app shell.
 // v3: fix del helper de IndexedDB que dejaba la app muerta al primer arranque.
 // v4: el modulo se muda de /yard/ a /yard/patrullas/.
-const VERSION = 'v4';
+const VERSION = 'v5';
 const CACHE = `yard-patrullas-${VERSION}`;
 
 // El app shell tiene que alcanzar para abrir la app sin conexion. Rutas

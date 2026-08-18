@@ -5,7 +5,7 @@
 // aparte del de patrullas.
 // v2: mismo fix del helper de IndexedDB que en patrullas.
 // v3: pantalla de carga manual de viajes.
-const VERSION = 'v3';
+const VERSION = 'v4';
 const CACHE = `yard-unidades-${VERSION}`;
 
 const SHELL = [

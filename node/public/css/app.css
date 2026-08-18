@@ -66,6 +66,20 @@
 
 * { box-sizing: border-box; }
 
+/**
+ * El navegador oculta [hidden] desde SU hoja de estilos, y cualquier regla
+ * nuestra que fije `display` en una clase le gana: las hojas de autor mandan
+ * sobre las del navegador, sin importar la especificidad.
+ *
+ * Sin esta linea, todo elemento con `hidden` y una clase que fije display
+ * quedaba visible. Eran diez, incluidos los cuatro modales: el formulario de
+ * nueva inspeccion tapaba la pantalla de forma permanente.
+ *
+ * El !important es a proposito: tiene que ganarle a cualquier clase, presente
+ * o futura, sin que haya que acordarse de nada al agregar una pantalla nueva.
+ */
+[hidden] { display: none !important; }
+
 body {
   margin: 0;
   font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;

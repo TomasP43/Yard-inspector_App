@@ -12,7 +12,7 @@
  * v4: antes este archivo era el de patrullas, que vivia en la raiz. Al mudarse
  * el modulo, esta version se instala sobre la anterior y limpia sus caches.
  */
-const VERSION = 'v4';
+const VERSION = 'v5';
 const CACHE = `yard-inicio-${VERSION}`;
 
 const SHELL = [
