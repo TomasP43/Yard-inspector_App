@@ -1,7 +1,7 @@
 {
-  "name": "Yard Inspector",
-  "short_name": "Yard",
-  "description": "Inspecciones de playa: patrullas sobre camiones y control de unidades",
+  "name": "Patrullas de playa",
+  "short_name": "Patrullas",
+  "description": "Carga de observaciones de patrulla sobre camiones y bateas",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

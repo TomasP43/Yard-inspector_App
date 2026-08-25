@@ -15,9 +15,9 @@ qué tan reversible es.
 **Opciones:** (a) el montaje de MySQL, (b) el backend al arrancar, (c) las dos.
 
 **Evidencia:** `docker-entrypoint-initdb.d` corre **solo la primera vez que se
-crea el volumen**. Con la base ya existente, las migraciones 005 en adelante
-nunca se hubieran aplicado y el código habría buscado tablas inexistentes. Con
-deploy automático en cada push, eso se rompe en silencio.
+crea el volumen**. Con la base ya existente, toda migración posterior a la
+primera nunca se hubiera aplicado y el código habría buscado tablas
+inexistentes. Con deploy automático en cada push, eso se rompe en silencio.
 
 **Decisión:** (b), el backend al arrancar, con registro en `migracion_aplicada`.
 Se quitó el montaje de initdb.
@@ -42,25 +42,6 @@ dio 502 en todo, incluido `/health`. Es exactamente el comportamiento buscado �
 el error fue del runner, no de la política.
 
 **Reversibilidad:** alta.
-
----
-
-## D-003 · El código de gravedad del estándar Furlong
-
-**Pregunta:** ¿se registra el tamaño del daño?
-
-**Evidencia:** el check list en papel codifica `ÁREA - DAÑO - GRAVEDAD`
-(ej. `37-04-03`). Pero **ese proceso ya no está vigente**: lo confirmó el
-usuario. El estándar en uso es el de localización de daños 2024, que define los
-cuadrantes y no pide tamaño.
-
-**Decisión:** no se registra. Llegó a entrar en la 005 y lo saca la 007.
-
-**Motivo:** modelar un proceso muerto agrega un campo obligatorio que nadie
-completa.
-
-**Reversibilidad:** media. Volver a agregarlo es una migración; recuperar el
-dato histórico que no se cargó, imposible.
 
 ---
 
@@ -104,52 +85,6 @@ chequeos estáticos sirven para consistencia, no como prueba de funcionamiento.
 
 ---
 
-## D-007 · En qué playa ocurre cada etapa
-
-**Pregunta:** un viaje Sorocaba → Zárate, ¿de qué playa es?
-
-**Evidencia:** la precarga y la carga son en Brasil, la descarga en Zárate. Con
-el modelo original —una playa por viaje, la de origen— el inspector de Zárate
-filtrando por su playa **nunca veía ese viaje**, porque para el sistema era de
-Sorocaba. El hueco apareció al recorrer el flujo de punta a punta, no al
-escribir el modelo.
-
-**Opciones:** (a) la etapa declara su playa, (b) el viaje tiene origen y
-destino, (c) filtrar por flujo en vez de por playa.
-
-**Decisión:** (a). `etapa.playa_id`, con NULL = la playa de origen del viaje.
-
-```
-playa efectiva = COALESCE(etapa.playa_id, viaje.playa_id)
-```
-
-Un viaje le corresponde a una playa si **alguna de sus etapas activas ocurre
-ahí**.
-
-**Motivo:** es lo más fiel a la operación y soporta flujos de tres puntos sin
-cambiar el modelo otra vez. El NULL evita tener que completar el dato en los
-flujos que ocurren enteros en un lugar, que son la mayoría.
-
-**Reversibilidad:** alta mientras no haya inspecciones cargadas contra etapas de
-otra playa.
-
----
-
-## D-008 · Cuántos cuadrantes tiene una puerta
-
-**Pregunta:** el diagrama marca 10, 11 y 12 sobre el vidrio además de los 9 del
-panel. ¿La puerta tiene 9 o 12?
-
-**Evidencia:** la tabla del estándar 2024 lista las puertas entre las piezas de
-9 cuadrantes, y el riel entre las de 3. Confirmado por el usuario: **el 10 al 12
-son el riel**, que es una pieza aparte.
-
-**Decisión:** la puerta tiene 9. Sin cambios en el catálogo.
-
-**Reversibilidad:** total.
-
----
-
 ## D-006 · Idempotencia de la cola offline
 
 **Pregunta:** ¿qué devuelve el servidor si llega dos veces la misma inspección?
@@ -161,3 +96,29 @@ sí. Una inspección solo sale de la cola cuando el servidor confirma que la
 guardó.
 
 **Reversibilidad:** alta, pero cambiarlo obliga a tocar el cliente a la vez.
+
+---
+
+## D-009 · El repo se queda solo con patrullas
+
+**Pregunta:** ¿el módulo de inspección de unidades convive con el de patrullas
+en este repo?
+
+**Decisión:** no. El repo hace **una sola cosa**: observaciones de equipos.
+Se borraron el módulo de unidades entero, sus migraciones 005–008 y el menú de
+entrada que existía solo para elegir entre los dos.
+
+**Consecuencias que hay que tener presentes:**
+
+- La app vuelve a la raíz: `/yard/`, no `/yard/patrullas/`. Un solo service
+  worker, con scope sobre toda la app. Las URLs viejas redirigen.
+- Las tablas de unidades **siguen en la base desplegada**. No se dropean desde
+  una migración: es irreversible y no hay apuro. El SQL para tirarlas está en
+  el historial de git si alguna vez se quiere.
+- **La próxima migración es la 009.** Ver la nota en `CLAUDE.md`.
+
+**Motivo:** un menú de una sola opción es fricción pura — el inspector abre la
+app y tiene que tocar una vez más para llegar a lo único que hay.
+
+**Reversibilidad:** total mientras el historial de git exista. El módulo entero
+está en el commit anterior a este.

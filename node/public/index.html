@@ -8,8 +8,10 @@
 <title>Yard Inspector</title>
 <link rel="manifest" href="./manifest.json">
 <link rel="stylesheet" href="./css/app.css">
-<link rel="stylesheet" href="./css/inicio.css">
 <script>
+/* Se aplica el tema ANTES de pintar. Si esto viviera en app.js (que carga al
+   final del body), la pantalla arrancaria oscura y saltaria a clara: molesto
+   siempre, y peor al sol, que es justo cuando se usa el modo claro. */
 try {
   var t = localStorage.getItem('yard-tema');
   if (t === 'claro') document.documentElement.setAttribute('data-tema', 'claro');
@@ -21,6 +23,7 @@ try {
 <header class="barra">
   <span class="marca" aria-hidden="true"></span>
   <h1>Yard Inspector</h1>
+  <div id="estado" class="estado" hidden></div>
   <button id="tema" class="btn-tema" type="button" aria-label="Cambiar a modo claro">
     <svg class="ico-sol" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
       <circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>
@@ -32,45 +35,124 @@ try {
   <div id="avatar" class="avatar" title="Sesión de TTFA"></div>
 </header>
 
-<main class="inicio">
-  <h2 class="saludo">Hola<span id="nombre"></span></h2>
+<nav class="tabs">
+  <button class="tab activo" data-vista="hoy">Patrulla</button>
+  <button class="tab" data-vista="historial">Historial</button>
+  <button class="tab" data-vista="camion">Camión</button>
+</nav>
 
-  <!-- Lo pendiente de sincronizar va primero y solo aparece si hay algo.
-       Es lo único que el inspector necesita accionar al volver de la playa. -->
-  <a href="#" id="aviso-cola" class="aviso-cola" hidden>
-    <span class="punto" aria-hidden="true"></span>
-    <span id="aviso-cola-txt"></span>
-  </a>
+<main>
+  <section id="v-hoy" class="vista">
+    <p class="nota">Desvíos cargados hoy. Los OK no se muestran acá.</p>
+    <div id="lista-hoy" class="lista"></div>
+  </section>
 
-  <div class="tarjetas">
-    <a class="tarjeta" href="./patrullas/">
-      <span class="ico" aria-hidden="true">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M3 17V7h11v10z"/><path d="M14 10h3.5l2.5 3v4h-6z"/>
-          <circle cx="7" cy="18" r="2"/><circle cx="17" cy="18" r="2"/>
-        </svg>
-      </span>
-      <b class="dato" id="c-patrullas">—</b>
-      <span class="nombre">Patrullas</span>
-      <span class="detalle">desvíos cargados hoy</span>
-    </a>
+  <section id="v-historial" class="vista" hidden>
+    <div class="filtros">
+      <select id="f-resultado">
+        <option value="">Todos</option>
+        <option value="NG">Solo NG</option>
+        <option value="OK">Solo OK</option>
+      </select>
+    </div>
+    <div id="lista-historial" class="lista"></div>
+    <button id="mas" class="btn-secundario" hidden>Cargar más</button>
+  </section>
 
-    <a class="tarjeta" href="./unidades/">
-      <span class="ico" aria-hidden="true">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M4 15l1.5-5A2 2 0 017.4 8.6h9.2A2 2 0 0118.5 10L20 15v4h-2.5v-1.5h-11V19H4z"/>
-          <path d="M6.5 15h11"/><circle cx="7.5" cy="17" r=".6" fill="currentColor"/><circle cx="16.5" cy="17" r=".6" fill="currentColor"/>
-        </svg>
-      </span>
-      <b class="dato" id="c-unidades">—</b>
-      <span class="nombre">Unidades</span>
-      <span class="detalle">viajes abiertos</span>
-    </a>
-  </div>
-
-  <p class="nota" id="estado-conexion"></p>
+  <section id="v-camion" class="vista" hidden>
+    <div class="filtros">
+      <input id="f-equipo" type="number" inputmode="numeric" placeholder="Número de camión" list="equipos">
+      <datalist id="equipos"></datalist>
+      <button id="buscar" class="btn">Buscar</button>
+    </div>
+    <div id="resumen-camion" class="resumen" hidden></div>
+    <div id="lista-camion" class="lista"></div>
+  </section>
 </main>
 
-<script src="./js/inicio.js"></script>
+<button id="nueva" class="fab" aria-label="Nueva inspección">+</button>
+
+<!-- Formulario de carga -->
+<div id="modal" class="modal" hidden>
+  <form id="form" class="form">
+    <header class="form-barra">
+      <button type="button" id="cancelar" class="link">Cancelar</button>
+      <strong>Nueva inspección</strong>
+      <button type="submit" class="link fuerte">Guardar</button>
+    </header>
+
+    <div class="form-cuerpo">
+      <label>Responsable *
+        <select name="responsable_id" required></select>
+      </label>
+
+      <label>Equipo *
+        <input name="equipo_codigo" type="number" inputmode="numeric" required>
+      </label>
+
+      <fieldset class="segmento">
+        <legend>Resultado *</legend>
+        <label class="seg"><input type="radio" name="resultado" value="OK" checked><span>OK</span></label>
+        <label class="seg"><input type="radio" name="resultado" value="NG"><span>NG</span></label>
+      </fieldset>
+
+      <div id="bloque-ng" hidden>
+        <label>Tipo de desvío *
+          <select name="tipo_desvio_id"></select>
+        </label>
+
+        <label>Desvíos *
+          <div id="desvios" class="chips"></div>
+          <div id="nuevos" class="chips"></div>
+          <button type="button" id="add-desvio" class="chip chip-add">+ Otro desvío</button>
+
+          <div id="nuevo-box" class="caja-nuevo" hidden>
+            <input id="nuevo-nombre" type="text" maxlength="160" autocomplete="off"
+                   placeholder="Escribí el desvío que falta">
+            <div id="sugerencias" class="sugerencias"></div>
+            <div class="acciones-nuevo">
+              <button type="button" id="nuevo-cancelar" class="link">Cancelar</button>
+              <button type="button" id="nuevo-ok" class="btn">Agregar</button>
+            </div>
+          </div>
+        </label>
+
+        <label id="lbl-detalle" hidden>Detalle *
+          <textarea name="detalle" rows="2" placeholder="Qué se observó"></textarea>
+        </label>
+
+        <label>Demora
+          <select name="demora_id"><option value="">—</option></select>
+        </label>
+
+        <label>Foto del desvío (horizontal) *
+          <input type="file" accept="image/*" capture="environment" id="foto1">
+        </label>
+
+        <label>Foto adicional
+          <input type="file" accept="image/*" capture="environment" id="foto3">
+        </label>
+      </div>
+
+      <label>Checklist batea (vertical)
+        <input type="file" accept="image/*" capture="environment" id="foto-checklist">
+      </label>
+
+      <label>Controlador
+        <select name="controlador_id"><option value="">—</option></select>
+      </label>
+
+      <label>Estado de control
+        <select name="estado_control_id"><option value="">—</option></select>
+      </label>
+    </div>
+  </form>
+</div>
+
+<script src="./js/db.js"></script>
+<script src="./js/similitud.js"></script>
+<script src="./js/camera.js"></script>
+<script src="./js/sync.js"></script>
+<script src="./js/app.js"></script>
 </body>
 </html>

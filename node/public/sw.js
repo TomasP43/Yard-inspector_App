@@ -2,40 +2,46 @@
 'use strict';
 
 /**
- * Service worker del menu de entrada.
+ * Service worker de la app. Scope /yard/, que es toda la app.
  *
- * Scope /yard/, que abarca a los dos modulos. No es un problema: cuando hay
- * varios service workers, gana el de scope mas especifico, asi que
- * /yard/patrullas/ y /yard/unidades/ los sigue manejando el suyo. Este solo
- * atiende el menu.
+ * Subir VERSION invalida el cache viejo en el proximo deploy.
  *
- * v4: antes este archivo era el de patrullas, que vivia en la raiz. Al mudarse
- * el modulo, esta version se instala sobre la anterior y limpia sus caches.
+ * v6: la app vuelve a la raiz. Durante un tiempo esto fue un menu con dos
+ * modulos colgando de /yard/patrullas/ y /yard/unidades/, cada uno con su
+ * service worker y su cache. Los caches de esa etapa se limpian abajo.
  */
-const VERSION = 'v5';
-const CACHE = `yard-inicio-${VERSION}`;
+const VERSION = 'v6';
+const CACHE = `yard-${VERSION}`;
 
+// El app shell tiene que alcanzar para abrir la app sin conexion. Rutas
+// relativas a proposito: en produccion cuelga de /yard/ y en dev de /.
 const SHELL = [
   './',
   './index.html',
   './manifest.json',
+  './icon.svg',
   './css/app.css',
-  './css/inicio.css',
-  './js/inicio.js',
-  './icon.svg'
+  './js/similitud.js',
+  './js/camera.js',
+  './js/db.js',
+  './js/sync.js',
+  './js/app.js'
 ];
 
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
+  e.waitUntil(
+    caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting())
+  );
 });
 
 self.addEventListener('activate', (e) => {
   e.waitUntil(
     caches.keys()
-      // Se borra tambien 'yard-vN', el cache de cuando patrullas vivia aca.
+      // Todo cache 'yard-*' que no sea el actual sobra. Al ser este el unico
+      // service worker de la app, la regla no necesita conocer los nombres
+      // viejos: se limpia sola tambien la proxima vez.
       .then((ks) => Promise.all(
-        ks.filter((k) => k !== CACHE && (k.startsWith('yard-inicio-') || /^yard-v\d+$/.test(k)))
-          .map((k) => caches.delete(k))
+        ks.filter((k) => k !== CACHE && k.startsWith('yard-')).map((k) => caches.delete(k))
       ))
       .then(() => self.clients.claim())
   );
@@ -45,19 +51,58 @@ self.addEventListener('fetch', (e) => {
   const req = e.request;
   const url = new URL(req.url);
 
+  // Nunca tocar nada que no sea GET: los POST de la cola tienen que llegar al
+  // servidor o fallar de verdad. Si el SW los "resolviera" desde cache, la app
+  // creeria que sincronizo algo que nunca se guardo.
   if (req.method !== 'GET') return;
   if (url.origin !== self.location.origin) return;
 
-  // Los contadores del menu van siempre a la red: un numero cacheado que dice
-  // "3 viajes abiertos" cuando ya no los hay es peor que un guion.
-  if (url.pathname.includes('/api/')) { e.respondWith(fetch(req)); return; }
+  // La API va siempre a la red. Los datos cacheados los maneja la app en
+  // IndexedDB, que sabe cuales son suyos y cuales estan pendientes.
+  if (url.pathname.includes('/api/')) {
+    e.respondWith(fetch(req));
+    return;
+  }
 
-  // Solo se atiende lo del menu. Lo de los modulos lo maneja su propio SW.
-  if (url.pathname.includes('/patrullas/') || url.pathname.includes('/unidades/')) return;
+  // Fotos ya subidas: cache-first, son inmutables.
+  if (url.pathname.includes('/uploads/')) {
+    e.respondWith(
+      caches.open(CACHE).then((c) =>
+        c.match(req).then((hit) =>
+          hit || fetch(req).then((r) => {
+            if (r.ok) c.put(req, r.clone());
+            return r;
+          })
+        )
+      )
+    );
+    return;
+  }
 
-  e.respondWith(caches.open(CACHE).then((c) =>
-    c.match(req).then((hit) => {
-      const red = fetch(req).then((r) => { if (r.ok) c.put(req, r.clone()); return r; }).catch(() => hit);
-      return hit || red;
-    })));
+  // App shell: se sirve del cache y se refresca por atras.
+  e.respondWith(
+    caches.open(CACHE).then((c) =>
+      c.match(req).then((hit) => {
+        const red = fetch(req)
+          .then((r) => {
+            if (r.ok) c.put(req, r.clone());
+            return r;
+          })
+          .catch(() => hit);
+        return hit || red;
+      })
+    )
+  );
+});
+
+// La app avisa cuando hay algo en la cola para que se reintente al volver
+// la conexion, incluso si el inspector cerro la pantalla.
+self.addEventListener('sync', (e) => {
+  if (e.tag === 'yard-sync') {
+    e.waitUntil(
+      self.clients.matchAll({ includeUncontrolled: true }).then((cs) => {
+        cs.forEach((c) => c.postMessage({ tipo: 'sincronizar' }));
+      })
+    );
+  }
 });

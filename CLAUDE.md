@@ -56,22 +56,25 @@ El `uuid` lo genera el dispositivo antes de sincronizar, y `POST /api/inspeccion
 yard-inspector/
 ├── node/
 │   ├── src/
-│   │   ├── controllers/
-│   │   ├── routes/          # inspecciones, catalogos
-│   │   ├── services/
+│   │   ├── controllers/     # inspecciones, catalogos
+│   │   ├── routes/
+│   │   ├── services/        # fotoService, desvioService
 │   │   ├── helpers/auth.js  # identidad apoyada en ttfa
-│   │   ├── database/models/
+│   │   ├── database/        # models, migrar.js
 │   │   └── index.js
-│   ├── public/
-│   │   ├── index.html       # app shell: 3 vistas + formulario
-│   │   ├── sw.js            # service worker
+│   ├── public/              # la PWA, servida en /yard/
+│   │   ├── index.html       # app shell
+│   │   ├── sw.js            # service worker (scope /yard/)
+│   │   ├── manifest.json
+│   │   ├── css/app.css
 │   │   ├── js/db.js         # IndexedDB: catalogos, cola, cache
 │   │   ├── js/camera.js     # captura y compresion de fotos
+│   │   ├── js/similitud.js  # espejo cliente de desvioService
 │   │   ├── js/sync.js       # cola de sincronizacion
 │   │   └── js/app.js        # UI
 │   └── Dockerfile
-├── migrations/
-│   └── 001_initial.sql
+├── migrations/              # 001 esquema · 002 fotos · 003 historico · 004 desvios
+├── tools/                   # ETL desde AppSheet y traida de fotos
 ├── docker-compose.yml
 ├── docker-compose.dev.yml
 └── .env.example
@@ -118,49 +121,6 @@ docker compose -f docker-compose.yml -f docker-compose.dev.yml up
 - En dev **no hay login**: el usuario se simula con `DEV_USER_EMAIL`.
 - Si no tenes `ttfa-docker` corriendo, la red `proxy_net` no existe y el `up` falla. Ver el comentario al final de `docker-compose.dev.yml`.
 
-## Modulo de inspeccion de unidades
-
-Segundo modulo, en la misma base y reusando `usuario`. Se monta en `/yard/unidades/` con el permiso `yard/unidades`.
-
-**Este modulo no parsea el TXT de carga.** Lo hace el sistema de solicitudes, que migra otro equipo, y nos manda las unidades ya resueltas. Por eso la entrada esta detras de `src/services/ingesta/`: cuando cierren el contrato se escribe un adaptador y no se toca ni el modelo ni la API de inspeccion.
-
-### Contrato de entrada
-
-```
-POST /api/unidades/ingesta
-Authorization: Bearer <INGESTA_TOKEN>
-
-{
-  "playa": "ZAR",                     // codigo: SOR, IND, ZAR
-  "flujo": "TASA - TCL",              // nombre del flujo, o su id
-  "referencia_externa": "SOL-000123", // id de la solicitud en su sistema
-  "fecha": "2026-08-16",
-  "equipo_codigo": 3595,
-  "unidades": [
-    { "vin": "8AJBA3CD4T8003610", "modelo": "Hilux", "katashiki": "GUN126L-DGTHXG",
-      "secuencia": 1, "orden_bajada": 3, "destino": "TCL", "so": "..." }
-  ]
-}
-```
-
-Es **idempotente sobre `(playa, referencia_externa)`**: reenviar la misma solicitud actualiza el viaje en vez de duplicarlo, asi que reintentar es seguro.
-
-La respuesta trae `avisos` con lo que no es un error pero alguien tiene que ver: modelos o destinos que no estan en el catalogo, VIN repetidos en el envio, unidades que el origen dejo de mandar.
-
-**Una unidad que ya tiene inspecciones nunca se borra**, aunque el origen la saque de la lista: se avisa y se conserva. Perder el trabajo de un inspector porque otro sistema cambio de opinion no es aceptable.
-
-Es servidor a servidor, sin sesion de ttfa, asi que va con token. **Si `INGESTA_TOKEN` no esta configurado el endpoint responde 503 y queda deshabilitado, no abierto**: un endpoint que escribe viajes no puede quedar sin proteccion por un olvido en el `.env`.
-
-### El cuadrante
-
-Cada pieza se subdivide en una grilla numerada, segun el estandar de localizacion de danos 2024: **9 cuadrantes** para superficies grandes (puertas, techo, capot, paragolpes, guardabarros), **3** para pilares, rieles y zocalos, **1** donde no aplica. Lo lleva `parte.cantidad_cuadrantes`, que decide que grilla dibuja la pantalla y valida lo que se carga — hay 148 filas en el historico de AppSheet con cuadrantes que esa pieza no tiene.
-
-No confundir con gravedad: el check list en papel codificaba `AREA - DANO - GRAVEDAD`, pero **ese proceso ya no esta vigente** y el tamano del dano no se registra. Ver `migrations/007`.
-
-### Idiomas
-
-La app va a estar en castellano, portugues e ingles. Los catalogos guardan el nombre canonico en castellano (es lo que viene de AppSheet) y las traducciones van en la tabla `traduccion`, generica para los ocho catalogos: sumar un idioma es insertar filas, no un `ALTER` en cada tabla.
-
 ## Migraciones
 
 Las aplica **el backend al arrancar** (`src/database/migrar.js`), que lleva registro en la tabla `migracion_aplicada`. Agregar una migracion es dejar el `.sql` en `migrations/`: se aplica sola en el proximo deploy.
@@ -173,6 +133,8 @@ Dos cosas que el runner resuelve y conviene no romper:
 - **Entiende `DELIMITER`**, que es una instruccion del cliente mysql y no SQL. Sin eso, el `;` de adentro de un trigger corta la sentencia al medio.
 
 Sobre bases anteriores a este runner, la primera corrida marca como aplicadas las migraciones hasta `MIGRACION_BASELINE` (por defecto la 004) sin ejecutarlas, porque ya estaban cargadas por el mecanismo viejo.
+
+**La proxima migracion es la 009.** Los numeros 005 a 008 fueron del modulo de unidades, que se saco del repo: los archivos ya no estan, pero las bases donde alcanzaron a correr los tienen anotados en `migracion_aplicada`. Reusar uno de esos numeros para algo de patrullas haria que el runner lo diera por aplicado y no lo ejecutara nunca.
 
 Para rehacer la base desde cero: `docker compose down -v`.
 

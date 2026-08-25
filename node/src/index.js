@@ -29,11 +29,6 @@ app.use('/api/inspecciones', require('./routes/inspecciones'));
 app.use('/api/catalogos', require('./routes/catalogos'));
 app.use('/api/desvios', require('./routes/desvios'));
 
-// Modulo de inspeccion de unidades. La ingesta va primero porque tiene su
-// propia autenticacion por token; el resto exige sesion de ttfa.
-app.use('/api/unidades', require('./routes/ingesta'));
-app.use('/api/unidades', require('./routes/unidades'));
-
 // Fotos ya subidas. Mismo directorio que usa fotoService.
 app.use(
   '/uploads',
@@ -42,6 +37,14 @@ app.use(
     immutable: true
   })
 );
+
+// Durante un tiempo la app colgo de /yard/patrullas/ y hubo un modulo en
+// /yard/unidades/. Quien tenga la PWA instalada de esa epoca arranca en esa
+// URL: sin esto vería un 404 en el arranque, del que una app instalada no se
+// recupera sola. La Location es relativa a proposito — nginx monta esto bajo
+// /yard/ y Express no conoce ese prefijo.
+app.get(['/patrullas', '/patrullas/', '/unidades', '/unidades/'], (req, res) =>
+  res.redirect(302, req.path.endsWith('/') ? '../' : './'));
 
 // PWA
 app.use(express.static(path.join(__dirname, '..', 'public')));

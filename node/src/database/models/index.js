@@ -156,11 +156,6 @@ DesvioCatalogo.belongsToMany(Inspeccion, {
 });
 DesvioCatalogo.belongsTo(TipoDesvio, { as: 'tipo', foreignKey: 'tipo_desvio_id' });
 
-// Modelos del modulo de inspeccion de unidades. Van en su propio archivo para
-// que el submodulo se maneje aparte, y se cargan como factory porque necesitan
-// `Usuario`, que se define aca: un require cruzado seria circular.
-const modelosUnidades = require('./unidades')(sequelize, DataTypes, { Usuario });
-
 module.exports = {
   sequelize,
   Sequelize,
@@ -174,6 +169,5 @@ module.exports = {
   EstadoControl,
   Inspeccion,
   InspeccionDesvio,
-  InspeccionFoto,
-  ...modelosUnidades
+  InspeccionFoto
 };

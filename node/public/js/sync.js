@@ -55,7 +55,7 @@ const Sync = (() => {
   }
 
   async function enviarUno(item) {
-    const res = await fetch('../api/inspecciones', {
+    const res = await fetch('api/inspecciones', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'same-origin',

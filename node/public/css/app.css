@@ -177,29 +177,6 @@ body {
 .estado.aviso { background: var(--bg-ambar); color: var(--ambar); }
 
 /* --------------------------------------------------------------------- nav */
-
-/* Cambio de modulo. Va en su propia fila y no dentro de la barra: en un
-   telefono de 375px la barra ya tiene marca, titulo, estado de sincronizacion,
-   tema y avatar, y meter dos enlaces mas la desborda.
-   Mismo lenguaje que la nav de la intranet: pill para el activo. */
-.modulos {
-  display: flex;
-  gap: 4px;
-  padding: 8px 10px;
-  background: var(--panel);
-  border-bottom: 1px solid var(--borde);
-}
-.mod {
-  padding: 7px 14px;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--tenue);
-  text-decoration: none;
-}
-.mod.activo { background: rgba(255, 255, 255, .08); color: var(--texto); }
-[data-tema="claro"] .mod.activo { background: rgba(0, 0, 0, .07); }
-
 .tabs {
   display: flex;
   gap: 4px;

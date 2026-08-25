@@ -50,7 +50,7 @@ async function cargarCatalogos() {
 
   try {
     const etag = await DB.leerMeta('catalogos_etag');
-    const r = await fetch('../api/catalogos', {
+    const r = await fetch('api/catalogos', {
       credentials: 'same-origin',
       headers: etag ? { 'If-None-Match': etag } : {}
     });
@@ -119,7 +119,7 @@ function tarjeta(i) {
   const desvios = (i.desvios || []).map((d) => d.nombre).join(', ');
   const foto = (i.fotos || []).find((f) => f.ruta);
   const img = foto
-    ? `<img src="../uploads/${foto.ruta}" alt="" loading="lazy">`
+    ? `<img src="uploads/${foto.ruta}" alt="" loading="lazy">`
     : `<div class="sin-foto" title="La foto está en Drive, todavía no se copió">—</div>`;
   return `
     <article class="item ${i.resultado === 'NG' ? 'ng' : 'ok'}">
@@ -144,7 +144,7 @@ function pintarLista(cont, items, vacio) {
 
 async function verHoy() {
   try {
-    const d = await pedir('../api/inspecciones/hoy');
+    const d = await pedir('api/inspecciones/hoy');
     await DB.guardarCache('hoy', d.inspecciones);
     pintarLista($('#lista-hoy'), d.inspecciones, 'Todavía no hay desvíos cargados hoy.');
   } catch (e) {
@@ -157,7 +157,7 @@ async function verHoy() {
 async function verHistorial(reiniciar) {
   if (reiniciar) offsetHistorial = 0;
   const res = $('#f-resultado').value;
-  const url = `../api/inspecciones?limite=50&offset=${offsetHistorial}` + (res ? `&resultado=${res}` : '');
+  const url = `api/inspecciones?limite=50&offset=${offsetHistorial}` + (res ? `&resultado=${res}` : '');
   try {
     const d = await pedir(url);
     const cont = $('#lista-historial');
@@ -176,8 +176,8 @@ async function verCamion() {
   if (!cod) return;
   try {
     const [resumen, hist] = await Promise.all([
-      pedir(`../api/inspecciones/equipo/${cod}`),
-      pedir(`../api/inspecciones?equipo=${cod}&limite=200`)
+      pedir(`api/inspecciones/equipo/${cod}`),
+      pedir(`api/inspecciones?equipo=${cod}&limite=200`)
     ]);
     $('#resumen-camion').hidden = false;
     $('#resumen-camion').innerHTML = `
