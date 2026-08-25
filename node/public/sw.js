@@ -9,21 +9,28 @@
  * v6: la app vuelve a la raiz. Durante un tiempo esto fue un menu con dos
  * modulos colgando de /yard/patrullas/ y /yard/unidades/, cada uno con su
  * service worker y su cache. Los caches de esa etapa se limpian abajo.
+ * v7: front nuevo sobre el design system TTFA (iconos.js, zonas.js).
  */
-const VERSION = 'v6';
+const VERSION = 'v7';
 const CACHE = `yard-${VERSION}`;
 
 // El app shell tiene que alcanzar para abrir la app sin conexion. Rutas
 // relativas a proposito: en produccion cuelga de /yard/ y en dev de /.
+//
+// Las tipografias de Google no van aca: son de otro origen y el fetch de abajo
+// no las toca. Sin senal la app cae en la pila del sistema, que es justo lo que
+// se busca — esperar una fuente no puede demorar una carga en la playa.
 const SHELL = [
   './',
   './index.html',
   './manifest.json',
   './icon.svg',
   './css/app.css',
-  './js/similitud.js',
-  './js/camera.js',
+  './js/iconos.js',
   './js/db.js',
+  './js/similitud.js',
+  './js/zonas.js',
+  './js/camera.js',
   './js/sync.js',
   './js/app.js'
 ];

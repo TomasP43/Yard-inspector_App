@@ -1,13 +1,13 @@
 {
-  "name": "Patrullas de playa",
+  "name": "Yard Inspector — Patrullas",
   "short_name": "Patrullas",
-  "description": "Carga de observaciones de patrulla sobre camiones y bateas",
+  "description": "Carga de observaciones de patrulla sobre camiones y bateas en playa",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#0a0a0b",
-  "theme_color": "#0a0a0b",
+  "background_color": "#08090A",
+  "theme_color": "#101113",
   "icons": [
     {
       "src": "./icon.svg",

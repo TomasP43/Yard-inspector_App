@@ -122,3 +122,77 @@ app y tiene que tocar una vez más para llegar a lo único que hay.
 
 **Reversibilidad:** total mientras el historial de git exista. El módulo entero
 está en el commit anterior a este.
+
+---
+
+## D-010 · Cómo se porta el design system de Claude Design
+
+**Pregunta:** el diseño (`Yard Inspector.dc.html`, design system TTFA) es React
+sobre un runtime de canvas, con tokens importados y los iconos como máscara CSS
+contra el CDN de Lucide. ¿Se porta tal cual?
+
+**Decisión:** se porta el **resultado visual**, no el mecanismo. Tres cosas
+cambian a propósito:
+
+| Del diseño | En la app | Por qué |
+|---|---|---|
+| Iconos desde `unpkg/lucide-static` | `js/iconos.js`, inline | Sin conexión no llegan, y un pedido a otro dominio no pasa la política de la intranet |
+| `@import` de los tokens | copiados en `css/app.css` | Mismo motivo |
+| Solo oscuro | además modo claro | Esto se usa al sol; una pantalla oscura ahí se lee mucho peor. El botón va en el menú lateral, para no ensuciar la barra que el diseño limpió |
+
+También se **agregó** lo que el diseño no muestra pero la operación usa
+(`controlador`, `estado_control`): plegado en "Más datos del control". Un
+formulario que deja de guardar un campo pierde el dato en silencio.
+
+Y se **quitaron** las flechas de tendencia de los KPI. El componente `KpiStat`
+las dibuja para cualquier `delta`, pero acá el pie es una descripción, no una
+variación: una flecha para arriba al lado de "42 % de los controles" afirma una
+tendencia que nadie calculó.
+
+**Reversibilidad:** alta. El proyecto de diseño sigue siendo la fuente; esto es
+una implementación de él.
+
+---
+
+## D-011 · Los desvíos se agrupan por zona del equipo
+
+**Pregunta:** el catálogo son ~70 nombres en una lista plana. ¿Se deja así?
+
+**Evidencia:** elegir el desvío era el paso más lento de la carga — de pie, con
+guantes, buscando "Matafuego vencido" en una lista de 70. El diseño lo parte en
+7 zonas del equipo: dos toques en vez de un scroll.
+
+**Decisión:** agrupado, pero **en el cliente** (`js/zonas.js`), no en la base.
+Es presentación, no un dato de la inspección: lo que se guarda sigue siendo el
+id del desvío.
+
+**El catálogo manda, no la lista.** Los nombres se cruzan contra `CAT.desvios`;
+lo que la base tenga y no esté mapeado cae en "Otros". Sin esa regla, un desvío
+que agrega un inspector desde la app dejaría de ser elegible hasta que alguien
+tocara el código — que es exactamente el problema que el catálogo extensible
+vino a resolver.
+
+**Reversibilidad:** total. Si algún día se administra desde un panel, pasa a ser
+una columna `zona` en `desvio_catalogo` y el archivo se cae.
+
+---
+
+## D-012 · El NG anterior se resuelve antes de cargar el nuevo
+
+**Pregunta:** si el último control de un equipo fue NG, ¿el control siguiente
+arranca en blanco?
+
+**Evidencia:** en AppSheet sí, y por eso no había forma de saber si un desvío se
+corrigió o se viene arrastrando. El dato existía —el histórico muestra equipos
+con el mismo desvío cinco veces— pero nadie lo cerraba.
+
+**Decisión:** antes que nada, el formulario pregunta qué pasó con cada desvío
+abierto: corrigió o reincidió. Reincidió lo vuelve a marcar solo y salta a su
+zona. **El botón de guardar queda bloqueado hasta contestar.**
+
+**Motivo:** un paso que se puede saltear se saltea. Si se pudiera, el NG viejo
+quedaría colgado para siempre, que es justo lo que este paso vino a evitar.
+
+**Reversibilidad:** alta, es solo cliente. Pero ojo: hoy la resolución **no se
+persiste** como tal — se refleja en si el desvío vuelve a aparecer o no en el
+control nuevo. Guardarla explícitamente necesita una tabla y es la 009.

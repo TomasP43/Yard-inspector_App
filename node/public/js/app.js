@@ -1,38 +1,95 @@
 'use strict';
 
+/**
+ * Yard Inspector — UI.
+ *
+ * Cuatro pantallas (Tablero, Hoy, Historial, Cargar) mas el detalle por equipo,
+ * segun el diseño del proyecto de Claude Design "UI mockups pending details".
+ *
+ * Todo lo que se muestra sale de dos endpoints que ya existian: la ventana de
+ * los ultimos dias y el historial paginado. Las metricas se calculan aca, en el
+ * navegador. Son dos inspectores y unas decenas de controles por jornada: no
+ * justifica un endpoint de metricas, y ademas asi el tablero sigue mostrando
+ * algo contra el cache cuando no hay senal.
+ */
+
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+const ico = (n, s) => Iconos.svg(n, s);
 
-let CAT = null;              // catalogos
-let seleccionados = new Set(); // desvios elegidos en el formulario
-let nuevosDesvios = [];        // desvios escritos a mano que no estaban en la lista
+/** Dias de historia que se traen para el tablero y la vista de hoy. */
+const DIAS_VENTANA = 14;
+
+const COLOR_TIPO = {
+  '5s': 'var(--ttfa-red)',
+  'Mantenimiento': 'var(--status-warn)',
+  'Seguridad': 'var(--status-info)',
+  'Calidad': 'var(--status-ok)'
+};
+const TIPOS = ['5s', 'Mantenimiento', 'Seguridad', 'Calidad'];
+const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+
+let CAT = null;         // catalogos
+let VENTANA = null;     // respuesta de los ultimos DIAS_VENTANA dias
+let vista = 'hoy';
+let vistaPrevia = 'hoy';
+let equipoDetalle = null;
+let soloNg = false;
+let filtro = 'Todos';
 let offsetHistorial = 0;
 
-// ---------------------------------------------------------------- utilidades
-
-function fmtFecha(iso) {
-  const d = new Date(iso);
-  return d.toLocaleString('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+// El formulario vive en un objeto y no en el DOM: hay estado (zona actual,
+// desvios marcados, resoluciones) que no corresponde a ningun input.
+let form = null;
+function formVacio() {
+  return {
+    ng: true, tipo: '5s', zona: 0, desvios: new Set(), nuevos: [],
+    demora: 'Cargo', fotos: [], checklist: null, resoluciones: {},
+    pendientes: null // ultimo control NG de este equipo, si lo hay
+  };
 }
 
-/**
- * Escapa antes de meter texto en innerHTML.
- *
- * Los nombres de desvio los escribe un inspector desde la app, y ahora el otro
- * inspector los ve en su pantalla. Sin esto, un desvio llamado `<img onerror>`
- * corre en la sesion del companero.
- */
+// ------------------------------------------------------------------ utilidades
+
 function esc(s) {
   return String(s == null ? '' : s).replace(/[&<>"']/g, (c) =>
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
-/** Nombre de pila, o el usuario del email si nadie cargo el nombre. */
+const dia0 = (x) => { const d = new Date(x); d.setHours(0, 0, 0, 0); return d; };
+const claveDia = (x) => { const d = dia0(x); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+const hhmm = (iso) => new Date(iso).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hour12: false });
+
+/** "Hoy" / "Ayer" / "14 ago". Un dia con nombre se ubica sin pensar. */
+function fmtDia(iso) {
+  const hoy = dia0(new Date());
+  const d = dia0(iso);
+  const dif = Math.round((hoy - d) / 86400000);
+  if (dif === 0) return 'Hoy';
+  if (dif === 1) return 'Ayer';
+  return d.getDate() + ' ' + MESES[d.getMonth()];
+}
+
+const turno = (iso) => (new Date(iso).getHours() < 13 ? 'Turno mañana' : 'Turno tarde');
+
+/** 'Trafico Brasil' se muestra 'Brasil': el prefijo se repite en cada fila. */
+const trafico = (r) => (r && r.nombre ? r.nombre.replace(/^Tr[aá]fico\s+/i, '') : '—');
+
 function nombreCorto(u) {
-  if (!u) return 'sin auditor';
+  if (!u) return '';
   const n = (u.nombre || '').trim();
   if (n) return n.split(/\s+/)[0];
   return (u.email || '').split('@')[0];
+}
+
+function iniciales(u) {
+  if (!u) return '';
+  const n = (u.nombre || '').trim();
+  if (n) {
+    const p = n.split(/\s+/).filter(Boolean);
+    return (p.length > 1 ? p[0][0] + p[1][0] : p[0].slice(0, 2)).toUpperCase();
+  }
+  return (u.email || '').split('@')[0].slice(0, 2).toUpperCase();
 }
 
 function estado(texto, clase) {
@@ -43,22 +100,44 @@ function estado(texto, clase) {
   el.className = 'estado ' + (clase || '');
 }
 
+let tToast;
+function toast(titulo, msg, malo) {
+  const el = $('#toast');
+  $('#toast-ico').innerHTML = ico(malo ? 'octagon-alert' : 'circle-check', 17);
+  $('#toast-titulo').textContent = titulo;
+  $('#toast-msg').textContent = msg || '';
+  el.className = 'toast' + (malo ? ' malo' : '');
+  el.hidden = false;
+  clearTimeout(tToast);
+  tToast = setTimeout(() => { el.hidden = true; }, 3400);
+}
+
 async function pedir(url) {
   const r = await fetch(url, { credentials: 'same-origin' });
-  if (r.status === 401) { estado('Sesión vencida — volvé a entrar', 'malo'); throw new Error('401'); }
+  if (r.status === 401) { estado('Sesión vencida', 'malo'); throw new Error('401'); }
   if (!r.ok) throw new Error('http ' + r.status);
   return r.json();
 }
 
-// ---------------------------------------------------------------- catalogos
+// -------------------------------------------------------------------- tema
 
-/** Sirve para algo si trae al menos los catalogos que arman el formulario. */
-function catalogoUsable(c) {
-  return !!(c && Array.isArray(c.responsables) && Array.isArray(c.desvios));
+function aplicarTema(claro) {
+  const raiz = document.documentElement;
+  if (claro) raiz.setAttribute('data-tema', 'claro');
+  else raiz.removeAttribute('data-tema');
+  $('#tema').innerHTML = ico(claro ? 'moon' : 'sun', 16);
+  $('#tema').setAttribute('aria-label', claro ? 'Cambiar a modo oscuro' : 'Cambiar a modo claro');
+  const meta = document.querySelector('meta[name=theme-color]');
+  if (meta) meta.setAttribute('content', claro ? '#ffffff' : '#101113');
+  try { localStorage.setItem('yard-tema', claro ? 'claro' : 'oscuro'); } catch (e) { /* modo privado */ }
 }
 
+// -------------------------------------------------------------- catalogos
+
+/** Sirve si trae al menos lo que arma el formulario. */
+const catalogoUsable = (c) => !!(c && Array.isArray(c.responsables) && Array.isArray(c.desvios));
+
 async function cargarCatalogos() {
-  // Primero lo cacheado: la app tiene que poder abrir el formulario sin senal.
   CAT = await DB.leerMeta('catalogos');
   if (!catalogoUsable(CAT)) CAT = null;
 
@@ -81,542 +160,811 @@ async function cargarCatalogos() {
     await DB.guardarMeta('catalogos_etag', r.headers.get('ETag'));
     pintarCatalogos();
   } catch (e) {
-    if (!CAT) estado('Sin catálogos y sin conexión', 'malo');
+    if (!CAT) estado('Sin catálogos', 'malo');
   }
 }
 
-// `items` va con respaldo a proposito: un catalogo incompleto tiene que dejar
-// la app usable, no matarla. La excepcion cortaba cargarCatalogos() entera, asi
-// que no llegaba a correr ni verHoy() ni la sincronizacion.
-function opciones(sel, items, vacio) {
+// `items` con respaldo a proposito: un catalogo incompleto tiene que dejar la
+// app usable, no matarla.
+function opciones(sel, items, etiqueta) {
   if (!sel) return;
-  sel.innerHTML = (vacio ? '<option value="">—</option>' : '') +
-    (items || []).map((i) => `<option value="${i.id}">${esc(i.nombre)}</option>`).join('');
-}
-
-/**
- * Iniciales para el avatar, mismo criterio que la intranet ("TP").
- * Con nombre: primera letra de las dos primeras palabras.
- * Sin nombre: las dos primeras letras del usuario del email, que para
- * tpozo@ttfasa.com da "TP" y no "TT" (que es lo que saldria si se partiera
- * el email por el arroba).
- */
-function iniciales(u) {
-  if (!u) return '';
-  const nombre = (u.nombre || '').trim();
-  if (nombre) {
-    const p = nombre.split(/\s+/).filter(Boolean);
-    return (p.length > 1 ? p[0][0] + p[1][0] : p[0].slice(0, 2)).toUpperCase();
-  }
-  const local = (u.email || '').split('@')[0];
-  return local.slice(0, 2).toUpperCase();
+  sel.innerHTML = (items || [])
+    .map((i) => `<option value="${i.id}">${esc(etiqueta ? etiqueta(i) : i.nombre)}</option>`)
+    .join('');
 }
 
 function pintarCatalogos() {
   if (!CAT) return;
 
-  const av = $('#avatar');
   if (CAT.usuario) {
-    av.textContent = iniciales(CAT.usuario);
-    av.title = CAT.usuario.email;
+    $('#avatar').textContent = iniciales(CAT.usuario);
+    $('#usuario').textContent = CAT.usuario.email || '';
+    $('#c-auditor').textContent = 'Auditor: ' + (CAT.usuario.nombre || CAT.usuario.email || '—');
   }
-  opciones($('[name=responsable_id]'), CAT.responsables, false);
-  opciones($('[name=tipo_desvio_id]'), CAT.tipos_desvio, false);
-  opciones($('[name=demora_id]'), CAT.demoras, true);
-  opciones($('[name=controlador_id]'), CAT.controladores, true);
-  opciones($('[name=estado_control_id]'), CAT.estados_control, true);
 
-  $('#desvios').innerHTML = CAT.desvios
-    .map((d) => `<button type="button" class="chip" data-id="${d.id}" data-tipo="${d.tipo_desvio_id || ''}" data-detalle="${d.requiere_detalle ? 1 : 0}">${esc(d.nombre)}</button>`)
-    .join('');
-
+  opciones($('[name=responsable_id]'), CAT.responsables, (r) => trafico(r));
+  const vacio = '<option value="">—</option>';
+  $('[name=controlador_id]').innerHTML = vacio +
+    (CAT.controladores || []).map((c) => `<option value="${c.id}">${esc(c.nombre)}</option>`).join('');
+  $('[name=estado_control_id]').innerHTML = vacio +
+    (CAT.estados_control || []).map((c) => `<option value="${c.id}">${esc(c.nombre)}</option>`).join('');
   $('#equipos').innerHTML = (CAT.equipos || []).map((c) => `<option value="${c}">`).join('');
+
+  pintarFormulario();
 }
 
-// ------------------------------------------------------------------ listados
-
-function tarjeta(i) {
-  const desvios = (i.desvios || []).map((d) => esc(d.nombre)).join(', ');
-  const foto = (i.fotos || []).find((f) => f.ruta);
-  const img = foto
-    ? `<img src="uploads/${esc(foto.ruta)}" alt="" loading="lazy">`
-    : `<div class="sin-foto" title="La foto está en Drive, todavía no se copió">—</div>`;
-  // Quien la cargo va en la tarjeta: son dos inspectores viendo la misma
-  // lista, y "quien vio esto" cambia a quien preguntarle.
-  const pie = [
-    i.responsable && esc(i.responsable.nombre),
-    i.auditor && 'cargó ' + esc(nombreCorto(i.auditor))
-  ].filter(Boolean).join(' · ');
-  return `
-    <article class="item ${i.resultado === 'NG' ? 'ng' : 'ok'}">
-      ${img}
-      <div class="item-txt">
-        <div class="item-cab">
-          <strong>${i.equipo ? esc(i.equipo.codigo) : 's/equipo'}</strong>
-          <span class="chip-res">${esc(i.resultado)}</span>
-          <small>${fmtFecha(i.registrado_en)}</small>
-        </div>
-        <div class="item-desvio">${desvios || '<em>sin desvíos</em>'}</div>
-        <small class="item-pie">${pie}</small>
-      </div>
-    </article>`;
-}
-
-function pintarLista(cont, items, vacio) {
-  cont.innerHTML = items.length
-    ? items.map(tarjeta).join('')
-    : `<p class="nota">${vacio}</p>`;
-}
-
-async function verHoy() {
-  try {
-    const d = await pedir('api/inspecciones/hoy');
-    await DB.guardarCache('hoy', d.inspecciones);
-    pintarLista($('#lista-hoy'), d.inspecciones, 'Todavía no hay desvíos cargados hoy.');
-  } catch (e) {
-    const c = await DB.leerCache('hoy');
-    pintarLista($('#lista-hoy'), c || [], 'Sin conexión y nada guardado.');
-    if (c) estado('Mostrando datos guardados', 'aviso');
-  }
-}
-
-async function verHistorial(reiniciar) {
-  if (reiniciar) offsetHistorial = 0;
-  const res = $('#f-resultado').value;
-  const url = `api/inspecciones?limite=50&offset=${offsetHistorial}` + (res ? `&resultado=${res}` : '');
-  try {
-    const d = await pedir(url);
-    const cont = $('#lista-historial');
-    if (reiniciar) cont.innerHTML = '';
-    cont.insertAdjacentHTML('beforeend', d.inspecciones.map(tarjeta).join(''));
-    offsetHistorial += d.inspecciones.length;
-    $('#mas').hidden = offsetHistorial >= d.total;
-    if (!d.total) cont.innerHTML = '<p class="nota">Sin resultados.</p>';
-  } catch (e) {
-    $('#lista-historial').innerHTML = '<p class="nota">Sin conexión.</p>';
-  }
-}
-
-async function verCamion() {
-  const cod = $('#f-equipo').value.trim();
-  if (!cod) return;
-  try {
-    const [resumen, hist] = await Promise.all([
-      pedir(`api/inspecciones/equipo/${cod}`),
-      pedir(`api/inspecciones?equipo=${cod}&limite=200`)
-    ]);
-    $('#resumen-camion').hidden = false;
-    $('#resumen-camion').innerHTML = `
-      <div><b>${resumen.total}</b><span>patrullas</span></div>
-      <div class="malo"><b>${resumen.ng}</b><span>NG</span></div>
-      <div class="bueno"><b>${resumen.ok}</b><span>OK</span></div>`;
-    pintarLista($('#lista-camion'), hist.inspecciones, 'Sin registros.');
-  } catch (e) {
-    $('#resumen-camion').hidden = true;
-    $('#lista-camion').innerHTML = '<p class="nota">No se encontró el camión o no hay conexión.</p>';
-  }
-}
-
-// ------------------------------------------------------------------ el dia
-
-const DIAS_VENTANA = 7;
-const DIA_LETRA = ['D', 'L', 'M', 'M', 'J', 'V', 'S'];
-
-function inicioDe(fecha) {
-  const d = new Date(fecha);
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
+// -------------------------------------------------------- ventana de datos
 
 /**
- * Como viene el dia.
- *
- * Una sola llamada trae la semana entera y todo lo demas se cuenta aca. No hay
- * endpoint de metricas a proposito: son dos inspectores y una decena de
- * patrullas por dia, asi que agregar en el cliente no cuesta nada y ademas deja
- * la pantalla funcionando contra el cache cuando no hay senal.
+ * Trae los ultimos DIAS_VENTANA dias de una sola vez. De aca salen el tablero
+ * y la pantalla de hoy: son las mismas filas miradas de dos maneras.
  */
-async function verDia() {
-  const desde = inicioDe(new Date());
+async function cargarVentana() {
+  const desde = dia0(new Date());
   desde.setDate(desde.getDate() - (DIAS_VENTANA - 1));
   try {
     const d = await pedir(`api/inspecciones?desde=${desde.toISOString()}&limite=500`);
-    await DB.guardarCache('dia', d);
-    pintarDia(d);
+    VENTANA = d;
+    await DB.guardarCache('ventana', d);
+    return true;
   } catch (e) {
-    const c = await DB.leerCache('dia');
-    if (c) {
-      pintarDia(c);
-      $('#d-nota').textContent = 'Sin conexión: es lo último que se alcanzó a guardar.';
-    } else {
-      $('#d-nota').textContent = 'Sin conexión y todavía no hay nada guardado.';
-    }
+    const c = await DB.leerCache('ventana');
+    if (c) { VENTANA = c; estado('Datos guardados', 'aviso'); }
+    return false;
   }
 }
 
-function pintarDia(d) {
-  const semana = d.inspecciones || [];
-  const hoy0 = inicioDe(new Date()).getTime();
-  const hoy = semana.filter((i) => new Date(i.registrado_en).getTime() >= hoy0);
-  const ng = hoy.filter((i) => i.resultado === 'NG').length;
+const filasVentana = () => (VENTANA && VENTANA.inspecciones) || [];
+const esNg = (i) => i.resultado === 'NG';
+const nombresDesvio = (i) => (i.desvios || []).map((d) => d.nombre);
 
-  $('#d-total').textContent = hoy.length;
-  $('#d-ng').textContent = ng;
-  $('#d-ok').textContent = hoy.length - ng;
+// ------------------------------------------------------------------- filas
 
-  pintarInspectores(semana, hoy);
-  pintarSemana(semana);
-  pintarTopDesvios(hoy);
+function fila(i) {
+  const ng = esNg(i);
+  const tipo = i.tipo ? i.tipo.nombre : null;
+  const tono = ng ? (tipo === 'Seguridad' ? 'risk' : 'warn') : 'ok';
+  const dv = nombresDesvio(i);
+  const foto = (i.fotos || []).find((f) => f.ruta);
+  const nf = (i.fotos || []).length;
 
-  // La API corta en 500. Con dos inspectores no se llega ni cerca, pero si
-  // alguna vez pasara, los dias de atras quedarian cortos sin avisar.
-  $('#d-nota').textContent = d.total > semana.length
-    ? `Mostrando ${semana.length} de ${d.total}: los días anteriores pueden quedar cortos.`
+  const mini = foto
+    ? `<img src="uploads/${esc(foto.ruta)}" alt="" loading="lazy">`
+    : `<small>${nf ? nf + (nf > 1 ? ' fotos' : ' foto') : 'sin foto'}</small>`;
+
+  return `
+    <button type="button" class="fila" data-eq="${esc(i.equipo ? i.equipo.codigo : '')}"
+            style="border-left-color:${ng ? (COLOR_TIPO[tipo] || 'var(--ttfa-red)') : 'transparent'}">
+      <span class="miniatura">${mini}</span>
+      <span class="txt">
+        <span class="cab">
+          <span class="eq">${i.equipo ? esc(i.equipo.codigo) : 's/eq'}</span>
+          <span class="badge ${tono}">${esc(ng ? (tipo || 'NG') : 'OK')}</span>
+        </span>
+        <span class="dv${ng ? '' : ' vacio'}">${dv.length ? esc(dv.join(' · ')) : 'Sin desvíos'}</span>
+      </span>
+      <span class="der">
+        <small>${esc(trafico(i.responsable))}</small>
+        <small class="mono">${hhmm(i.registrado_en)}</small>
+      </span>
+    </button>`;
+}
+
+/** Agrupa por turno y devuelve el HTML de los grupos con contenido. */
+function grupos(items, etiqueta) {
+  const mapa = new Map();
+  items.forEach((i) => {
+    const k = etiqueta(i);
+    if (!mapa.has(k)) mapa.set(k, []);
+    mapa.get(k).push(i);
+  });
+  return [...mapa.entries()].map(([k, arr]) => `
+    <div class="grupo-cab">
+      <b>${esc(k)}</b>
+      <small>${arr.length} · ${arr.filter(esNg).length} NG</small>
+    </div>
+    ${arr.map(fila).join('')}`).join('');
+}
+
+// ----------------------------------------------------------------- tablero
+
+function verTablero() {
+  const filas = filasVentana();
+  const nota = $('#t-nota');
+
+  if (!filas.length) {
+    $('#t-kpis').innerHTML = '';
+    nota.textContent = VENTANA ? 'No hay controles en los últimos días.' : 'Sin conexión y nada guardado todavía.';
+    return;
+  }
+
+  const hoyK = claveDia(new Date());
+  const hoy = filas.filter((i) => claveDia(i.registrado_en) === hoyK);
+  const hoyNg = hoy.filter(esNg);
+  const ng = filas.filter(esNg);
+  const dias = [...new Set(filas.map((i) => claveDia(i.registrado_en)))];
+  const pctHoy = hoy.length ? Math.round((hoyNg.length / hoy.length) * 100) : 0;
+  const pct = Math.round((ng.length / filas.length) * 100);
+  const retira = ng.filter((i) => i.demora && i.demora.nombre === 'Se retira').length;
+  const prom = Math.round(filas.length / (dias.length || 1));
+
+  const kpi = (label, val, unidad, pie, tono) => `
+    <div class="kpi ${tono || ''}">
+      <span class="eq-label">${esc(label)}</span>
+      <span class="k-val"><b>${val}</b>${unidad ? `<span>${esc(unidad)}</span>` : ''}</span>
+      ${pie ? `<span class="k-pie">${esc(pie)}</span>` : ''}
+    </div>`;
+
+  $('#t-kpis').innerHTML =
+    kpi('Controles hoy', hoy.length, '', 'prom. ' + prom + ' / jornada', '') +
+    kpi('NG hoy', hoyNg.length, '', pctHoy + ' % de los controles', 'negative') +
+    kpi(`Tasa NG ${dias.length} jornadas`, pct, '%', ng.length + ' desvíos', 'warn') +
+    kpi('Unidades retiradas', retira, '', dias.length + ' jornadas', 'negative');
+
+  // --- barras por jornada (las ultimas 8 con actividad)
+  const porDia = new Map();
+  filas.forEach((i) => {
+    const k = claveDia(i.registrado_en);
+    if (!porDia.has(k)) porDia.set(k, { n: 0, ng: 0 });
+    const e = porDia.get(k);
+    e.n++;
+    if (esNg(i)) e.ng++;
+  });
+  const serie = [...porDia.entries()].sort((a, b) => a[0].localeCompare(b[0])).slice(-8);
+  const tope = Math.max(1, ...serie.map(([, v]) => v.n));
+
+  $('#t-series').innerHTML = serie.map(([k, v], n) => {
+    const alto = Math.round((v.n / tope) * 86) + 2;
+    const altoNg = Math.round((v.ng / tope) * 86);
+    return `
+      <div class="d${n === serie.length - 1 ? ' hoy' : ''}">
+        <div class="caja" style="height:${alto}px"><div class="ng" style="height:${altoNg}px"></div></div>
+        <small>${k.slice(8)}/${k.slice(5, 7)}</small>
+      </div>`;
+  }).join('');
+
+  // --- desglose por tipo de control
+  $('#t-cat-eyebrow').textContent = `Desvíos NG · ${dias.length} jornadas`;
+  const porTipo = {};
+  ng.forEach((i) => {
+    const t = (i.tipo && i.tipo.nombre) || 'Sin tipo';
+    porTipo[t] = (porTipo[t] || 0) + 1;
+  });
+  const maxTipo = Math.max(1, ...Object.values(porTipo));
+  $('#t-cat').innerHTML = Object.entries(porTipo).sort((a, b) => b[1] - a[1]).map(([n, c]) => `
+    <div class="f">
+      <span>${esc(n)}</span>
+      <span class="pista"><i style="width:${Math.round((c / maxTipo) * 100)}%;background:${COLOR_TIPO[n] || 'var(--gray-400)'}"></i></span>
+      <span class="n">${c}</span>
+    </div>`).join('') || '<p class="nota" style="padding:0">Sin NG en el período.</p>';
+
+  // --- desvios mas frecuentes
+  const cuenta = {};
+  ng.forEach((i) => nombresDesvio(i).forEach((d) => { cuenta[d] = (cuenta[d] || 0) + 1; }));
+  const top = Object.entries(cuenta).sort((a, b) => b[1] - a[1]).slice(0, 5);
+  $('#t-top').innerHTML = top.map(([n, c]) => `
+    <div class="f"><span>${esc(n)}</span><b>${c}</b></div>`).join('')
+    || '<p class="nota" style="padding:0">Sin desvíos cargados.</p>';
+
+  // --- equipos con mas de un NG
+  const porEq = {};
+  ng.forEach((i) => {
+    const eq = i.equipo ? i.equipo.codigo : null;
+    if (!eq) return;
+    if (!porEq[eq]) porEq[eq] = { n: 0, dv: nombresDesvio(i)[0] || 'Desvío' };
+    porEq[eq].n++;
+  });
+  const reinc = Object.entries(porEq).filter(([, v]) => v.n > 1).sort((a, b) => b[1].n - a[1].n).slice(0, 4);
+  $('#t-reinc-titulo').textContent = reinc.length
+    ? `${reinc.length} equipos con más de un NG`
+    : 'Ningún equipo repitió';
+  $('#t-reinc').innerHTML = reinc.map(([eq, v]) => `
+    <button type="button" class="f" data-eq="${esc(eq)}">
+      <span class="eq">${esc(eq)}</span>
+      <span class="dv">${esc(v.dv)}</span>
+      <span class="n">${v.n} NG</span>
+    </button>`).join('');
+
+  nota.textContent = VENTANA && VENTANA.total > filas.length
+    ? `Mostrando ${filas.length} de ${VENTANA.total} controles del período.`
     : '';
 }
 
-function pintarInspectores(semana, hoy) {
-  const porMail = new Map();
-  const anotar = (i, contar) => {
-    const mail = i.auditor ? i.auditor.email : '';
-    if (!porMail.has(mail)) porMail.set(mail, { u: i.auditor, total: 0, ng: 0 });
-    if (!contar) return;
-    const e = porMail.get(mail);
-    e.total++;
-    if (i.resultado === 'NG') e.ng++;
-  };
+// --------------------------------------------------------------------- hoy
 
-  // La semana primero y sin contar: asi el que hoy todavia no cargo nada
-  // igual aparece, en cero. Una fila ausente se lee como "ese no existe",
-  // no como "ese todavia no arranco".
-  semana.forEach((i) => anotar(i, false));
-  hoy.forEach((i) => anotar(i, true));
+function verHoy() {
+  const hoyK = claveDia(new Date());
+  const hoy = filasVentana().filter((i) => claveDia(i.registrado_en) === hoyK);
+  const ng = hoy.filter(esNg);
+  const pct = hoy.length ? Math.round((ng.length / hoy.length) * 100) : 0;
 
-  const filas = [...porMail.values()].sort((a, b) => b.total - a.total);
-  const tope = Math.max(1, ...filas.map((f) => f.total));
-  const yo = (CAT && CAT.usuario && CAT.usuario.email) || '';
+  $('#h-meta').textContent = `${hoy.length} · ${ng.length} NG · ${pct} %`;
+  $('#h-toggle').innerHTML = [['Todos', false], ['Solo NG', true]].map(([l, v]) =>
+    `<button type="button" class="tag${soloNg === v ? ' sel' : ''}" data-ng="${v}">${l}</button>`).join('');
 
-  $('#d-inspectores').innerHTML = filas.length
-    ? filas.map((f) => {
-      const esYo = f.u && f.u.email === yo;
-      const ok = f.total - f.ng;
+  const fuente = (soloNg ? ng : hoy).slice().sort((a, b) => new Date(a.registrado_en) - new Date(b.registrado_en));
+  $('#h-lista').innerHTML = fuente.length
+    ? grupos(fuente, (i) => turno(i.registrado_en))
+    : `<p class="nota centro">${VENTANA ? 'Todavía no hay controles hoy.' : 'Sin conexión y nada guardado.'}</p>`;
+}
+
+// --------------------------------------------------------------- historial
+
+async function verHistorial(reiniciar) {
+  if (reiniciar) offsetHistorial = 0;
+
+  $('#f-chips').innerHTML = ['Todos', 'Solo NG', ...TIPOS].map((n) =>
+    `<button type="button" class="tag${filtro === n ? ' sel' : ''}" data-f="${esc(n)}">${esc(n)}</button>`).join('');
+
+  // El backend filtra por resultado; por tipo de control no, asi que ese caso
+  // se resuelve aca sobre la pagina traida.
+  const porResultado = filtro === 'Solo NG' ? '&resultado=NG' : '';
+  const url = `api/inspecciones?limite=50&offset=${offsetHistorial}${porResultado}`;
+
+  try {
+    const d = await pedir(url);
+    const cont = $('#f-lista');
+    if (reiniciar) cont.innerHTML = '';
+
+    const items = TIPOS.includes(filtro)
+      ? d.inspecciones.filter((i) => esNg(i) && i.tipo && i.tipo.nombre === filtro)
+      : d.inspecciones;
+
+    cont.insertAdjacentHTML('beforeend', grupos(items, (i) =>
+      fmtDia(i.registrado_en) + ' · ' + turno(i.registrado_en).replace('Turno ', '')));
+
+    offsetHistorial += d.inspecciones.length;
+    $('#mas').hidden = offsetHistorial >= d.total;
+    $('#f-meta').textContent = `${d.total} controles registrados`;
+    if (!cont.innerHTML) cont.innerHTML = '<p class="nota centro">Sin resultados con este filtro.</p>';
+  } catch (e) {
+    $('#f-lista').innerHTML = '<p class="nota centro">Sin conexión. El historial completo necesita señal.</p>';
+    $('#mas').hidden = true;
+  }
+}
+
+// ----------------------------------------------------------------- detalle
+
+async function verDetalle(eq) {
+  equipoDetalle = eq;
+  $('#titulo').textContent = 'Equipo ' + eq;
+  $('#eyebrow').textContent = 'Cargando…';
+  $('#d-lineas').innerHTML = '';
+  $('#d-recurrente').hidden = true;
+
+  try {
+    const [res, hist] = await Promise.all([
+      pedir(`api/inspecciones/equipo/${encodeURIComponent(eq)}`),
+      pedir(`api/inspecciones?equipo=${encodeURIComponent(eq)}&limite=200`)
+    ]);
+    const items = hist.inspecciones;
+    const ultimo = items[0];
+
+    $('#d-kpis').innerHTML = `
+      <div class="kpi"><span class="eq-label">Controles</span><span class="k-val"><b>${res.total}</b></span></div>
+      <div class="kpi negative"><span class="eq-label">NG</span><span class="k-val"><b>${res.ng}</b></span></div>
+      <div class="kpi"><span class="eq-label">Tasa NG</span><span class="k-val"><b>${res.total ? Math.round((res.ng / res.total) * 100) : 0}</b><span>%</span></span></div>`;
+
+    $('#eyebrow').textContent = ultimo
+      ? `Tráfico ${trafico(ultimo.responsable)} · último ${fmtDia(ultimo.registrado_en).toLowerCase()}`
+      : 'Sin registros';
+    $('#badge-cab').hidden = false;
+    $('#badge-cab').innerHTML = ultimo && esNg(ultimo)
+      ? '<span class="badge risk">NG abierto</span>'
+      : '<span class="badge ok">OK</span>';
+
+    // Desvio que se repite: es lo que hace que valga la pena abrir el equipo.
+    const cuenta = {};
+    items.forEach((i) => nombresDesvio(i).forEach((d) => { cuenta[d] = (cuenta[d] || 0) + 1; }));
+    const rec = Object.entries(cuenta).sort((a, b) => b[1] - a[1])[0];
+    if (rec && rec[1] > 1) {
+      $('#d-recurrente').hidden = false;
+      $('#d-recurrente-txt').textContent = `${rec[0]} — ${rec[1]} veces en los últimos ${items.length} controles`;
+    }
+
+    $('#d-meta').textContent = items.length + ' registros';
+    $('#d-lineas').innerHTML = items.map((i) => {
+      const ng = esNg(i);
+      const tipo = i.tipo ? i.tipo.nombre : null;
+      const dv = nombresDesvio(i);
       return `
-        <div class="insp-fila">
-          <div class="insp-nom">${esc(nombreCorto(f.u))}${esYo ? '<span class="insp-vos">vos</span>' : ''}</div>
-          <div class="insp-num">${f.total} <small>${f.ng} NG</small></div>
-          <div class="insp-barra">
-            <i class="b-ng" style="width:${(f.ng / tope) * 100}%"></i>
-            <i class="b-ok" style="width:${(ok / tope) * 100}%"></i>
+        <div class="linea">
+          <span class="rail" style="background:${ng ? (COLOR_TIPO[tipo] || 'var(--ttfa-red)') : 'var(--status-ok)'}"></span>
+          <div class="cuerpo">
+            <div class="cab">
+              <span class="fecha">${fmtDia(i.registrado_en)} · ${hhmm(i.registrado_en)}</span>
+              <span class="badge sin-punto ${ng ? (tipo === 'Seguridad' ? 'risk' : 'warn') : 'ok'}">${esc(ng ? (tipo || 'NG') : 'OK')}</span>
+              <span class="tr">${esc(trafico(i.responsable))}</span>
+            </div>
+            <span class="dv">${dv.length ? esc(dv.join(' · ')) : 'Sin desvíos'}</span>
+            ${i.demora ? `<span class="extra">Resolución: ${esc(i.demora.nombre)}</span>` : ''}
+            ${i.detalle ? `<span class="extra">${esc(i.detalle)}</span>` : ''}
+            <span class="extra">Cargó ${esc(nombreCorto(i.auditor))}</span>
           </div>
         </div>`;
-    }).join('')
-    : '<p class="nada">Nadie cargó nada esta semana.</p>';
-}
-
-function pintarSemana(semana) {
-  const hoy0 = inicioDe(new Date());
-  const dias = [];
-  for (let k = DIAS_VENTANA - 1; k >= 0; k--) {
-    const d = new Date(hoy0);
-    d.setDate(d.getDate() - k);
-    dias.push({ t: d.getTime(), lbl: DIA_LETRA[d.getDay()], n: 0, esHoy: k === 0 });
+    }).join('') || '<p class="nota">Sin registros.</p>';
+  } catch (e) {
+    $('#eyebrow').textContent = 'Sin conexión';
+    $('#d-lineas').innerHTML = '<p class="nota">No se pudo traer el historial del equipo.</p>';
   }
-
-  semana.forEach((i) => {
-    const t = inicioDe(i.registrado_en).getTime();
-    const b = dias.find((x) => x.t === t);
-    if (b) b.n++;
-  });
-
-  const tope = Math.max(1, ...dias.map((x) => x.n));
-  $('#d-dias').innerHTML = dias.map((x) => `
-    <div class="dia${x.esHoy ? ' hoy' : ''}">
-      <span class="dia-n">${x.n}</span>
-      <span class="dia-barra" style="height:${Math.round(4 + (x.n / tope) * 44)}px"></span>
-      <span class="dia-lbl">${x.lbl}</span>
-    </div>`).join('');
 }
 
-function pintarTopDesvios(hoy) {
-  const cuenta = new Map();
-  hoy.forEach((i) => (i.desvios || []).forEach((d) => {
-    cuenta.set(d.nombre, (cuenta.get(d.nombre) || 0) + 1);
-  }));
+// -------------------------------------------------------------- formulario
 
-  const top = [...cuenta.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
-  const tope = Math.max(1, ...top.map((t) => t[1]));
+function pintarFormulario() {
+  if (!CAT || !form) return;
 
-  $('#d-desvios').innerHTML = top.length
-    ? top.map(([nombre, n]) => `
-      <div class="rank-fila">
-        <span>${esc(nombre)}</span>
-        <div class="rank-barra"><i style="width:${(n / tope) * 100}%"></i></div>
-        <b>${n}</b>
-      </div>`).join('')
-    : '<p class="nada">Ningún desvío cargado hoy.</p>';
+  // --- resultado
+  $('#c-seg').innerHTML = [['OK', 'circle-check'], ['NG', 'octagon-alert']].map(([v, i]) =>
+    `<button type="button" data-v="${v}" class="${form.ng === (v === 'NG') ? 'sel' : ''}">${ico(i, 15)}${v}</button>`).join('');
+  $('#c-ng').hidden = !form.ng;
+
+  // --- tipo de control
+  $('#c-tipos').innerHTML = TIPOS.map((t) =>
+    `<button type="button" class="tag${form.tipo === t ? ' sel' : ''}" data-tipo="${esc(t)}">${esc(t)}</button>`).join('');
+
+  // --- zonas y desvios de la zona elegida
+  const zonas = Zonas.repartir(CAT.desvios);
+  if (form.zona >= zonas.length) form.zona = 0;
+  const actual = zonas[form.zona] || { zona: '—', items: [] };
+
+  $('#c-zonas').innerHTML = zonas.map((z, n) => {
+    const marcados = z.items.filter((d) => form.desvios.has(d.id)).length;
+    return `
+      <button type="button" data-zona="${n}" class="${n === form.zona ? 'sel' : ''}">
+        ${ico(z.icono, 15)}
+        <span>${esc(z.zona)}</span>
+        ${marcados ? `<span class="cuenta">${marcados}</span>` : ''}
+      </button>`;
+  }).join('');
+
+  $('#c-zona-lbl').textContent = '3 · Desvío en ' + actual.zona.toLowerCase();
+  const marcados = form.desvios.size + form.nuevos.length;
+  $('#c-zona-meta').textContent = marcados
+    ? marcados + (marcados === 1 ? ' marcado' : ' marcados')
+    : actual.items.length + ' opciones';
+
+  $('#c-desvios').innerHTML = actual.items.map((d) => {
+    const on = form.desvios.has(d.id);
+    return `
+      <button type="button" data-dv="${d.id}" class="${on ? 'sel' : ''}">
+        <span class="caja">${on ? ico('check', 12) : ''}</span>
+        <span>${esc(d.nombre)}</span>
+      </button>`;
+  }).join('') || '<p class="nota" style="padding:12px">Esta zona no tiene desvíos en el catálogo.</p>';
+
+  // --- elegidos
+  const elegidos = [
+    ...CAT.desvios.filter((d) => form.desvios.has(d.id)).map((d) => ({ txt: d.nombre, id: d.id })),
+    ...form.nuevos.map((n, i) => ({ txt: n, nuevo: i }))
+  ];
+  $('#c-elegidos').hidden = !elegidos.length;
+  $('#c-elegidos-tags').innerHTML = elegidos.map((e) => `
+    <span class="tag sel">${esc(e.txt)}
+      <button type="button" class="quitar" aria-label="Quitar"
+        ${e.id !== undefined ? `data-quitar="${e.id}"` : `data-quitar-nuevo="${e.nuevo}"`}>${ico('x', 12)}</button>
+    </span>`).join('');
+
+  // --- resolucion
+  $('#c-demoras').innerHTML = (CAT.demoras || []).map((d) =>
+    `<button type="button" class="tag${form.demora === d.nombre ? ' sel' : ''}" data-demora="${esc(d.nombre)}">${esc(d.nombre)}</button>`).join('');
+
+  pintarPendientes();
+  pintarFotos();
+
+  // --- boton
+  const n = elegidos.length;
+  $('#c-guardar').textContent = form.ng
+    ? (n ? `Registrar con ${n} ${n === 1 ? 'observación' : 'observaciones'}` : 'Registrar desvío')
+    : 'Registrar control OK';
 }
 
-// ---------------------------------------------------------------- formulario
+/**
+ * Lo que quedo abierto en el control anterior de este equipo.
+ *
+ * Es el paso que el papel nunca tuvo: si la vez pasada el equipo salio NG, lo
+ * primero es decir que paso con cada desvio. "Reincidio" lo vuelve a marcar
+ * solo y salta a su zona, para no tener que buscarlo de nuevo en la lista.
+ */
+function pintarPendientes() {
+  const p = form.pendientes;
+  const caja = $('#c-pendientes');
+  if (!p || !p.dv.length) {
+    caja.hidden = true;
+    $('#c-resultado').hidden = false;
+    $('#c-guardar').disabled = false;
+    $('#c-falta-resolver').hidden = true;
+    return;
+  }
+  caja.hidden = false;
 
-function abrirForm() {
-  seleccionados.clear();
-  nuevosDesvios = [];
-  pintarNuevos();
-  cerrarCajaNuevo();
-  $('#form').reset();
-  $$('#desvios .chip').forEach((c) => c.classList.remove('sel'));
-  $('#lbl-detalle').hidden = true;
-  $('[name=detalle]').required = false;
-  // Imprescindible: reset() vuelve el resultado a OK pero NO toca los `required`
-  // que pusimos por JS. Si quedan activos dentro del bloque NG oculto, el
-  // navegador bloquea el submit sin mostrar nada y la app se queda muda.
-  alCambiarResultado();
-  $('#modal').hidden = false;
+  $('#c-resol').innerHTML = p.dv.map((d) => {
+    const r = form.resoluciones[d.nombre];
+    return `
+      <div class="f">
+        <span class="mono">${fmtDia(p.fecha)}</span>
+        <span class="nom">${esc(d.nombre)}</span>
+        <span class="par">
+          <button type="button" data-res="${esc(d.nombre)}" data-v="ok" class="${r === 'ok' ? 'sel' : ''}">OK</button>
+          <button type="button" data-res="${esc(d.nombre)}" data-v="ng" class="${r === 'ng' ? 'sel' : ''}">NG</button>
+        </span>
+      </div>`;
+  }).join('');
+
+  // Hasta no resolver todo, no se pregunta el resultado: el resultado de este
+  // control depende de lo que se conteste arriba. Y el boton queda bloqueado,
+  // porque si no el paso se saltea sin querer y el NG anterior queda colgado
+  // para siempre -- que es exactamente lo que este paso vino a evitar.
+  const todo = p.dv.every((d) => form.resoluciones[d.nombre]);
+  $('#c-resultado').hidden = !todo;
+  $('#c-ng').hidden = !(todo && form.ng);
+  $('#c-guardar').disabled = !todo;
+  $('#c-falta-resolver').hidden = todo;
 }
 
-function cerrarForm() { $('#modal').hidden = true; }
+function pintarFotos() {
+  const chk = form.checklist;
+  $('#c-fotos').innerHTML =
+    form.fotos.map((f, i) => `
+      <div class="foto">
+        <img src="${f.url}" alt="">
+        <button type="button" class="quitar" data-foto="${i}" aria-label="Quitar foto">${ico('x', 12)}</button>
+      </div>`).join('') +
+    (form.fotos.length < 5
+      ? `<button type="button" class="foto-add" id="c-add">${ico('camera', 18)}<span>Agregar foto</span></button>`
+      : '') +
+    `<button type="button" class="foto-add chk${chk ? ' puesta' : ''}" id="c-add-chk">
+       ${ico(chk ? 'circle-check' : 'image', 18)}<span>Checklist batea</span>
+     </button>`;
 
-function alCambiarResultado() {
-  const ng = $('[name=resultado]:checked').value === 'NG';
-  $('#bloque-ng').hidden = !ng;
-  $('#foto1').required = ng;
-  $('[name=tipo_desvio_id]').required = ng;
+  const n = form.fotos.length + (chk ? 1 : 0);
+  $('#c-fotos-meta').textContent = n + (n === 1 ? ' foto' : ' fotos');
 }
 
-function alTocarChip(e) {
-  const chip = e.target.closest('.chip');
-  if (!chip) return;
-  const id = Number(chip.dataset.id);
-  if (seleccionados.has(id)) { seleccionados.delete(id); chip.classList.remove('sel'); }
-  else {
-    seleccionados.add(id);
-    chip.classList.add('sel');
-    // El tipo se prellena con el dominante del desvio, pero queda editable.
-    if (chip.dataset.tipo && seleccionados.size === 1) {
-      $('[name=tipo_desvio_id]').value = chip.dataset.tipo;
+/** Busca el ultimo control del equipo para saber si quedo algo abierto. */
+async function mirarEquipo(codigo) {
+  form.pendientes = null;
+  form.resoluciones = {};
+  if (!codigo || String(codigo).length < 2) { pintarPendientes(); return; }
+
+  try {
+    const d = await pedir(`api/inspecciones?equipo=${encodeURIComponent(codigo)}&limite=1`);
+    const u = d.inspecciones[0];
+    if (u && esNg(u) && (u.desvios || []).length) {
+      form.pendientes = { fecha: u.registrado_en, dv: u.desvios };
     }
+  } catch (e) {
+    // Sin senal no se puede saber: se sigue como control nuevo, sin bloquear.
   }
-  const exige = $$('.chip.sel').some((c) => c.dataset.detalle === '1');
-  $('#lbl-detalle').hidden = !exige;
-  $('[name=detalle]').required = exige;
+  pintarPendientes();
 }
 
-// ------------------------------------------------- desvios fuera del catalogo
+// ------------------------------------------------- desvio fuera del catalogo
 
 /**
  * El inspector puede agregar un desvio que no esta en la lista, pero antes se
  * le muestran los parecidos. La comprobacion corre contra el catalogo cacheado
  * en IndexedDB, no contra el servidor: esto se usa sin senal.
  *
- * El desvio no se crea acá. Viaja como texto junto a la inspeccion y lo
- * resuelve el servidor al sincronizar, que es el unico que puede decidir si
- * ya existe. Crearlo antes dejaria basura en el catalogo si la inspeccion
- * despues se descarta.
+ * El desvio no se crea aca. Viaja como texto junto a la inspeccion y lo
+ * resuelve el servidor al sincronizar, que es el unico que puede decidir si ya
+ * existe. Crearlo antes dejaria basura en el catalogo si la inspeccion despues
+ * se descarta.
  */
-function pintarNuevos() {
-  $('#nuevos').innerHTML = nuevosDesvios
-    .map((n, i) => `<button type="button" class="chip sel chip-nuevo" data-i="${i}">${esc(n)} <span aria-hidden="true">&times;</span></button>`)
-    .join('');
-}
-
-function cerrarCajaNuevo() {
-  $('#nuevo-box').hidden = true;
-  $('#nuevo-nombre').value = '';
-  $('#sugerencias').innerHTML = '';
-}
-
-function revisarParecidos() {
-  const texto = $('#nuevo-nombre').value.trim();
-  const cont = $('#sugerencias');
+function verSugerencias() {
+  const texto = $('#c-nuevo-nombre').value.trim();
+  const cont = $('#c-sugerencias');
   if (texto.length < 3 || !CAT) { cont.innerHTML = ''; return; }
 
   const ya = Similitud.exacto(texto, CAT.desvios);
   if (ya) {
     cont.innerHTML = `<p class="aviso-sim">Ya existe como <b>${esc(ya.nombre)}</b>.</p>
-      <button type="button" class="chip" data-usar="${ya.id}">Usar ese</button>`;
+      <div class="tags"><button type="button" class="tag" data-usar="${ya.id}">Usar ese</button></div>`;
     return;
   }
 
-  const cerca = Similitud.similares(texto, CAT.desvios);
+  const cerca = Similitud.similares(texto, CAT.desvios, 4);
   if (!cerca.length) { cont.innerHTML = '<p class="aviso-sim ok">No hay ninguno parecido.</p>'; return; }
-
   cont.innerHTML = '<p class="aviso-sim">¿No será alguno de estos?</p>' +
-    cerca.map((d) => `<button type="button" class="chip" data-usar="${d.id}">${esc(d.nombre)}</button>`).join('');
+    '<div class="tags">' + cerca.map((d) => `<button type="button" class="tag" data-usar="${d.id}">${esc(d.nombre)}</button>`).join('') + '</div>';
 }
 
-let tSugerencias = null;
-$('#add-desvio').addEventListener('click', () => {
-  $('#nuevo-box').hidden = false;
-  $('#nuevo-nombre').focus();
-});
-$('#nuevo-cancelar').addEventListener('click', cerrarCajaNuevo);
-$('#nuevo-nombre').addEventListener('input', () => {
-  clearTimeout(tSugerencias);
-  tSugerencias = setTimeout(revisarParecidos, 250);
-});
+function cerrarNuevo() {
+  $('#c-nuevo').hidden = true;
+  $('#c-nuevo-nombre').value = '';
+  $('#c-sugerencias').innerHTML = '';
+}
 
-// Elegir una sugerencia marca el desvio existente en vez de crear uno nuevo.
-$('#sugerencias').addEventListener('click', (e) => {
-  const b = e.target.closest('[data-usar]');
-  if (!b) return;
-  const id = Number(b.dataset.usar);
-  seleccionados.add(id);
-  const chip = $(`.chip[data-id="${id}"]`);
-  if (chip) chip.classList.add('sel');
-  cerrarCajaNuevo();
-});
-
-$('#nuevo-ok').addEventListener('click', () => {
-  const texto = $('#nuevo-nombre').value.replace(/\s+/g, ' ').trim();
-  if (texto.length < 3) { alert('Escribí al menos 3 caracteres.'); return; }
-
-  // Coincidencia exacta: se usa el que ya existe, sin crear un duplicado.
-  const ya = CAT && Similitud.exacto(texto, CAT.desvios);
-  if (ya) {
-    seleccionados.add(ya.id);
-    const chip = $(`.chip[data-id="${ya.id}"]`);
-    if (chip) chip.classList.add('sel');
-    cerrarCajaNuevo();
-    return;
-  }
-  if (nuevosDesvios.some((n) => Similitud.normalizar(n) === Similitud.normalizar(texto))) {
-    cerrarCajaNuevo();
-    return;
-  }
-  if (nuevosDesvios.length >= 5) { alert('Máximo 5 desvíos nuevos por inspección.'); return; }
-
-  nuevosDesvios.push(texto);
-  pintarNuevos();
-  cerrarCajaNuevo();
-});
-
-$('#nuevos').addEventListener('click', (e) => {
-  const b = e.target.closest('.chip-nuevo');
-  if (!b) return;
-  nuevosDesvios.splice(Number(b.dataset.i), 1);
-  pintarNuevos();
-});
+// ----------------------------------------------------------------- guardar
 
 async function guardar(e) {
   e.preventDefault();
   const f = e.target;
-  const ng = f.resultado.value === 'NG';
+  const codigo = Number(f.equipo_codigo.value);
 
-  if (ng && seleccionados.size === 0 && nuevosDesvios.length === 0) {
-    alert('Elegí al menos un desvío.');
+  if (!codigo) { toast('Falta el equipo', 'Poné el número del camión.', true); return; }
+  if (form.ng && !form.desvios.size && !form.nuevos.length) {
+    toast('Falta el desvío', 'Un NG necesita al menos una observación.', true);
     return;
   }
 
-  const btn = $('.link.fuerte');
+  const btn = $('#c-guardar');
+  const etiqueta = btn.textContent;
   btn.disabled = true;
   btn.textContent = 'Guardando…';
 
   try {
     const fotos = [];
-    const f1 = $('#foto1').files[0];
-    const f3 = $('#foto3').files[0];
-    if (ng && f1) fotos.push({ blob: await Camara.comprimir(f1), orientacion: 'horizontal' });
-    if (ng && f3) fotos.push({ blob: await Camara.comprimir(f3), orientacion: 'libre' });
+    for (const x of form.fotos) {
+      fotos.push({ blob: await Camara.comprimir(x.file), orientacion: 'libre' });
+    }
 
-    const fchk = $('#foto-checklist').files[0];
+    const tipo = (CAT.tipos_desvio || []).find((t) => t.nombre === form.tipo);
+    const demora = (CAT.demoras || []).find((d) => d.nombre === form.demora);
 
     await Sync.encolar({
       responsable_id: Number(f.responsable_id.value),
-      equipo_codigo: Number(f.equipo_codigo.value),
-      resultado: f.resultado.value,
-      tipo_desvio_id: ng ? Number(f.tipo_desvio_id.value) : null,
-      desvio_ids: ng ? Array.from(seleccionados) : [],
-      desvios_nuevos: ng ? nuevosDesvios.slice() : [],
-      demora_id: ng && f.demora_id.value ? Number(f.demora_id.value) : null,
-      detalle: ng ? f.detalle.value.trim() : null,
+      equipo_codigo: codigo,
+      resultado: form.ng ? 'NG' : 'OK',
+      tipo_desvio_id: form.ng && tipo ? tipo.id : null,
+      desvio_ids: form.ng ? [...form.desvios] : [],
+      desvios_nuevos: form.ng ? form.nuevos.slice() : [],
+      demora_id: form.ng && demora ? demora.id : null,
+      detalle: f.detalle.value.trim() || null,
       controlador_id: f.controlador_id.value ? Number(f.controlador_id.value) : null,
       estado_control_id: f.estado_control_id.value ? Number(f.estado_control_id.value) : null,
       fotos,
-      foto_checklist: fchk ? await Camara.comprimir(fchk) : null
+      foto_checklist: form.checklist ? await Camara.comprimir(form.checklist.file) : null
     });
 
-    cerrarForm();
-    verHoy();
+    toast('Control registrado', `Equipo ${codigo} · ${form.ng ? 'NG' : 'sin desvíos'}`);
+
+    // Se limpia todo menos el trafico: el inspector recorre una fila entera
+    // del mismo trafico y volver a elegirlo en cada camion es un toque de mas.
+    form.fotos.forEach((x) => URL.revokeObjectURL(x.url));
+    if (form.checklist) URL.revokeObjectURL(form.checklist.url);
+    const traficoElegido = f.responsable_id.value;
+    f.reset();
+    f.responsable_id.value = traficoElegido;
+    form = formVacio();
+    pintarFormulario();
+    f.equipo_codigo.focus();
+
+    cargarVentana().then(() => { if (vista === 'hoy') verHoy(); if (vista === 'tablero') verTablero(); });
   } catch (err) {
-    alert('No se pudo guardar: ' + err.message);
+    toast('No se pudo guardar', err.message, true);
   } finally {
     btn.disabled = false;
-    btn.textContent = 'Guardar';
+    btn.textContent = etiqueta;
   }
 }
 
-// ---------------------------------------------------------------------- tema
+// -------------------------------------------------------------- navegacion
 
-/**
- * El default es el oscuro de la intranet; el claro existe porque esto se usa
- * en la playa, al sol. La eleccion se guarda en localStorage y la aplica el
- * script inline del <head> antes de pintar, para que no haya parpadeo.
- *
- * No sigue a prefers-color-scheme: el celular puede estar en modo oscuro y
- * aun asi el inspector necesitar la pantalla clara porque esta al sol. Manda
- * el boton, no el sistema.
- */
-function aplicarTema(claro) {
-  const raiz = document.documentElement;
-  if (claro) raiz.setAttribute('data-tema', 'claro');
-  else raiz.removeAttribute('data-tema');
+const PANTALLAS = {
+  tablero:   { titulo: 'Tablero',           eyebrow: 'Cómo viene la jornada',    icono: 'gauge' },
+  hoy:       { titulo: 'Patrulla de hoy',   eyebrow: 'Controles de la jornada',  icono: 'clipboard-check' },
+  historial: { titulo: 'Historial completo', eyebrow: 'Calidad · Seguridad · 5s', icono: 'file-text' },
+  cargar:    { titulo: 'Nuevo control',     eyebrow: 'Patrulla de playa',        icono: 'plus' }
+};
 
-  $('#tema').setAttribute('aria-label', claro ? 'Cambiar a modo oscuro' : 'Cambiar a modo claro');
-  // que la barra de estado del celular acompane al tema
-  const meta = document.querySelector('meta[name=theme-color]');
-  if (meta) meta.setAttribute('content', claro ? '#f4f5f7' : '#0a0a0b');
-  try { localStorage.setItem('yard-tema', claro ? 'claro' : 'oscuro'); } catch (e) { /* modo privado */ }
+function irA(nombre) {
+  if (nombre !== 'detalle') vistaPrevia = nombre;
+  vista = nombre;
+  cerrarDrawer();
+
+  $$('.vista').forEach((v) => { v.hidden = v.id !== 'v-' + nombre; });
+  $('#scroll').scrollTop = 0;
+
+  const esDetalle = nombre === 'detalle';
+  $('#menu').hidden = esDetalle;
+  $('#volver').hidden = !esDetalle;
+  $('#refrescar').hidden = esDetalle;
+  $('#badge-cab').hidden = true;
+
+  $$('.tab').forEach((t) => t.classList.toggle('activo', t.dataset.v === vistaPrevia));
+  $$('.drawer .it').forEach((t) => t.classList.toggle('activo', t.dataset.v === vistaPrevia));
+
+  if (!esDetalle) {
+    const p = PANTALLAS[nombre];
+    $('#titulo').textContent = p.titulo;
+    $('#eyebrow').textContent = p.eyebrow;
+  }
+
+  // Se recarga al entrar, no una sola vez: el otro inspector pudo cargar algo
+  // mientras estabas en otra pantalla.
+  if (nombre === 'tablero') { cargarVentana().then(verTablero); verTablero(); }
+  if (nombre === 'hoy') { cargarVentana().then(verHoy); verHoy(); }
+  if (nombre === 'historial') verHistorial(true);
+  if (nombre === 'cargar') pintarFormulario();
 }
 
-$('#tema').addEventListener('click', () => {
-  aplicarTema(document.documentElement.getAttribute('data-tema') !== 'claro');
+function abrirDrawer() { $('#drawer').hidden = false; $('#scrim').hidden = false; }
+function cerrarDrawer() { $('#drawer').hidden = true; $('#scrim').hidden = true; }
+
+function pintarNavegacion() {
+  $('#tabs').innerHTML = Object.entries(PANTALLAS).map(([k, p]) => `
+    <button type="button" class="tab${vista === k ? ' activo' : ''}" data-v="${k}">
+      ${ico(p.icono, 20)}<span>${k === 'hoy' ? 'Hoy' : k === 'cargar' ? 'Cargar' : p.titulo.split(' ')[0]}</span>
+    </button>`).join('');
+
+  const items = [
+    { v: 'tablero', icono: 'gauge', txt: 'Tablero' },
+    { v: 'hoy', icono: 'clipboard-check', txt: 'Patrulla de hoy' },
+    { v: 'historial', icono: 'file-text', txt: 'Historial completo' },
+    { v: 'cargar', icono: 'plus', txt: 'Nuevo control' }
+  ];
+  $('#drawer-nav').innerHTML = items.map((i) =>
+    `<button type="button" class="it${vista === i.v ? ' activo' : ''}" data-v="${i.v}">${ico(i.icono, 17)}<span>${i.txt}</span></button>`).join('');
+
+  $('#menu').innerHTML = ico('menu', 20);
+  $('#volver').innerHTML = ico('chevron-left', 20);
+  $('#refrescar').innerHTML = ico('rotate-cw', 16);
+}
+
+// -------------------------------------------------------------------- eventos
+
+document.addEventListener('click', (e) => {
+  const t = e.target;
+
+  // abrir el detalle de un equipo desde cualquier fila
+  const filaEq = t.closest('[data-eq]');
+  if (filaEq && filaEq.dataset.eq) { irA('detalle'); verDetalle(filaEq.dataset.eq); return; }
+
+  const tab = t.closest('.tab');
+  if (tab) { irA(tab.dataset.v); return; }
+
+  const it = t.closest('.drawer .it');
+  if (it) { irA(it.dataset.v); return; }
+
+  const tgl = t.closest('[data-ng]');
+  if (tgl) { soloNg = tgl.dataset.ng === 'true'; verHoy(); return; }
+
+  const chip = t.closest('[data-f]');
+  if (chip) { filtro = chip.dataset.f; verHistorial(true); return; }
+
+  // ---- formulario
+  const seg = t.closest('#c-seg button');
+  if (seg) { form.ng = seg.dataset.v === 'NG'; pintarFormulario(); return; }
+
+  const tipo = t.closest('[data-tipo]');
+  if (tipo) { form.tipo = tipo.dataset.tipo; pintarFormulario(); return; }
+
+  const zona = t.closest('[data-zona]');
+  if (zona) { form.zona = Number(zona.dataset.zona); pintarFormulario(); return; }
+
+  const dv = t.closest('[data-dv]');
+  if (dv) {
+    const id = Number(dv.dataset.dv);
+    if (form.desvios.has(id)) form.desvios.delete(id); else form.desvios.add(id);
+    pintarFormulario();
+    return;
+  }
+
+  const quitar = t.closest('[data-quitar]');
+  if (quitar) { form.desvios.delete(Number(quitar.dataset.quitar)); pintarFormulario(); return; }
+
+  const quitarN = t.closest('[data-quitar-nuevo]');
+  if (quitarN) { form.nuevos.splice(Number(quitarN.dataset.quitarNuevo), 1); pintarFormulario(); return; }
+
+  const dem = t.closest('[data-demora]');
+  if (dem) { form.demora = dem.dataset.demora; pintarFormulario(); return; }
+
+  const res = t.closest('[data-res]');
+  if (res) {
+    const nombre = res.dataset.res;
+    form.resoluciones[nombre] = res.dataset.v;
+    if (res.dataset.v === 'ng') {
+      // Reincidio: se vuelve a marcar solo y la vista salta a su zona.
+      const d = (CAT.desvios || []).find((x) => x.nombre === nombre);
+      if (d) {
+        form.desvios.add(d.id);
+        form.ng = true;
+        const zonas = Zonas.repartir(CAT.desvios);
+        const n = zonas.findIndex((z) => z.items.some((x) => x.id === d.id));
+        if (n >= 0) form.zona = n;
+      }
+    }
+    pintarFormulario();
+    return;
+  }
+
+  const usar = t.closest('[data-usar]');
+  if (usar) {
+    const d = (CAT.desvios || []).find((x) => x.id === Number(usar.dataset.usar));
+    if (d) {
+      form.desvios.add(d.id);
+      const zonas = Zonas.repartir(CAT.desvios);
+      const n = zonas.findIndex((z) => z.items.some((x) => x.id === d.id));
+      if (n >= 0) form.zona = n;
+    }
+    cerrarNuevo();
+    pintarFormulario();
+    return;
+  }
+
+  const quitarFoto = t.closest('[data-foto]');
+  if (quitarFoto) {
+    const i = Number(quitarFoto.dataset.foto);
+    URL.revokeObjectURL(form.fotos[i].url);
+    form.fotos.splice(i, 1);
+    pintarFotos();
+    return;
+  }
+
+  if (t.closest('#c-add')) { $('#c-file').click(); return; }
+  if (t.closest('#c-add-chk')) { $('#c-file-chk').click(); return; }
 });
 
-// El script del <head> ya puso el tema, pero no la etiqueta del boton ni el
-// theme-color. Sin esto, quien vuelve en modo claro ve un boton que dice
-// "cambiar a modo claro" estando ya en claro.
-aplicarTema(document.documentElement.getAttribute('data-tema') === 'claro');
+$('#menu').addEventListener('click', abrirDrawer);
+$('#scrim').addEventListener('click', cerrarDrawer);
+$('#volver').addEventListener('click', () => irA(vistaPrevia));
+$('#tema').addEventListener('click', () =>
+  aplicarTema(document.documentElement.getAttribute('data-tema') !== 'claro'));
 
-// ------------------------------------------------------------------- arranque
+$('#refrescar').addEventListener('click', () => {
+  if (vista === 'historial') verHistorial(true);
+  else cargarVentana().then(() => (vista === 'tablero' ? verTablero() : verHoy()));
+});
 
-let vistaActual = 'hoy';
+$('#mas').addEventListener('click', () => verHistorial(false));
+$('#form').addEventListener('submit', guardar);
 
-function cambiarVista(nombre) {
-  vistaActual = nombre;
-  $$('.tab').forEach((t) => t.classList.toggle('activo', t.dataset.vista === nombre));
-  $$('.vista').forEach((v) => { v.hidden = v.id !== 'v-' + nombre; });
-  // Se recarga al entrar, no una sola vez: el otro inspector pudo cargar algo
-  // mientras vos estabas en otra pantalla.
-  if (nombre === 'hoy') verHoy();
-  if (nombre === 'historial') verHistorial(true);
-  if (nombre === 'dia') verDia();
+$('[name=equipo_codigo]').addEventListener('change', (e) => mirarEquipo(e.target.value.trim()));
+
+$('#c-otro').addEventListener('click', () => {
+  $('#c-nuevo').hidden = false;
+  $('#c-nuevo-nombre').focus();
+});
+$('#c-nuevo-cancelar').addEventListener('click', cerrarNuevo);
+$('#c-nuevo-nombre').addEventListener('input', verSugerencias);
+$('#c-nuevo-ok').addEventListener('click', () => {
+  const n = $('#c-nuevo-nombre').value.replace(/\s+/g, ' ').trim();
+  if (n.length < 3) { toast('Muy corto', 'Escribí al menos 3 letras.', true); return; }
+  const ya = Similitud.exacto(n, CAT.desvios);
+  if (ya) form.desvios.add(ya.id);
+  else form.nuevos.push(n);
+  cerrarNuevo();
+  pintarFormulario();
+});
+
+async function tomarFoto(input, destino) {
+  const file = input.files[0];
+  input.value = '';
+  if (!file) return;
+  const url = URL.createObjectURL(file);
+  if (destino === 'chk') {
+    if (form.checklist) URL.revokeObjectURL(form.checklist.url);
+    form.checklist = { file, url };
+  } else {
+    form.fotos.push({ file, url });
+  }
+  pintarFotos();
 }
+$('#c-file').addEventListener('change', (e) => tomarFoto(e.target, 'foto'));
+$('#c-file-chk').addEventListener('change', (e) => tomarFoto(e.target, 'chk'));
 
 Sync.alCambiar((s) => {
   if (s.tipo === 'sincronizando') estado('Sincronizando…', 'aviso');
-  else if (s.tipo === 'sin_conexion') estado(`Sin conexión — ${s.pendientes || 0} pendiente(s)`, 'aviso');
-  else if (s.tipo === 'sesion_vencida') estado('Sesión vencida — entrá de nuevo, no se perdió nada', 'malo');
-  else if (s.tipo === 'encolada') estado(`Guardada — ${s.pendientes} pendiente(s)`, 'aviso');
+  else if (s.tipo === 'sin_conexion') estado(`Sin señal · ${s.pendientes || 0}`, 'aviso');
+  else if (s.tipo === 'sesion_vencida') estado('Sesión vencida', 'malo');
+  else if (s.tipo === 'encolada') estado(`En cola · ${s.pendientes}`, 'aviso');
   else if (s.tipo === 'listo') {
     if (s.pendientes) estado(`${s.pendientes} pendiente(s)`, 'aviso');
-    else { estado('Todo sincronizado', 'bueno'); setTimeout(() => estado(null), 3000); }
-    if (s.enviadas) { verHoy(); if (vistaActual === 'dia') verDia(); }
+    else { estado('Al día', 'bueno'); setTimeout(() => estado(null), 2500); }
+    if (s.enviadas) cargarVentana().then(() => { if (vista === 'hoy') verHoy(); if (vista === 'tablero') verTablero(); });
   }
 });
 
-$$('.tab').forEach((t) => t.addEventListener('click', () => cambiarVista(t.dataset.vista)));
-$('#nueva').addEventListener('click', abrirForm);
-$('#cancelar').addEventListener('click', cerrarForm);
-$('#form').addEventListener('submit', guardar);
-$$('[name=resultado]').forEach((r) => r.addEventListener('change', alCambiarResultado));
-$('#desvios').addEventListener('click', alTocarChip);
-$('#buscar').addEventListener('click', verCamion);
-$('#f-equipo').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); verCamion(); } });
-$('#f-resultado').addEventListener('change', () => verHistorial(true));
-$('#mas').addEventListener('click', () => verHistorial(false));
+// -------------------------------------------------------------------- arranque
 
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js').catch(() => {});
-}
+form = formVacio();
+aplicarTema(document.documentElement.getAttribute('data-tema') === 'claro');
+pintarNavegacion();
 
-cargarCatalogos().then(() => { verHoy(); Sync.sincronizar(); });
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
+
+cargarCatalogos().then(() => {
+  irA('hoy');
+  Sync.sincronizar();
+});

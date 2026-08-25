@@ -4,19 +4,24 @@ App con la que los inspectores de playa cargan observaciones (patrullas) sobre c
 
 Reemplaza la app de **AppSheet** que corre hoy sobre un Google Form + Sheets, y se despliega en el VPS de la empresa junto a `ttfa-docker`, siguiendo el mismo patrón que `tenko-docker`.
 
-> **Estado: sin desplegar.** El código está completo y verificado estáticamente, pero **todavía no se ejecutó nunca** — el entorno donde se desarrolló no tiene Docker ni Node. El paso siguiente es levantarlo en el VPS y correr `verificar.sh`.
+> **Estado: desplegado** en el VPS vía Coolify, en `/yard/`.
 
 ---
 
 ## Qué hace
 
-| Vista | Qué muestra |
-|---|---|
-| **Patrulla** | Los desvíos cargados hoy. Los OK no aparecen, igual que en AppSheet |
-| **Historial** | Todas las patrullas, con filtro por resultado y fecha |
-| **Camión** | Buscás un número de equipo y ves **todo su histórico** más el resumen de patrullas / NG / OK |
+Cuatro pantallas, según el diseño del proyecto de Claude Design **"UI mockups pending details"**:
 
-La tercera es funcionalidad nueva: en AppSheet no existía.
+| Pantalla | Qué muestra |
+|---|---|
+| **Tablero** | Controles y NG de hoy, tasa NG del período, barras por jornada, desglose por tipo de control, desvíos más frecuentes y equipos que repiten |
+| **Hoy** | Los controles de la jornada agrupados por turno, con filtro Todos / Solo NG |
+| **Historial** | Todo, con chips por tipo de control |
+| **Cargar** | El formulario: equipo, tráfico, qué pasó con lo que quedó abierto, resultado, tipo, zona, desvío, fotos |
+
+Y tocando cualquier fila se abre el **detalle del equipo**: sus KPIs, el desvío que se le repite y su historial completo.
+
+Tres cosas que en AppSheet no existían: el tablero, el detalle por equipo, y que antes de cargar un control nuevo haya que decir qué pasó con el NG anterior.
 
 Los inspectores trabajan **sin conexión**. En la playa la señal se corta, así que la app guarda las inspecciones en el dispositivo y las sincroniza cuando vuelve la señal.
 
@@ -53,6 +58,20 @@ docker compose -f docker-compose.yml -f docker-compose.dev.yml up
 
 Las migraciones las aplica **el backend al arrancar**, llevando registro en `migracion_aplicada`. Agregar una es dejar el `.sql` en `migrations/`. Para rehacer la base desde cero: `docker compose down -v`. Ver [CLAUDE.md](CLAUDE.md#migraciones) para el detalle.
 
+## Mirar el front sin levantar nada
+
+No hace falta Docker ni la base: `tools/preview/` monta una copia de la PWA con datos falsos que imitan la forma real de la API.
+
+```bash
+bash tools/preview/armar.sh
+```
+
+```bash
+perl tools/preview/serve.pl .preview 4173
+```
+
+Y abrís http://127.0.0.1:4173/. `.preview/` está en `.gitignore` y se regenera entera en cada corrida, así que nunca queda vieja.
+
 ## Verificar que quedó bien
 
 ```bash
@@ -67,9 +86,12 @@ Chequeo de humo completo: esquema, catálogos, el `CHECK` constraint, la API, lo
 ├── node/
 │   ├── src/            # API Express + Sequelize
 │   └── public/         # PWA (app shell, service worker, cola)
-├── migrations/         # 001 esquema · 002 fotos · 003 datos históricos
-├── tools/              # ETL y migración de fotos desde AppSheet
+├── migrations/         # 001 esquema · 002 fotos · 003 histórico · 004 desvíos
+├── tools/
+│   ├── preview/        # mirar el front con datos falsos
+│   └── ...             # ETL y migración de fotos desde AppSheet
 ├── verificar.sh
+├── DECISIONS.md        # por qué el proyecto es como es
 └── CLAUDE.md           # decisiones de diseño en detalle
 ```
 
