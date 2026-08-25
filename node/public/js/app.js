@@ -15,6 +15,26 @@ function fmtFecha(iso) {
   return d.toLocaleString('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
 }
 
+/**
+ * Escapa antes de meter texto en innerHTML.
+ *
+ * Los nombres de desvio los escribe un inspector desde la app, y ahora el otro
+ * inspector los ve en su pantalla. Sin esto, un desvio llamado `<img onerror>`
+ * corre en la sesion del companero.
+ */
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, (c) =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+/** Nombre de pila, o el usuario del email si nadie cargo el nombre. */
+function nombreCorto(u) {
+  if (!u) return 'sin auditor';
+  const n = (u.nombre || '').trim();
+  if (n) return n.split(/\s+/)[0];
+  return (u.email || '').split('@')[0];
+}
+
 function estado(texto, clase) {
   const el = $('#estado');
   if (!texto) { el.hidden = true; return; }
@@ -71,7 +91,7 @@ async function cargarCatalogos() {
 function opciones(sel, items, vacio) {
   if (!sel) return;
   sel.innerHTML = (vacio ? '<option value="">—</option>' : '') +
-    (items || []).map((i) => `<option value="${i.id}">${i.nombre}</option>`).join('');
+    (items || []).map((i) => `<option value="${i.id}">${esc(i.nombre)}</option>`).join('');
 }
 
 /**
@@ -107,7 +127,7 @@ function pintarCatalogos() {
   opciones($('[name=estado_control_id]'), CAT.estados_control, true);
 
   $('#desvios').innerHTML = CAT.desvios
-    .map((d) => `<button type="button" class="chip" data-id="${d.id}" data-tipo="${d.tipo_desvio_id || ''}" data-detalle="${d.requiere_detalle ? 1 : 0}">${d.nombre}</button>`)
+    .map((d) => `<button type="button" class="chip" data-id="${d.id}" data-tipo="${d.tipo_desvio_id || ''}" data-detalle="${d.requiere_detalle ? 1 : 0}">${esc(d.nombre)}</button>`)
     .join('');
 
   $('#equipos').innerHTML = (CAT.equipos || []).map((c) => `<option value="${c}">`).join('');
@@ -116,22 +136,28 @@ function pintarCatalogos() {
 // ------------------------------------------------------------------ listados
 
 function tarjeta(i) {
-  const desvios = (i.desvios || []).map((d) => d.nombre).join(', ');
+  const desvios = (i.desvios || []).map((d) => esc(d.nombre)).join(', ');
   const foto = (i.fotos || []).find((f) => f.ruta);
   const img = foto
-    ? `<img src="uploads/${foto.ruta}" alt="" loading="lazy">`
+    ? `<img src="uploads/${esc(foto.ruta)}" alt="" loading="lazy">`
     : `<div class="sin-foto" title="La foto está en Drive, todavía no se copió">—</div>`;
+  // Quien la cargo va en la tarjeta: son dos inspectores viendo la misma
+  // lista, y "quien vio esto" cambia a quien preguntarle.
+  const pie = [
+    i.responsable && esc(i.responsable.nombre),
+    i.auditor && 'cargó ' + esc(nombreCorto(i.auditor))
+  ].filter(Boolean).join(' · ');
   return `
     <article class="item ${i.resultado === 'NG' ? 'ng' : 'ok'}">
       ${img}
       <div class="item-txt">
         <div class="item-cab">
-          <strong>${i.equipo ? i.equipo.codigo : 's/equipo'}</strong>
-          <span class="chip-res">${i.resultado}</span>
+          <strong>${i.equipo ? esc(i.equipo.codigo) : 's/equipo'}</strong>
+          <span class="chip-res">${esc(i.resultado)}</span>
           <small>${fmtFecha(i.registrado_en)}</small>
         </div>
         <div class="item-desvio">${desvios || '<em>sin desvíos</em>'}</div>
-        <small class="item-pie">${i.responsable ? i.responsable.nombre : ''}</small>
+        <small class="item-pie">${pie}</small>
       </div>
     </article>`;
 }
@@ -189,6 +215,145 @@ async function verCamion() {
     $('#resumen-camion').hidden = true;
     $('#lista-camion').innerHTML = '<p class="nota">No se encontró el camión o no hay conexión.</p>';
   }
+}
+
+// ------------------------------------------------------------------ el dia
+
+const DIAS_VENTANA = 7;
+const DIA_LETRA = ['D', 'L', 'M', 'M', 'J', 'V', 'S'];
+
+function inicioDe(fecha) {
+  const d = new Date(fecha);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+/**
+ * Como viene el dia.
+ *
+ * Una sola llamada trae la semana entera y todo lo demas se cuenta aca. No hay
+ * endpoint de metricas a proposito: son dos inspectores y una decena de
+ * patrullas por dia, asi que agregar en el cliente no cuesta nada y ademas deja
+ * la pantalla funcionando contra el cache cuando no hay senal.
+ */
+async function verDia() {
+  const desde = inicioDe(new Date());
+  desde.setDate(desde.getDate() - (DIAS_VENTANA - 1));
+  try {
+    const d = await pedir(`api/inspecciones?desde=${desde.toISOString()}&limite=500`);
+    await DB.guardarCache('dia', d);
+    pintarDia(d);
+  } catch (e) {
+    const c = await DB.leerCache('dia');
+    if (c) {
+      pintarDia(c);
+      $('#d-nota').textContent = 'Sin conexión: es lo último que se alcanzó a guardar.';
+    } else {
+      $('#d-nota').textContent = 'Sin conexión y todavía no hay nada guardado.';
+    }
+  }
+}
+
+function pintarDia(d) {
+  const semana = d.inspecciones || [];
+  const hoy0 = inicioDe(new Date()).getTime();
+  const hoy = semana.filter((i) => new Date(i.registrado_en).getTime() >= hoy0);
+  const ng = hoy.filter((i) => i.resultado === 'NG').length;
+
+  $('#d-total').textContent = hoy.length;
+  $('#d-ng').textContent = ng;
+  $('#d-ok').textContent = hoy.length - ng;
+
+  pintarInspectores(semana, hoy);
+  pintarSemana(semana);
+  pintarTopDesvios(hoy);
+
+  // La API corta en 500. Con dos inspectores no se llega ni cerca, pero si
+  // alguna vez pasara, los dias de atras quedarian cortos sin avisar.
+  $('#d-nota').textContent = d.total > semana.length
+    ? `Mostrando ${semana.length} de ${d.total}: los días anteriores pueden quedar cortos.`
+    : '';
+}
+
+function pintarInspectores(semana, hoy) {
+  const porMail = new Map();
+  const anotar = (i, contar) => {
+    const mail = i.auditor ? i.auditor.email : '';
+    if (!porMail.has(mail)) porMail.set(mail, { u: i.auditor, total: 0, ng: 0 });
+    if (!contar) return;
+    const e = porMail.get(mail);
+    e.total++;
+    if (i.resultado === 'NG') e.ng++;
+  };
+
+  // La semana primero y sin contar: asi el que hoy todavia no cargo nada
+  // igual aparece, en cero. Una fila ausente se lee como "ese no existe",
+  // no como "ese todavia no arranco".
+  semana.forEach((i) => anotar(i, false));
+  hoy.forEach((i) => anotar(i, true));
+
+  const filas = [...porMail.values()].sort((a, b) => b.total - a.total);
+  const tope = Math.max(1, ...filas.map((f) => f.total));
+  const yo = (CAT && CAT.usuario && CAT.usuario.email) || '';
+
+  $('#d-inspectores').innerHTML = filas.length
+    ? filas.map((f) => {
+      const esYo = f.u && f.u.email === yo;
+      const ok = f.total - f.ng;
+      return `
+        <div class="insp-fila">
+          <div class="insp-nom">${esc(nombreCorto(f.u))}${esYo ? '<span class="insp-vos">vos</span>' : ''}</div>
+          <div class="insp-num">${f.total} <small>${f.ng} NG</small></div>
+          <div class="insp-barra">
+            <i class="b-ng" style="width:${(f.ng / tope) * 100}%"></i>
+            <i class="b-ok" style="width:${(ok / tope) * 100}%"></i>
+          </div>
+        </div>`;
+    }).join('')
+    : '<p class="nada">Nadie cargó nada esta semana.</p>';
+}
+
+function pintarSemana(semana) {
+  const hoy0 = inicioDe(new Date());
+  const dias = [];
+  for (let k = DIAS_VENTANA - 1; k >= 0; k--) {
+    const d = new Date(hoy0);
+    d.setDate(d.getDate() - k);
+    dias.push({ t: d.getTime(), lbl: DIA_LETRA[d.getDay()], n: 0, esHoy: k === 0 });
+  }
+
+  semana.forEach((i) => {
+    const t = inicioDe(i.registrado_en).getTime();
+    const b = dias.find((x) => x.t === t);
+    if (b) b.n++;
+  });
+
+  const tope = Math.max(1, ...dias.map((x) => x.n));
+  $('#d-dias').innerHTML = dias.map((x) => `
+    <div class="dia${x.esHoy ? ' hoy' : ''}">
+      <span class="dia-n">${x.n}</span>
+      <span class="dia-barra" style="height:${Math.round(4 + (x.n / tope) * 44)}px"></span>
+      <span class="dia-lbl">${x.lbl}</span>
+    </div>`).join('');
+}
+
+function pintarTopDesvios(hoy) {
+  const cuenta = new Map();
+  hoy.forEach((i) => (i.desvios || []).forEach((d) => {
+    cuenta.set(d.nombre, (cuenta.get(d.nombre) || 0) + 1);
+  }));
+
+  const top = [...cuenta.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
+  const tope = Math.max(1, ...top.map((t) => t[1]));
+
+  $('#d-desvios').innerHTML = top.length
+    ? top.map(([nombre, n]) => `
+      <div class="rank-fila">
+        <span>${esc(nombre)}</span>
+        <div class="rank-barra"><i style="width:${(n / tope) * 100}%"></i></div>
+        <b>${n}</b>
+      </div>`).join('')
+    : '<p class="nada">Ningún desvío cargado hoy.</p>';
 }
 
 // ---------------------------------------------------------------- formulario
@@ -250,7 +415,7 @@ function alTocarChip(e) {
  */
 function pintarNuevos() {
   $('#nuevos').innerHTML = nuevosDesvios
-    .map((n, i) => `<button type="button" class="chip sel chip-nuevo" data-i="${i}">${n} <span aria-hidden="true">&times;</span></button>`)
+    .map((n, i) => `<button type="button" class="chip sel chip-nuevo" data-i="${i}">${esc(n)} <span aria-hidden="true">&times;</span></button>`)
     .join('');
 }
 
@@ -267,7 +432,7 @@ function revisarParecidos() {
 
   const ya = Similitud.exacto(texto, CAT.desvios);
   if (ya) {
-    cont.innerHTML = `<p class="aviso-sim">Ya existe como <b>${ya.nombre}</b>.</p>
+    cont.innerHTML = `<p class="aviso-sim">Ya existe como <b>${esc(ya.nombre)}</b>.</p>
       <button type="button" class="chip" data-usar="${ya.id}">Usar ese</button>`;
     return;
   }
@@ -276,7 +441,7 @@ function revisarParecidos() {
   if (!cerca.length) { cont.innerHTML = '<p class="aviso-sim ok">No hay ninguno parecido.</p>'; return; }
 
   cont.innerHTML = '<p class="aviso-sim">¿No será alguno de estos?</p>' +
-    cerca.map((d) => `<button type="button" class="chip" data-usar="${d.id}">${d.nombre}</button>`).join('');
+    cerca.map((d) => `<button type="button" class="chip" data-usar="${d.id}">${esc(d.nombre)}</button>`).join('');
 }
 
 let tSugerencias = null;
@@ -414,11 +579,17 @@ aplicarTema(document.documentElement.getAttribute('data-tema') === 'claro');
 
 // ------------------------------------------------------------------- arranque
 
+let vistaActual = 'hoy';
+
 function cambiarVista(nombre) {
+  vistaActual = nombre;
   $$('.tab').forEach((t) => t.classList.toggle('activo', t.dataset.vista === nombre));
   $$('.vista').forEach((v) => { v.hidden = v.id !== 'v-' + nombre; });
+  // Se recarga al entrar, no una sola vez: el otro inspector pudo cargar algo
+  // mientras vos estabas en otra pantalla.
   if (nombre === 'hoy') verHoy();
   if (nombre === 'historial') verHistorial(true);
+  if (nombre === 'dia') verDia();
 }
 
 Sync.alCambiar((s) => {
@@ -429,7 +600,7 @@ Sync.alCambiar((s) => {
   else if (s.tipo === 'listo') {
     if (s.pendientes) estado(`${s.pendientes} pendiente(s)`, 'aviso');
     else { estado('Todo sincronizado', 'bueno'); setTimeout(() => estado(null), 3000); }
-    if (s.enviadas) verHoy();
+    if (s.enviadas) { verHoy(); if (vistaActual === 'dia') verDia(); }
   }
 });
 

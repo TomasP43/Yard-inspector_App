@@ -177,30 +177,43 @@ body {
 .estado.aviso { background: var(--bg-ambar); color: var(--ambar); }
 
 /* --------------------------------------------------------------------- nav */
-.tabs {
+
+/* Barra inferior. Va abajo porque la app se usa de pie y con una mano: en un
+   telefono de 6" el pulgar no llega al borde de arriba. Con icono ademas de
+   texto, porque cuatro etiquetas en 375px quedan al limite de lo legible. */
+.nav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 5;
   display: flex;
-  gap: 4px;
-  padding: 8px 10px;
-  background: var(--pagina);
-  border-bottom: 1px solid var(--borde);
-  position: sticky;
-  top: 0;
-  z-index: 4;
+  gap: 2px;
+  padding: 6px 6px calc(6px + env(safe-area-inset-bottom));
+  background: var(--panel);
+  border-top: 1px solid var(--borde);
 }
 .tab {
   flex: 1;
-  padding: 9px 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 6px 2px;
   border: 0;
   border-radius: 8px;
   background: none;
   color: var(--tenue);
-  font-size: 14px;
+  font-size: 11px;
   font-weight: 500;
   font-family: inherit;
 }
-.tab.activo { background: var(--activo); color: var(--texto); }
+.tab svg { width: 22px; height: 22px; }
+.tab.activo { background: var(--activo); color: var(--azul-txt); }
 
-main { padding: 12px 10px; }
+/* El padding de abajo deja pasar la barra: sin esto la ultima tarjeta de la
+   lista queda tapada y no hay forma de llegar a ella. */
+main { padding: 12px 10px calc(78px + env(safe-area-inset-bottom)); }
 .nota { color: var(--debil); font-size: 13px; padding: 14px 4px; }
 
 /* ----------------------------------------------------------------- filtros */
@@ -317,7 +330,8 @@ main { padding: 12px 10px; }
 .fab {
   position: fixed;
   right: 16px;
-  bottom: calc(16px + env(safe-area-inset-bottom));
+  /* Apoyado sobre la barra de navegacion, no encima de ella. */
+  bottom: calc(74px + env(safe-area-inset-bottom));
   width: 56px;
   height: 56px;
   border-radius: 50%;
@@ -521,3 +535,83 @@ main { padding: 12px 10px; }
 .aviso-sim b { color: var(--texto); }
 
 .acciones-nuevo { display: flex; justify-content: flex-end; align-items: center; gap: 10px; }
+
+/* ------------------------------------------------------------------ el dia */
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  padding: 12px 14px;
+  margin-bottom: 10px;
+}
+.panel h2 {
+  margin: 0 0 10px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--tenue);
+}
+.panel .nada { margin: 0; font-size: 13px; color: var(--debil); }
+
+/* Un renglon por inspector. La barra es comparativa, no absoluta: al lado de
+   un numero suelto, dice de un vistazo quien viene adelante. */
+.inspectores { display: flex; flex-direction: column; gap: 10px; }
+.insp-fila { display: grid; grid-template-columns: 1fr auto; gap: 4px 8px; }
+.insp-nom { font-size: 14px; font-weight: 500; }
+.insp-vos {
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--bg-azul);
+  color: var(--azul-txt);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.insp-num { font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.insp-num small { color: var(--debil); font-weight: 400; font-size: 11px; }
+.insp-barra {
+  grid-column: 1 / -1;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--panel-2);
+  overflow: hidden;
+  display: flex;
+}
+.insp-barra i { display: block; height: 100%; }
+.insp-barra .b-ng { background: var(--rojo); }
+.insp-barra .b-ok { background: var(--verde); }
+
+/* Siete columnas fijas: la semana siempre ocupa lo mismo, aunque falten dias
+   sin carga. Un grafico que se encoge no se puede comparar de un dia al otro. */
+.dias { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; align-items: end; }
+.dia { display: flex; flex-direction: column; align-items: center; gap: 5px; }
+.dia-barra {
+  width: 100%;
+  min-height: 3px;
+  border-radius: 4px 4px 2px 2px;
+  background: var(--borde-2);
+}
+.dia.hoy .dia-barra { background: var(--azul-alt); }
+.dia-n { font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--tenue); }
+.dia.hoy .dia-n { color: var(--texto); }
+.dia-lbl { font-size: 10px; color: var(--debil); text-transform: uppercase; }
+.dia.hoy .dia-lbl { color: var(--azul-txt); font-weight: 600; }
+
+.ranking { display: flex; flex-direction: column; gap: 8px; }
+.rank-fila { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.rank-fila span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rank-fila b { font-variant-numeric: tabular-nums; }
+.rank-barra { width: 64px; height: 5px; border-radius: 999px; background: var(--panel-2); overflow: hidden; }
+.rank-barra i { display: block; height: 100%; background: var(--ambar); }
+
+/* En pantalla grande la app no se estira a lo ancho: lineas de 1200px son
+   ilegibles y las tarjetas quedan vacias por dentro. */
+@media (min-width: 720px) {
+  main { max-width: 680px; margin: 0 auto; }
+  .nav { justify-content: center; }
+  .nav .tab { max-width: 140px; }
+}
