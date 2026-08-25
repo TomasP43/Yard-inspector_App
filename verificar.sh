@@ -142,6 +142,15 @@ chequear "no se duplico en la DB" "$(sql "SELECT COUNT(*) FROM inspeccion WHERE 
 
 chequear "patrulla del dia trae el NG" "$(curl -s "$API/api/inspecciones/hoy" | grep -c "$UUID")" "1"
 
+# Lo que pide la app de verdad. El front nuevo no llama a /hoy: Tablero y Hoy
+# salen de esta ventana, que ademas trae los OK. Sin este chequeo, verificar.sh
+# probaba endpoints que la PWA ya no usa y no probaba los que si.
+DESDE=$(date -u -d '2 days ago' +%Y-%m-%dT00:00:00Z 2>/dev/null || date -u -v-2d +%Y-%m-%dT00:00:00Z)
+chequear "ventana por fecha (tablero y hoy)" \
+  "$(curl -s "$API/api/inspecciones?desde=$DESDE&limite=500" | grep -c "$UUID")" "1"
+chequear "  y respeta el corte: nada de 2029" \
+  "$(curl -s "$API/api/inspecciones?desde=2029-01-01T00:00:00Z&limite=500" | grep -c "$UUID")" "0"
+
 echo
 echo "== Desvios fuera del catalogo =="
 # La colacion de la tabla ignora acentos: pedir el desvio sin tilde tiene que
@@ -171,6 +180,13 @@ payload_ok=$(printf '{"uuid":"%s","registrado_en":"%s","responsable_id":%s,"equi
 curl -s -o /dev/null -X POST "$API/api/inspecciones" -H 'Content-Type: application/json' -d "$payload_ok"
 chequear "el OK NO aparece en la patrulla del dia" "$(curl -s "$API/api/inspecciones/hoy" | grep -c "$UUID_OK")" "0"
 chequear "el OK SI aparece en el historial" "$(curl -s "$API/api/inspecciones?equipo=9999" | grep -c "$UUID_OK")" "1"
+
+# El detalle por equipo: es la pantalla que se abre tocando cualquier fila.
+resumen=$(curl -s "$API/api/inspecciones/equipo/9999")
+chequear "resumen del equipo cuenta los dos" "$(echo "$resumen" | grep -c '"total":2')" "1"
+chequear "  y separa el NG del OK" "$(echo "$resumen" | grep -c '"ng":1')" "1"
+chequear "equipo inexistente da 404" \
+  "$(curl -s -o /dev/null -w '%{http_code}' "$API/api/inspecciones/equipo/987654")" "404"
 
 echo
 echo "==> Limpiando datos de prueba"

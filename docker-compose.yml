@@ -12,8 +12,6 @@ services:
       DB_PORT: 3306
       DB_NAME: ${DB_NAME:-yard}
       PORT: 3002
-      # Prefijo bajo el que nginx de ttfa publica esta app.
-      BASE_PATH: /yard
     volumes:
       # Fotos de las inspecciones. Fuera de la imagen para que sobrevivan al deploy.
       - yard_uploads:/app/uploads

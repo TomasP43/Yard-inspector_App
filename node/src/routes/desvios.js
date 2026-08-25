@@ -9,6 +9,20 @@ const router = express.Router();
 router.use(requiereUsuario);
 
 /**
+ * **La PWA no llama a ninguna de estas dos rutas.**
+ *
+ * En la app el desvio nuevo no se crea aparte: viaja como texto junto a la
+ * inspeccion (`desvios_nuevos`) y lo resuelve el servidor al sincronizar,
+ * dentro de la misma transaccion. Tiene que ser asi porque se escribe sin
+ * senal, cuando no hay forma de consultar el catalogo; y ademas evita que
+ * quede un desvio suelto si despues la inspeccion se descarta.
+ *
+ * Se mantienen porque son la version autoritativa de la comprobacion --
+ * `public/js/similitud.js` es el espejo offline de esto -- y porque un panel
+ * de escritorio va a necesitarlas. No son el camino del inspector.
+ */
+
+/**
  * Candidatos parecidos a un texto. Lo consulta la app antes de dejar crear un
  * desvio nuevo, para poder mostrar "esto ya existe con otro nombre".
  *
