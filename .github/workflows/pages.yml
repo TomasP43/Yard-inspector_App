@@ -9,14 +9,16 @@
 name: Demo en Pages
 
 on:
+  # Sin filtro de `paths` a propósito. Lo tuvo —solo node/public/ y
+  # tools/preview/— y el workflow no se disparó en dos pushes que sí tocaban
+  # esas rutas. No llegué a entender por qué; el YAML estaba bien indentado y
+  # los archivos coincidían.
+  #
+  # El build tarda 23 segundos. Publicar de más en un push que no tocó el front
+  # cuesta eso; no publicar cuando sí lo tocó cuesta mirar una demo vieja y no
+  # enterarse. Se corre siempre.
   push:
     branches: [main]
-    # Solo cuando cambia el front o el armador. Un cambio en migrations/ o en
-    # node/src/ no toca la demo, y republicar por nada ensucia el historial.
-    paths:
-      - 'node/public/**'
-      - 'tools/preview/**'
-      - '.github/workflows/pages.yml'
   # Para poder publicar a mano desde la pestaña Actions.
   workflow_dispatch:
 
