@@ -177,7 +177,8 @@
       let filas = INSP.slice();
       if (q.get('equipo')) filas = filas.filter((i) => i.equipo.codigo === Number(q.get('equipo')));
       if (q.get('resultado')) filas = filas.filter((i) => i.resultado === q.get('resultado'));
-      if (q.get('tipo')) filas = filas.filter((i) => i.tipo && i.tipo.id === Number(q.get('tipo')));
+      // A proposito NO se filtra por tipo: el backend real tampoco lo hace.
+      // Un preview que filtra mejor que produccion esconde justo el problema.
       if (q.get('desde')) {
         const d = new Date(q.get('desde'));
         filas = filas.filter((i) => new Date(i.registrado_en) >= d);

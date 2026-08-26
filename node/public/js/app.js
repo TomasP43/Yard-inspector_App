@@ -37,6 +37,7 @@ let equipoDetalle = null;
 let soloNg = false;
 let filtro = 'Todos';
 let offsetHistorial = 0;
+let vistosHistorial = 0;   // cuantos pasaron el filtro por tipo, acumulado
 
 // El formulario vive en un objeto y no en el DOM: hay estado (zona actual,
 // desvios marcados, resoluciones) que no corresponde a ningun input.
@@ -432,36 +433,49 @@ async function verHistorial(reiniciar) {
   $('#f-chips').innerHTML = ['Todos', 'Solo NG', ...TIPOS].map((n) =>
     `<button type="button" class="tag${filtro === n ? ' sel' : ''}" data-f="${esc(n)}">${esc(n)}</button>`).join('');
 
-  // Todos los filtros van al servidor. Filtrar del lado del cliente sobre la
-  // pagina ya traida daba una lista corta con un total que era de otra cosa:
-  // "Seguridad" mostraba 7 filas y decia 376. Un numero que no corresponde es
-  // peor que no mostrar ninguno.
-  let query = '';
-  if (filtro === 'Solo NG') {
-    query = '&resultado=NG';
-  } else if (TIPOS.includes(filtro)) {
-    const t = (CAT && CAT.tipos_desvio || []).find((x) => x.nombre === filtro);
-    if (t) query = '&tipo=' + t.id;
-  }
+  // El backend filtra por resultado, no por tipo de control. Pedirle
+  // `resultado=NG` cuando el filtro es un tipo achica lo que viaja: solo los NG
+  // tienen tipo.
+  const porTipo = TIPOS.includes(filtro);
+  const query = (filtro === 'Solo NG' || porTipo) ? '&resultado=NG' : '';
   const url = `api/inspecciones?limite=50&offset=${offsetHistorial}${query}`;
 
   try {
     const d = await pedir(url);
     const cont = $('#f-lista');
-    if (reiniciar) cont.innerHTML = '';
+    if (reiniciar) { cont.innerHTML = ''; vistosHistorial = 0; }
 
-    cont.insertAdjacentHTML('beforeend', grupos(d.inspecciones, (i) =>
+    // El tipo se filtra aca, sobre lo que ya llego, porque el backend todavia
+    // no lo acepta (esta pedido en REQUERIMIENTOS.md).
+    //
+    // El problema original no era filtrar en el cliente: era el numero de
+    // arriba. Decia "376 controles registrados" al lado de una lista de 7, y se
+    // leia como que en Seguridad habia 376. Mientras el filtro sea parcial el
+    // texto tiene que decir sobre que esta contando; cuando ya se trajo todo,
+    // el numero es exacto y se dice sin vueltas.
+    const items = porTipo
+      ? d.inspecciones.filter((i) => i.tipo && i.tipo.nombre === filtro)
+      : d.inspecciones;
+
+    cont.insertAdjacentHTML('beforeend', grupos(items, (i) =>
       fmtDia(i.registrado_en) + ' · ' + turno(i.registrado_en).replace('Turno ', '')));
 
     offsetHistorial += d.inspecciones.length;
-    $('#mas').hidden = offsetHistorial >= d.total;
-    // El texto dice de que es el numero. "376 controles" al lado de una lista
-    // filtrada se lee como si la lista tuviera 376.
+    vistosHistorial += items.length;
+    const completo = offsetHistorial >= d.total;
+    $('#mas').hidden = completo;
+
     $('#f-meta').textContent =
       filtro === 'Todos' ? `${d.total} controles registrados`
       : filtro === 'Solo NG' ? `${d.total} NG`
-      : `${d.total} de ${filtro}`;
-    if (!cont.innerHTML) cont.innerHTML = '<p class="nota centro">Sin resultados con este filtro.</p>';
+      : completo ? `${vistosHistorial} de ${filtro}`
+      : `${vistosHistorial} de ${filtro} en los ${offsetHistorial} NG más recientes`;
+
+    if (!vistosHistorial) {
+      cont.innerHTML = completo
+        ? '<p class="nota centro">Sin resultados con este filtro.</p>'
+        : `<p class="nota centro">Ninguno de ${esc(filtro)} en los ${offsetHistorial} NG más recientes. Probá cargar más.</p>`;
+    }
   } catch (e) {
     $('#f-lista').innerHTML = '<p class="nota centro">Sin conexión. El historial completo necesita señal.</p>';
     $('#mas').hidden = true;

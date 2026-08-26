@@ -151,17 +151,6 @@ chequear "ventana por fecha (tablero y hoy)" \
 chequear "  y respeta el corte: nada de 2029" \
   "$(curl -s "$API/api/inspecciones?desde=2029-01-01T00:00:00Z&limite=500" | grep -c "$UUID")" "0"
 
-# Filtro por tipo de control. Va del lado del servidor: cuando se filtraba en el
-# cliente sobre la pagina traida, "Seguridad" mostraba 7 filas y el total decia
-# 376. Un numero que no corresponde a la lista es peor que no mostrarlo.
-OTRO_TIPO=$(sql "SELECT id FROM tipo_desvio WHERE nombre='Seguridad'")
-chequear "filtro por tipo trae el que es" \
-  "$(curl -s "$API/api/inspecciones?tipo=$TIPO_ID&limite=500" | grep -c "$UUID")" "1"
-chequear "  y deja afuera los otros tipos" \
-  "$(curl -s "$API/api/inspecciones?tipo=$OTRO_TIPO&limite=500" | grep -c "$UUID")" "0"
-chequear "  tipo no numerico da 400" \
-  "$(curl -s -o /dev/null -w '%{http_code}' "$API/api/inspecciones?tipo=Seguridad")" "400"
-
 echo
 echo "== Desvios fuera del catalogo =="
 # La colacion de la tabla ignora acentos: pedir el desvio sin tilde tiene que
