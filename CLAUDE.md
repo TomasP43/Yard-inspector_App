@@ -1,6 +1,15 @@
 # yard-inspector
 
-App donde los inspectores de playa cargan observaciones (patrullas) sobre camiones y bateas. Reemplaza la app de **AppSheet** que corre hoy sobre un Google Form + Sheets. Se despliega como servicio independiente en el mismo VPS que **ttfa-docker**, siguiendo el mismo patron que `tenko-docker`.
+App donde los inspectores de playa cargan observaciones (patrullas) sobre camiones y bateas. Reemplaza la app de **AppSheet** que corre hoy sobre un Google Form + Sheets.
+
+**Donde corre hoy: solo el front, en GitHub Pages, con datos inventados.**
+
+- https://tomasp43.github.io/Yard-inspector_App/ — la PWA del inspector
+- https://tomasp43.github.io/Yard-inspector_App/gerencia/ — el tablero
+
+Hubo un despliegue completo en un VPS con Coolify, detras del `auth_request` de ttfa. **Se dio de baja el 26-08-2026** y el workflow que lo disparaba salio del repo. Hoy **no hay backend ni base andando en ningun lado**: `node/src/`, `migrations/` y los compose quedan como referencia de que forma tienen las respuestas y que reglas hay que respetar, no como algo que este corriendo.
+
+Lo que el front necesita del backend esta en `REQUERIMIENTOS.md`.
 
 ## Stack
 

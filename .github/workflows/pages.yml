@@ -4,8 +4,8 @@
 # local: las dos pantallas con datos inventados, sin backend ni base. Sirve
 # para compartir cómo va quedando sin que nadie instale nada.
 #
-# No reemplaza al deploy real: eso lo hace deploy.yml contra Coolify, con el
-# backend y la base de verdad. Los dos corren en cada push a main y no se pisan.
+# Es el unico despliegue del proyecto. Hubo uno a un VPS con Coolify; se dio de
+# baja el 26-08-2026 y el workflow que lo disparaba salio del repo.
 name: Demo en Pages
 
 on:
