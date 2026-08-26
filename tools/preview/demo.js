@@ -17,7 +17,7 @@
   const css = `
     .demo-aviso {
       position: fixed;
-      left: 12px;
+      right: 12px;
       bottom: 12px;
       z-index: 9999;
       display: flex;
@@ -46,8 +46,7 @@
       padding: 0 2px;
     }
     .demo-aviso button:hover { opacity: 1; }
-    /* En el telefono la barra de pestanas ocupa el borde de abajo. */
-    @media (max-width: 720px) { .demo-aviso { bottom: 86px; } }
+
   `;
 
   const estilo = document.createElement('style');
@@ -66,7 +65,13 @@
     try { sessionStorage.setItem(CLAVE, '1'); } catch (e) { /* modo privado */ }
   });
 
-  const poner = () => document.body.appendChild(caja);
+  // La PWA tiene una barra de pestanas fija abajo; el tablero no. En vez de
+  // adivinar con un breakpoint, se mide: si esta, el aviso se apoya encima.
+  const poner = () => {
+    document.body.appendChild(caja);
+    const tabs = document.querySelector('.tabs');
+    if (tabs) caja.style.bottom = (tabs.getBoundingClientRect().height + 12) + 'px';
+  };
   if (document.body) poner();
   else document.addEventListener('DOMContentLoaded', poner);
 })();

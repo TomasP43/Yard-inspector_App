@@ -218,7 +218,10 @@
   window.TABLERO = {
     meta: {
       usuario: { nombre: 'Usuario Demo', email: 'demo@ejemplo.com' },
-      total: 4268,
+      // El historico completo tiene que ser >= lo del ultimo año, obviamente.
+      // Lo estaba fijando a mano y quedaba "4961 en 12 meses / 4268 historicos",
+      // que es imposible y se leia en pantalla.
+      total: totalAnual + 938,
       updated: `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`,
       curMonthLabel: `${MESES[11]} ${hoy.getFullYear()}`,
       priorMonthLabel: MESES[10]
