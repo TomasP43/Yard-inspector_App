@@ -9,14 +9,15 @@
 name: Demo en Pages
 
 on:
-  # Sin filtro de `paths` a propósito. Lo tuvo —solo node/public/ y
-  # tools/preview/— y el workflow no se disparó en dos pushes que sí tocaban
-  # esas rutas. No llegué a entender por qué; el YAML estaba bien indentado y
-  # los archivos coincidían.
+  # Sin filtro de `paths`. El build tarda ~25 segundos: publicar de más en un
+  # push que no tocó el front cuesta eso, y filtrar es una forma más de
+  # equivocarse.
   #
-  # El build tarda 23 segundos. Publicar de más en un push que no tocó el front
-  # cuesta eso; no publicar cuando sí lo tocó cuesta mirar una demo vieja y no
-  # enterarse. Se corre siempre.
+  # Nota para el próximo que mire esto: **las ejecuciones pueden tardar varios
+  # minutos en agendarse.** Llegué a creer que el workflow no se disparaba —
+  # cinco pushes sin una sola ejecución a la vista— y era cola de GitHub;
+  # aparecieron todas juntas después. Si no la ves enseguida, esperá antes de
+  # tocar nada.
   push:
     branches: [main]
   # Para poder publicar a mano desde la pestaña Actions.
