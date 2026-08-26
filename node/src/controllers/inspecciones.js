@@ -238,6 +238,18 @@ async function historial(req, res, next) {
       if (req.query.hasta) where.registrado_en[Op.lte] = new Date(req.query.hasta);
     }
 
+    // Tipo de control. Tiene que filtrar ACA y no en el cliente: filtrando sobre
+    // la pagina ya traida, "Seguridad" mostraba 7 filas y el total decia 376,
+    // que es el sin filtrar. El inspector leia que habia 7 y habia cuarenta.
+    //
+    // Un OK no tiene tipo, asi que este filtro ya deja afuera los OK sin que
+    // haga falta pedir resultado=NG ademas.
+    if (req.query.tipo) {
+      const id = Number(req.query.tipo);
+      if (!Number.isInteger(id)) return res.status(400).json({ error: 'tipo_invalido' });
+      where.tipo_desvio_id = id;
+    }
+
     const include = INCLUDES.map((i) => ({ ...i }));
     if (req.query.equipo) {
       const codigo = Number(req.query.equipo);

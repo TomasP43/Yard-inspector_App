@@ -396,26 +396,35 @@ async function verHistorial(reiniciar) {
   $('#f-chips').innerHTML = ['Todos', 'Solo NG', ...TIPOS].map((n) =>
     `<button type="button" class="tag${filtro === n ? ' sel' : ''}" data-f="${esc(n)}">${esc(n)}</button>`).join('');
 
-  // El backend filtra por resultado; por tipo de control no, asi que ese caso
-  // se resuelve aca sobre la pagina traida.
-  const porResultado = filtro === 'Solo NG' ? '&resultado=NG' : '';
-  const url = `api/inspecciones?limite=50&offset=${offsetHistorial}${porResultado}`;
+  // Todos los filtros van al servidor. Filtrar del lado del cliente sobre la
+  // pagina ya traida daba una lista corta con un total que era de otra cosa:
+  // "Seguridad" mostraba 7 filas y decia 376. Un numero que no corresponde es
+  // peor que no mostrar ninguno.
+  let query = '';
+  if (filtro === 'Solo NG') {
+    query = '&resultado=NG';
+  } else if (TIPOS.includes(filtro)) {
+    const t = (CAT && CAT.tipos_desvio || []).find((x) => x.nombre === filtro);
+    if (t) query = '&tipo=' + t.id;
+  }
+  const url = `api/inspecciones?limite=50&offset=${offsetHistorial}${query}`;
 
   try {
     const d = await pedir(url);
     const cont = $('#f-lista');
     if (reiniciar) cont.innerHTML = '';
 
-    const items = TIPOS.includes(filtro)
-      ? d.inspecciones.filter((i) => esNg(i) && i.tipo && i.tipo.nombre === filtro)
-      : d.inspecciones;
-
-    cont.insertAdjacentHTML('beforeend', grupos(items, (i) =>
+    cont.insertAdjacentHTML('beforeend', grupos(d.inspecciones, (i) =>
       fmtDia(i.registrado_en) + ' · ' + turno(i.registrado_en).replace('Turno ', '')));
 
     offsetHistorial += d.inspecciones.length;
     $('#mas').hidden = offsetHistorial >= d.total;
-    $('#f-meta').textContent = `${d.total} controles registrados`;
+    // El texto dice de que es el numero. "376 controles" al lado de una lista
+    // filtrada se lee como si la lista tuviera 376.
+    $('#f-meta').textContent =
+      filtro === 'Todos' ? `${d.total} controles registrados`
+      : filtro === 'Solo NG' ? `${d.total} NG`
+      : `${d.total} de ${filtro}`;
     if (!cont.innerHTML) cont.innerHTML = '<p class="nota centro">Sin resultados con este filtro.</p>';
   } catch (e) {
     $('#f-lista').innerHTML = '<p class="nota centro">Sin conexión. El historial completo necesita señal.</p>';
