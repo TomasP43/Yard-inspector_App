@@ -55,6 +55,17 @@ const colorPct = (v) =>
 
 const signo = (n) => (n >= 0 ? '+' : '') + n;
 
+/** Iniciales para el avatar, mismo criterio que la PWA ("TP"). */
+function iniciales(u) {
+  if (!u) return '';
+  const n = (u.nombre || '').trim();
+  if (n) {
+    const p = n.split(/\s+/).filter(Boolean);
+    return (p.length > 1 ? p[0][0] + p[1][0] : p[0].slice(0, 2)).toUpperCase();
+  }
+  return (u.email || '').split('@')[0].slice(0, 2).toUpperCase();
+}
+
 // ---------------------------------------------------------------------- tema
 
 function aplicarTema(claro) {
@@ -82,6 +93,12 @@ function pintarLateral() {
       ? `<span class="it activo">${ico(i.ico, 16)}<span>${esc(i.txt)}</span></span>`
       : `<a href="${esc(i.href)}">${ico(i.ico, 16)}<span>${esc(i.txt)}</span></a>`
   ).join('');
+
+  // Quien esta mirando. Viene con el tablero: es el mismo usuario de la sesion
+  // de ttfa, no se elige.
+  const u = (D && D.meta && D.meta.usuario) || null;
+  $('#usuario').textContent = u ? (u.email || u.nombre || '') : '';
+  $('#avatar').textContent = u ? iniciales(u) : '';
 
   $('#exportar').innerHTML = ico('download', 16);
   $('#cerrar-detalle').innerHTML = ico('x', 14);
@@ -574,6 +591,7 @@ function pintar() {
     ? `Últimos 12 meses · ${D.meta.total} controles históricos`
     : `${D.meta.curMonthLabel} · actualizado ${fmtFecha(D.meta.updated)}`;
 
+  pintarLateral();
   pintarPeriodo();
   pintarKpis();
   pintarEvolucion();

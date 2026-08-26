@@ -198,13 +198,17 @@
     monthly: ['jun', 'jul', 'ago'].map((m) => ({ label: m, n: entre(40, 300), pct: entre(28, 70) }))
   }));
 
+  // Nombres inventados a proposito. El preview se publica en una web abierta y
+  // no corresponde poner nombres de gente real al lado de "52% NG, +10 pp vs.
+  // el promedio del equipo": eso es la evaluacion de una persona.
   const auditores = [
-    { name: 'L. Pintos', n: 896, ng: 468, pct: 52 },
-    { name: 'Almirón', n: 692, ng: 292, pct: 42 },
-    { name: 'M. Camejo', n: 130, ng: 83, pct: 64 },
-    // A proposito: en el historico real "Almiron" sin tilde figura como una
-    // persona distinta de "Almirón". Es la misma. Que se vea en el preview.
-    { name: 'Almiron', n: 14, ng: 11, pct: 79 }
+    { name: 'A. Giménez', n: 896, ng: 468, pct: 52 },
+    { name: 'R. Ledesma', n: 692, ng: 292, pct: 42 },
+    { name: 'M. Sosa', n: 130, ng: 83, pct: 64 },
+    // El apellido repetido sin tilde es el caso real que hay que ver: en el
+    // historico la misma persona figura dos veces, escrita distinto, y el
+    // tablero la muestra como dos auditores. Ver YI-005.
+    { name: 'A. Gimenez', n: 14, ng: 11, pct: 79 }
   ];
   const totalAud = auditores.reduce((a, x) => a + x.n, 0);
   const teamPct = Math.round((auditores.reduce((a, x) => a + x.ng, 0) / totalAud) * 100);
@@ -213,6 +217,7 @@
 
   window.TABLERO = {
     meta: {
+      usuario: { nombre: 'Usuario Demo', email: 'demo@ejemplo.com' },
       total: 4268,
       updated: `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`,
       curMonthLabel: `${MESES[11]} ${hoy.getFullYear()}`,

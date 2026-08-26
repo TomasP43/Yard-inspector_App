@@ -24,9 +24,11 @@
   const TRAFICOS = ['Brasil', 'Autoport', 'Chile', 'Paraguay', 'Bolivia', 'CAT', 'Uruguay', 'Green Mile'];
   const TIPOS = ['5s', 'Mantenimiento', 'Seguridad', 'Calidad'];
   const DEMORAS = ['Cargo', 'Se retira', 'Demora en carga'];
+  // Nombres inventados a proposito. El preview se publica en una web abierta
+  // y no corresponde poner nombres de gente real al lado de sus metricas.
   const AUDITORES = [
-    { id: 1, nombre: 'Lucas Pintos', email: 'lpintos@ttfasa.com' },
-    { id: 2, nombre: 'Ariel Almirón', email: 'aalmiron@ttfasa.com' }
+    { id: 1, nombre: 'Inspector Uno', email: 'inspector1@ejemplo.com' },
+    { id: 2, nombre: 'Inspector Dos', email: 'inspector2@ejemplo.com' }
   ];
 
   // El catalogo sale de las zonas, que es el mismo mapa que usa la app.
@@ -43,12 +45,12 @@
   const equipos = Array.from({ length: 60 }, () => entre(120, 7999)).sort((a, b) => a - b);
 
   const CATALOGOS = {
-    usuario: { email: 'tpozo@ttfasa.com', nombre: 'Tomás Pozo' },
+    usuario: { email: 'demo@ejemplo.com', nombre: 'Usuario Demo' },
     responsables,
     tipos_desvio: tipos,
     desvios,
     demoras,
-    controladores: ['Feria', 'Cordero', 'Nores'].map((n, i) => ({ id: i + 1, nombre: n })),
+    controladores: ['Control A', 'Control B', 'Control C'].map((n, i) => ({ id: i + 1, nombre: n })),
     estados_control: ['Controlado', 'Solicitado controlar en TASA'].map((n, i) => ({ id: i + 1, nombre: n })),
     equipos: [...new Set(equipos)]
   };

@@ -1,0 +1,69 @@
+# Publica la demo del front en GitHub Pages.
+#
+# Es la MISMA copia que arma tools/preview/armar.sh para mirar el front en
+# local: las dos pantallas con datos inventados, sin backend ni base. Sirve
+# para compartir cómo va quedando sin que nadie instale nada.
+#
+# No reemplaza al deploy real: eso lo hace deploy.yml contra Coolify, con el
+# backend y la base de verdad. Los dos corren en cada push a main y no se pisan.
+name: Demo en Pages
+
+on:
+  push:
+    branches: [main]
+    # Solo cuando cambia el front o el armador. Un cambio en migrations/ o en
+    # node/src/ no toca la demo, y republicar por nada ensucia el historial.
+    paths:
+      - 'node/public/**'
+      - 'tools/preview/**'
+      - '.github/workflows/pages.yml'
+  # Para poder publicar a mano desde la pestaña Actions.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Si se pushea dos veces seguidas, que gane el último y no queden dos deploys
+# peleando por el mismo sitio.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  publicar:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # armar.sh es bash + perl, los dos vienen en el runner. No hace falta
+      # Node ni instalar nada: el front es vanilla.
+      - name: Armar la demo
+        run: bash tools/preview/armar.sh sitio
+
+      # La demo cuelga de /<repo>/ y no de la raíz del dominio. Todo el front
+      # usa rutas relativas justamente por esto, así que no hay que reescribir
+      # nada — pero conviene dejarlo verificado y no asumirlo.
+      - name: Verificar que no haya rutas absolutas
+        run: |
+          if grep -rn 'src="/\|href="/' sitio --include=*.html | grep -v '//'; then
+            echo "Hay rutas absolutas: bajo un subpath de Pages se rompen."
+            exit 1
+          fi
+          echo "todas relativas, ok"
+
+      # Sin esto Pages corre Jekyll y se saltea cualquier archivo que empiece
+      # con guion bajo.
+      - name: Desactivar Jekyll
+        run: touch sitio/.nojekyll
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: sitio
+      - id: deploy
+        uses: actions/deploy-pages@v4

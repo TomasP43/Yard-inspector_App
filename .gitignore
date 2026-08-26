@@ -14,3 +14,4 @@ Thumbs.db
 *.xlsx
 # Copia de trabajo para mirar el front con datos falsos. No es codigo.
 .preview/
+sitio/
