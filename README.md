@@ -58,27 +58,11 @@ docker compose -f docker-compose.yml -f docker-compose.dev.yml up
 
 Las migraciones las aplica **el backend al arrancar**, llevando registro en `migracion_aplicada`. Agregar una es dejar el `.sql` en `migrations/`. Para rehacer la base desde cero: `docker compose down -v`. Ver [CLAUDE.md](CLAUDE.md#migraciones) para el detalle.
 
-## Mirar el front sin levantar nada
+## Cómo probarlo
 
-No hace falta Docker ni la base: `tools/preview/` monta una copia de la PWA con datos falsos que imitan la forma real de la API.
+**Ahora mismo no hay herramientas en el repo para eso.** Había dos —un preview con datos falsos que no necesitaba Docker, y un chequeo de humo contra el VPS— y se sacaron el 26-08-2026 para revisarlas con el equipo. Quedaron en el historial de git.
 
-```bash
-bash tools/preview/armar.sh
-```
-
-```bash
-perl tools/preview/serve.pl .preview 4173
-```
-
-Y abrís http://127.0.0.1:4173/. `.preview/` está en `.gitignore` y se regenera entera en cada corrida, así que nunca queda vieja.
-
-## Verificar que quedó bien
-
-```bash
-bash verificar.sh
-```
-
-Chequeo de humo completo: esquema, catálogos, el `CHECK` constraint, la API, los 4.018 registros migrados y —lo que más importa— que **reenviar una inspección no la duplique**. Reporta OK/FALLA por línea.
+Hasta que vuelvan, la única forma de ver la app funcionando es desplegarla.
 
 ## Estructura
 
@@ -87,10 +71,7 @@ Chequeo de humo completo: esquema, catálogos, el `CHECK` constraint, la API, lo
 │   ├── src/            # API Express + Sequelize
 │   └── public/         # PWA (app shell, service worker, cola)
 ├── migrations/         # 001 esquema · 002 fotos · 003 histórico · 004 desvíos
-├── tools/
-│   ├── preview/        # mirar el front con datos falsos
-│   └── ...             # ETL y migración de fotos desde AppSheet
-├── verificar.sh
+├── REQUERIMIENTOS.md   # lo que el backend tiene que dar
 ├── DECISIONS.md        # por qué el proyecto es como es
 └── CLAUDE.md           # decisiones de diseño en detalle
 ```
@@ -111,7 +92,7 @@ El detalle completo, con los números, está en [CLAUDE.md](CLAUDE.md).
 
 Migrados **4.018 registros** (721 OK, 3.297 NG, feb-2025 a ago-2026) sobre 569 camiones. Las 34 filas descartadas no tenían Timestamp ni ningún otro campo.
 
-Las **8.747 fotos** siguen en Google Drive. Sus registros ya están migrados apuntando a dónde estaban, con `ruta` en NULL — la vista `v_fotos_pendientes` lleva la cuenta. Se traen de Drive directo al VPS con `rclone`; el procedimiento está en [tools/README.md](tools/README.md).
+Las **8.747 fotos** siguen en Google Drive. Sus registros ya están migrados apuntando a dónde estaban, con `ruta` en NULL — la vista `v_fotos_pendientes` lleva la cuenta. Se traen de Drive directo al VPS con `rclone`; el procedimiento estaba en `tools/README.md`, que salió del repo el 26-08-2026 y está en el historial de git.
 
 ## Integración con ttfa-docker
 

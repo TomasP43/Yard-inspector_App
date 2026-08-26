@@ -76,9 +76,7 @@ yard-inspector/
 │   │   └── js/app.js        # UI
 │   └── Dockerfile
 ├── migrations/              # 001 esquema · 002 fotos · 003 historico · 004 desvios
-├── tools/
-│   ├── preview/             # mirar el front con datos falsos
-│   └── ...                  # ETL desde AppSheet y traida de fotos
+├── REQUERIMIENTOS.md        # lo que el backend tiene que dar
 ├── docker-compose.yml
 ├── docker-compose.dev.yml
 └── .env.example
@@ -143,15 +141,15 @@ Dos partes que no existian en AppSheet:
 
 Los campos que el diseño no muestra (`controlador`, `estado_control`) **no se sacaron**: quedan plegados en "Mas datos del control". La operacion los sigue usando; lo que cambio es que ya no estorban el camino rapido.
 
-### Mirar el front sin levantar nada
+### Como mirar el front andando
 
-No hace falta Docker ni la base. `js/mock.js` + `data/patrulla-data.js` (los datos del mockup) interceptan `fetch` y devuelven la forma real de la API:
+**Hoy no hay con que**, y conviene saberlo antes de dar algo por bueno.
 
-```bash
-bash tools/preview/armar.sh && perl tools/preview/serve.pl .preview 4173
-```
+Hubo dos herramientas: `tools/preview/`, que montaba la PWA con datos falsos sin Docker ni base, y `verificar.sh`, el chequeo de humo contra el VPS. Se sacaron del repo el 2026-08-26 para revisarlas con el equipo. Estan en el historial de git.
 
-`.preview/` esta en `.gitignore`. **Es la unica forma que hay hoy de ver la app antes de desplegarla**, y vale la pena usarla: los tres bugs mas caros del proyecto (el 502, el helper de IndexedDB, los modales que tapaban la pantalla) pasaron todos los chequeos estaticos y se veian a simple vista.
+No es un detalle menor. Los bugs mas caros de este proyecto **pasaron todos los chequeos estaticos y se veian a simple vista**: el 502 por una ruta mal resuelta, el helper de IndexedDB que devolvia el request en vez del resultado, los modales que tapaban la pantalla, y tres promesas que no se resolvian nunca. Ninguno daba error en consola.
+
+Mientras no haya con que ejecutar, al reportar hay que **decir explicitamente que algo se leyo y no se corrio**.
 
 ## Desarrollo local
 
