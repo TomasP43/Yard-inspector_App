@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#101113">
+<meta name="color-scheme" content="dark light">
+<title>Tablero de gerencia — Yard Inspector</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+
+<link rel="stylesheet" href="../css/tokens.css">
+<link rel="stylesheet" href="./css/gerencia.css">
+<script>
+try {
+  if (localStorage.getItem('yard-tema') === 'claro') {
+    document.documentElement.setAttribute('data-tema', 'claro');
+  }
+} catch (e) {}
+</script>
+</head>
+<body>
+
+<div class="capa">
+
+  <!-- ------------------------------------------------------------- lateral -->
+  <nav class="lateral">
+    <div class="marca">
+      <span class="cuadro" aria-hidden="true"></span>
+      <div>
+        <b>TTFA</b>
+        <small>Transport Furlong</small>
+      </div>
+    </div>
+
+    <div class="menu" id="menu"></div>
+
+    <div class="pie">
+      <span class="eq-label">Playa Zárate</span>
+      <div class="usuario">
+        <span class="avatar" id="avatar"></span>
+        <span id="usuario">—</span>
+        <button id="tema" class="ib sm" type="button" aria-label="Cambiar de tema"></button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ----------------------------------------------------------- principal -->
+  <div class="principal">
+
+    <header class="cabecera">
+      <div class="titulos">
+        <b>Patrulla de calidad — tablero de gerencia</b>
+        <span class="eyebrow" id="subtitulo"></span>
+      </div>
+      <div class="segmento" id="periodo"></div>
+      <button id="exportar" class="ib" type="button" aria-label="Exportar a CSV" title="Exportar a CSV"></button>
+    </header>
+
+    <div class="tablero" id="tablero">
+
+      <p class="nota centro" id="cargando">Cargando el período…</p>
+
+      <div id="contenido" hidden>
+
+        <!-- KPIs -->
+        <div class="rejilla-kpi" id="kpis"></div>
+
+        <!-- Evolución -->
+        <section class="card">
+          <header>
+            <span class="eq-label" id="evo-eyebrow"></span>
+            <b id="evo-titulo">Evolución</b>
+          </header>
+          <div class="evo">
+            <div class="eje" id="evo-eje"></div>
+            <div class="evo-cuerpo">
+              <div class="evo-plot" id="evo-plot"></div>
+              <div class="evo-pie" id="evo-pie"></div>
+            </div>
+          </div>
+          <div class="leyenda">
+            <span class="ll"><i class="c-ctrl"></i>Controles</span>
+            <span class="ll"><i class="c-ng"></i>Con observación (NG)</span>
+            <span class="ll"><i class="linea"></i>Retiros (unidades)</span>
+            <span class="empuje"></span>
+            <span class="pista" id="evo-pista"></span>
+          </div>
+        </section>
+
+        <!-- Detalle del período elegido -->
+        <section class="card acento" id="detalle" hidden>
+          <button id="cerrar-detalle" class="ib sm cerrar" type="button" aria-label="Cerrar detalle"></button>
+          <header>
+            <span class="eq-label">Detalle del período seleccionado</span>
+            <b id="detalle-titulo"></b>
+          </header>
+          <div class="rejilla-3 bordeada" id="detalle-kpis"></div>
+          <div id="detalle-cuerpo"></div>
+        </section>
+
+        <!-- Pareto + tipo -->
+        <div class="dos-col ancha">
+          <section class="card">
+            <header>
+              <span class="eq-label" id="pareto-eyebrow"></span>
+              <b id="pareto-titulo">Desvíos que concentran las observaciones</b>
+            </header>
+            <div class="pareto-cab">
+              <span>Desvío</span><span>Vol.</span><span class="der">Casos</span><span class="der">Acum.</span>
+            </div>
+            <div class="pareto" id="pareto"></div>
+            <div class="leyenda">
+              <span class="ll"><i class="c-ng"></i><span id="pareto-ll-1"></span></span>
+              <span class="ll"><i class="linea"></i><span id="pareto-ll-2"></span></span>
+            </div>
+          </section>
+
+          <section class="card">
+            <header>
+              <span class="eq-label">Sobre total de observaciones</span>
+              <b>Por tipo de control</b>
+            </header>
+            <div class="barras-h" id="por-tipo"></div>
+          </section>
+        </div>
+
+        <!-- Impacto en la carga -->
+        <section class="card">
+          <header>
+            <span class="eq-label" id="impacto-eyebrow"></span>
+            <b>Impacto en la carga</b>
+          </header>
+
+          <div class="cinta" id="impacto-cinta"></div>
+          <div class="cinta-leyenda" id="impacto-leyenda"></div>
+
+          <div class="dos-col separada">
+            <div>
+              <span class="eq-label">% que frena la carga, por tipo de control</span>
+              <div class="barras-h" id="impacto-tipos"></div>
+              <p class="nota" id="impacto-nota"></p>
+            </div>
+            <div>
+              <span class="eq-label">Desvíos que más frenan la carga</span>
+              <div class="freno-cab"><span>Desvío</span><span class="der">Frena</span><span class="der">% casos</span></div>
+              <div class="freno" id="impacto-freno"></div>
+            </div>
+          </div>
+
+          <div class="separador">
+            <span class="eq-label">% de observaciones que frenaron la carga · últimos 12 meses</span>
+            <div class="mini-barras" id="impacto-tendencia"></div>
+          </div>
+        </section>
+
+        <!-- Reincidencia -->
+        <section class="card">
+          <header>
+            <span class="eq-label">Qué pasó después de cada observación · histórico completo</span>
+            <b>Monitoreo de reincidencia</b>
+          </header>
+          <div class="dos-col reinc">
+            <div>
+              <div class="cifra">
+                <b id="reinc-tasa">—</b><span>%</span>
+              </div>
+              <p class="reinc-txt">de los desvíos reaparecen en el control siguiente del mismo equipo</p>
+              <p class="nota" id="reinc-mediana"></p>
+              <div class="cinta chica" id="reinc-cinta"></div>
+              <div class="cinta-leyenda vertical" id="reinc-leyenda"></div>
+            </div>
+            <div>
+              <div class="cab-watch">
+                <span class="eq-label">Watchlist · mismo desvío repetido en 90 días</span>
+                <span class="mono" id="reinc-watch-meta"></span>
+              </div>
+              <div class="watchlist" id="reinc-watchlist"></div>
+              <div class="leyenda">
+                <span class="ll"><i class="punto rojo"></i>control con observación</span>
+                <span class="ll"><i class="punto verde"></i>control OK — últimos 6, del más viejo al más nuevo</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Tráfico + auditores -->
+        <div class="dos-col">
+          <section class="card">
+            <header>
+              <span class="eq-label">% NG sobre el volumen de cada mes · orden por volumen</span>
+              <b>Tendencia por tráfico</b>
+            </header>
+            <div class="traficos" id="traficos"></div>
+          </section>
+
+          <section class="card">
+            <header>
+              <span class="eq-label">Volumen y tasa de detección · línea = promedio del equipo</span>
+              <b>Auditores</b>
+            </header>
+            <div class="auditores" id="auditores"></div>
+          </section>
+        </div>
+
+        <!-- Operativo (solo en la vista mensual) -->
+        <section id="operativo" hidden>
+          <div class="cab-operativo">
+            <span class="eq-label fuerte">Operativo</span>
+            <span class="nota" id="op-fecha"></span>
+          </div>
+          <div class="tres-col">
+            <div class="rejilla-kpi vertical" id="op-kpis"></div>
+            <section class="card">
+              <header>
+                <span class="eq-label">Últimas 72 h</span>
+                <b>Pendientes de resolución</b>
+              </header>
+              <div class="lista-fina" id="op-pendientes"></div>
+            </section>
+            <section class="card">
+              <header>
+                <span class="eq-label" id="op-obs-eyebrow"></span>
+                <b>Observaciones de hoy</b>
+              </header>
+              <div class="lista-fina alta" id="op-obs"></div>
+            </section>
+          </div>
+        </section>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="../js/iconos.js"></script>
+<script src="./js/datos.js"></script>
+<script src="./js/app.js"></script>
+</body>
+</html>

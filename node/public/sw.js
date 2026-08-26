@@ -10,8 +10,9 @@
  * modulos colgando de /yard/patrullas/ y /yard/unidades/, cada uno con su
  * service worker y su cache. Los caches de esa etapa se limpian abajo.
  * v7: front nuevo sobre el design system TTFA (iconos.js, zonas.js).
+ * v8: los tokens salen a css/tokens.css, compartidos con el tablero.
  */
-const VERSION = 'v7';
+const VERSION = 'v8';
 const CACHE = `yard-${VERSION}`;
 
 // El app shell tiene que alcanzar para abrir la app sin conexion. Rutas
@@ -25,6 +26,7 @@ const SHELL = [
   './index.html',
   './manifest.json',
   './icon.svg',
+  './css/tokens.css',
   './css/app.css',
   './js/iconos.js',
   './js/db.js',

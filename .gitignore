@@ -12,3 +12,5 @@ Thumbs.db
 # Artefactos del analisis del historico de AppSheet
 /scratch/
 *.xlsx
+# Copia de trabajo para mirar el front con datos falsos. No es codigo.
+.preview/

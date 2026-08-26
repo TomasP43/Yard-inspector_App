@@ -105,6 +105,81 @@ deduplicación del catálogo, las trampas de los datos— está en
 
 ---
 
+
+### YI-004 — Un endpoint agregado para el tablero de gerencia
+- **Estado:** pendiente
+- **Prioridad:** bloqueante
+- **Tipo:** endpoint
+- **Qué necesito:** `GET api/tablero?periodo=anual|mensual`, devolviendo todo ya
+  calculado.
+- **Para qué:** el tablero entero. **Esto no se puede calcular en el navegador**,
+  y no es una preferencia: son 4.268 controles sobre 12 meses, más un Pareto
+  acumulado, un análisis de reincidencia (qué pasó en el control siguiente de
+  cada equipo) y el cruce de cada desvío con su desenlace de carga. La API de
+  inspecciones corta en 500 filas por consulta y no tiene agregación.
+- **Por qué el período va como parámetro:** el corte no cambia solo el gráfico
+  de arriba. El Pareto de los últimos 12 meses no es el del mes en curso, y los
+  KPIs comparan contra cosas distintas (mes anterior vs. nada).
+- **Forma esperada:**
+
+  ```
+  {
+    meta:   { total, updated, curMonthLabel, priorMonthLabel },
+    annual: { series[], total, rechazo, stats },
+    monthly:{ series[], stats, priorStats, priorTotal },
+
+    monthDetail: { "2026-08": { label, n, ng, rechazo, ngTracked,
+                                topDesvios[], topEquipos[], rechazoList[] } },
+    dayDetail:   { "2026-08-26": { label, n, ng, rechazo,
+                                   rows[{ time, eq, trafico, cat, ng, desvio }] } },
+
+    catCounts:  [[tipo, n], ...],
+    impacto:    { total, outcome[{key,n}], cats[], topFreno[], trend[] },
+    reincidencia: { corregido, reincidio, sinRecontrol, tasa, medianaDias,
+                    watchTotal, watchlist[] },
+    traficoTrend: [{ name, totalN, monthly[{label,n,pct}] }],
+    auditorBench: { teamPct, list[{name,n,ng,pct}] },
+    pendientes:   [{ eq, desvio, date }],
+    todayFeed:    [{ time, eq, trafico, cat, ng, desvio }],
+    todayCount, todayNg
+  }
+
+  series[] = [{ label, clave, n, ng, ngPct, rechazo, rechazoPct }]
+  stats    = { n, ngTracked, ngPct, okPct, rechazo, demoraCarga, criticoPct,
+               pareto[{ name, count, cumPct }] }
+  ```
+
+  La forma exacta, con datos, está en `tools/preview/mock-gerencia.js`.
+
+- **⚠ Ojo con esto:** `ngPct` tiene que poder venir **`null`**, y no cero. Antes
+  de junio de 2026 no se distinguía OK de NG, así que esos meses **no tienen**
+  tasa de observación. La pantalla lo muestra como "sin tracking"; si el backend
+  manda 0, va a decir que esos meses salieron todos perfectos.
+
+- **`clave` en `series[]`** es lo que ata cada barra con su entrada en
+  `monthDetail` / `dayDetail`. Sin eso el drill-down no puede resolver qué
+  abrió el usuario.
+
+- **Mientras tanto:** `tools/preview/mock-gerencia.js` define `window.TABLERO`
+  con esta forma y `js/datos.js` lo usa si está. El `// TODO` con el path real
+  ya está puesto.
+
+---
+
+### YI-005 — "Almirón" y "Almiron" son la misma persona
+- **Estado:** pendiente
+- **Prioridad:** menor
+- **Tipo:** campo de datos
+- **Qué necesito:** fusionar los dos usuarios en la tabla `usuario`.
+- **Para qué:** el bloque de Auditores del tablero los muestra como dos personas
+  distintas, una con 692 controles y otra con 14. Es la misma, escrita con y sin
+  tilde.
+- **Antecedente:** en la migración del histórico ya se fusionaron casos así en
+  `controlador` (`Codero` → `Cordero`). En `usuario` quedó sin hacer.
+- **Mientras tanto:** el mock reproduce el caso a propósito, para que se vea.
+
+---
+
 ## Nota sobre lo que el backend tiene y la app no usa
 
 No es un requerimiento, es para que nadie los tome por carga viva:
@@ -118,3 +193,5 @@ No es un requerimiento, es para que nadie los tome por carga viva:
   `public/js/similitud.js` espeja para poder sugerir offline.
 
 Los dos están marcados con un comentario en su router.
+
+---

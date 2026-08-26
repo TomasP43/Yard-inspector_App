@@ -1,0 +1,168 @@
+/* ===========================================================================
+   Tokens del design system TTFA + reset. Los comparten la PWA del inspector
+   (css/app.css) y el tablero de gerencia (gerencia/css/gerencia.css).
+
+   Se copian aca en vez de importarse del design system: la app tiene que abrir
+   sin conexion, y un @import a otro origen no sobrevive ni al offline ni a la
+   politica de la intranet.
+   =========================================================================== */
+
+/* --- Marca --------------------------------------------------------------- */
+:root {
+  --ttfa-red:        #EB0A1E;   /* rojo Toyota, acento primario */
+  --ttfa-red-bright: #FF2233;   /* hover / foco */
+  --ttfa-red-deep:   #A6060F;   /* presionado */
+  --ttfa-red-08:     rgba(235, 10, 30, .08);
+  --ttfa-red-16:     rgba(235, 10, 30, .16);
+  --ttfa-red-40:     rgba(235, 10, 30, .40);
+
+  /* rampa de grises, pensada para oscuro */
+  --carbon-1000: #000000;
+  --carbon-950:  #08090A;
+  --carbon-900:  #101113;
+  --carbon-850:  #16181B;
+  --carbon-800:  #1D1F23;
+  --graphite-700:#282B30;
+  --graphite-600:#363A40;
+  --graphite-500:#4A4F56;
+  --gray-400:    #6E747C;
+  --gray-300:    #9AA1A9;
+  --gray-200:    #C6CBD1;
+  --gray-100:    #E4E7EA;
+  --gray-050:    #F4F5F6;
+  --white:       #FFFFFF;
+
+  --status-ok:      #2FBF71;
+  --status-ok-bg:   rgba(47, 191, 113, .12);
+  --status-warn:    #F0A21C;
+  --status-warn-bg: rgba(240, 162, 28, .12);
+  --status-risk:    #EB0A1E;
+  --status-risk-bg: rgba(235, 10, 30, .12);
+  --status-info:    #4A9BE8;
+  --status-info-bg: rgba(74, 155, 232, .12);
+  --status-idle:    #6E747C;
+  --status-idle-bg: rgba(110, 116, 124, .14);
+
+  --surface-page:   var(--carbon-950);
+  --surface-panel:  var(--carbon-900);
+  --surface-card:   var(--carbon-850);
+  --surface-raised: var(--carbon-800);
+  --surface-inset:  var(--carbon-1000);
+  --surface-hover:  rgba(255, 255, 255, .04);
+
+  --text-strong: var(--white);
+  --text-body:   var(--gray-200);
+  --text-muted:  var(--gray-300);
+  --text-faint:  var(--gray-400);
+
+  --line-hairline: rgba(255, 255, 255, .08);
+  --line-rule:     rgba(255, 255, 255, .14);
+  --line-strong:   var(--graphite-600);
+
+  --font-core: "Archivo", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  --track-label: .08em;
+  --track-title: -.01em;
+
+  --space-1: 4px;  --space-2: 8px;  --space-3: 12px;
+  --space-4: 16px; --space-5: 24px; --space-6: 32px;
+
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: 8px;
+  --radius-pill: 999px;
+
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, .5);
+  --shadow-2: 0 4px 12px rgba(0, 0, 0, .45);
+  --shadow-3: 0 12px 32px rgba(0, 0, 0, .55);
+
+  --dur-fast: 140ms;
+  --dur-base: 220ms;
+  --ease-standard: cubic-bezier(.2, 0, 0, 1);
+
+  --alto-barra: 56px;
+  --alto-tabs: 74px;
+}
+
+/* --- Modo claro ----------------------------------------------------------
+   No sigue a prefers-color-scheme a proposito: el default es el oscuro del
+   design system y el inspector lo cambia a mano desde el menu lateral.
+   Existe porque esto se usa en la playa, al sol, donde una pantalla oscura
+   se lee mucho peor que una clara.
+
+   Se invierten las superficies y los textos; el rojo de marca no se toca. Los
+   colores de estado se oscurecen: el mismo verde que contrasta sobre negro es
+   ilegible sobre blanco. */
+[data-tema="claro"] {
+  --status-ok:      #15803D;
+  --status-ok-bg:   rgba(21, 128, 61, .12);
+  --status-warn:    #B45309;
+  --status-warn-bg: rgba(180, 83, 9, .12);
+  --status-risk:    #B91C1C;
+  --status-risk-bg: rgba(185, 28, 28, .10);
+  --status-info:    #1D4ED8;
+  --status-info-bg: rgba(29, 78, 216, .10);
+  --status-idle:    #565C66;
+  --status-idle-bg: rgba(86, 92, 102, .12);
+
+  --surface-page:   #F4F5F6;
+  --surface-panel:  #FFFFFF;
+  --surface-card:   #FFFFFF;
+  --surface-raised: #ECEEF1;
+  --surface-inset:  #FFFFFF;
+  --surface-hover:  rgba(0, 0, 0, .04);
+
+  --text-strong: #101113;
+  --text-body:   #2A2E34;
+  --text-muted:  #565C66;
+  --text-faint:  #71777F;
+
+  --line-hairline: rgba(0, 0, 0, .10);
+  --line-rule:     rgba(0, 0, 0, .16);
+  --line-strong:   #C6CBD1;
+
+  --ttfa-red-08: rgba(235, 10, 30, .06);
+  --ttfa-red-16: rgba(235, 10, 30, .12);
+
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, .07);
+  --shadow-2: 0 4px 12px rgba(0, 0, 0, .10);
+  --shadow-3: 0 12px 32px rgba(0, 0, 0, .16);
+}
+
+/* =========================================================================== */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+/**
+ * El navegador oculta [hidden] desde SU hoja de estilos, y cualquier regla
+ * nuestra que fije `display` en una clase le gana: las hojas de autor mandan
+ * sobre las del navegador, sin importar la especificidad.
+ *
+ * Sin esta linea, todo elemento con `hidden` y una clase que fije display
+ * queda visible. El !important es a proposito: tiene que ganarle a cualquier
+ * clase, presente o futura, sin que haya que acordarse de nada al agregar una
+ * pantalla nueva.
+ */
+[hidden] { display: none !important; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  background: var(--surface-page);
+  color: var(--text-body);
+  font-family: var(--font-core);
+  font-size: 15px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior-y: none;
+}
+
+button { font-family: inherit; }
+.ico { display: block; flex: 0 0 auto; }

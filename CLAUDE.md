@@ -62,20 +62,27 @@ yard-inspector/
 │   │   ├── helpers/auth.js  # identidad apoyada en ttfa
 │   │   ├── database/        # models, migrar.js
 │   │   └── index.js
-│   ├── public/              # la PWA, servida en /yard/
-│   │   ├── index.html       # app shell: 4 pantallas + detalle
+│   ├── public/
+│   │   ├── index.html       # PWA del inspector, en /yard/
 │   │   ├── sw.js            # service worker (scope /yard/)
 │   │   ├── manifest.json
-│   │   ├── css/app.css      # tokens del design system TTFA
+│   │   ├── css/tokens.css   # paleta TTFA, la comparten las dos pantallas
+│   │   ├── css/app.css      # layout de la PWA
 │   │   ├── js/iconos.js     # glifos de Lucide, inline
 │   │   ├── js/zonas.js      # agrupa el catalogo por parte del equipo
 │   │   ├── js/db.js         # IndexedDB: catalogos, cola, cache
 │   │   ├── js/camera.js     # captura y compresion de fotos
 │   │   ├── js/similitud.js  # espejo cliente de desvioService
 │   │   ├── js/sync.js       # cola de sincronizacion
-│   │   └── js/app.js        # UI
+│   │   ├── js/app.js        # UI
+│   │   └── gerencia/        # tablero de gerencia, en /yard/gerencia/
+│   │       ├── index.html
+│   │       ├── css/gerencia.css
+│   │       ├── js/datos.js  # la unica costura con el backend
+│   │       └── js/app.js
 │   └── Dockerfile
 ├── migrations/              # 001 esquema · 002 fotos · 003 historico · 004 desvios
+├── tools/preview/           # mirar las dos pantallas con datos falsos
 ├── REQUERIMIENTOS.md        # lo que el backend tiene que dar
 ├── docker-compose.yml
 ├── docker-compose.dev.yml
@@ -141,15 +148,34 @@ Dos partes que no existian en AppSheet:
 
 Los campos que el diseño no muestra (`controlador`, `estado_control`) **no se sacaron**: quedan plegados en "Mas datos del control". La operacion los sigue usando; lo que cambio es que ya no estorban el camino rapido.
 
+## El tablero de gerencia
+
+Segunda pantalla, en `/yard/gerencia/`. Portada del diseño **"Dashboard Gerencia"** del mismo proyecto de Claude Design. Es de escritorio: barra lateral, conmutador anual/mensual, y drill-down desde el grafico al detalle de un mes o de un dia.
+
+**No calcula ni una metrica en el navegador**, y eso es una diferencia de fondo con la PWA. El tablero de la PWA agrega en el cliente porque son dos inspectores y una decena de controles por jornada. Este necesita agregados sobre el historico completo — 4.268 controles, Pareto acumulado, analisis de reincidencia, cruce de cada desvio con su desenlace de carga. La API de inspecciones corta en 500 filas y no tiene agregacion.
+
+Por eso hay un solo pedido, `GET api/tablero?periodo=`, con el contrato en `REQUERIMIENTOS.md` (YI-004). Toda la costura esta en `gerencia/js/datos.js`: conectar el tablero es cambiar ese archivo.
+
+**Una trampa del dato que hay que respetar:** antes de junio de 2026 no se distinguia OK de NG. Esos meses **no tienen** tasa de observacion, y la respuesta tiene que mandar `ngPct: null`, no cero. Si manda cero, la pantalla dice que esos meses salieron todos perfectos.
+
+Los dos frentes comparten `css/tokens.css` — la paleta — y `js/iconos.js`. **No comparten layout**: uno es un telefono con barra fija abajo y el otro una pantalla de 1440 con barra lateral. Mezclarlos daba colisiones tontas, como el `main { position: fixed }` de la PWA comiendose el scroll del tablero.
+
 ### Como mirar el front andando
 
-**Hoy no hay con que**, y conviene saberlo antes de dar algo por bueno.
+```bash
+bash tools/preview/armar.sh && perl tools/preview/serve.pl .preview 4173
+```
 
-Hubo dos herramientas: `tools/preview/`, que montaba la PWA con datos falsos sin Docker ni base, y `verificar.sh`, el chequeo de humo contra el VPS. Se sacaron del repo el 2026-08-26 para revisarlas con el equipo. Estan en el historial de git.
+Monta las dos pantallas con datos falsos, sin Docker ni base — alcanza perl. La PWA en `/` y el tablero en `/gerencia/`.
 
-No es un detalle menor. Los bugs mas caros de este proyecto **pasaron todos los chequeos estaticos y se veian a simple vista**: el 502 por una ruta mal resuelta, el helper de IndexedDB que devolvia el request en vez del resultado, los modales que tapaban la pantalla, y tres promesas que no se resolvian nunca. Ninguno daba error en consola.
+**Usalo.** Los bugs mas caros de este proyecto **pasaron todos los chequeos estaticos y se veian a simple vista**: el 502 por una ruta mal resuelta, el helper de IndexedDB que devolvia el request en vez del resultado, los modales que tapaban la pantalla, tres promesas que no se resolvian nunca, y el tablero scrolleando la pagina entera en vez del panel. Ninguno daba error en consola.
 
-Mientras no haya con que ejecutar, al reportar hay que **decir explicitamente que algo se leyo y no se corrio**.
+Dos reglas del harness, aprendidas a los golpes:
+
+- **El mock tiene que responder con la forma real de la API, incluidos los POST.** El de la PWA atrapaba los POST con un handler de listado y devolvia 200: la carga *parecia* andar sin probar nada.
+- **El mock no puede portarse mejor que produccion.** Llego a filtrar por tipo cuando el backend no lo hace, y eso escondia justo el problema que habia que ver.
+
+`verificar.sh`, el chequeo de humo contra el VPS, sigue fuera del repo para revisarlo con el equipo. Esta en el historial de git.
 
 ## Desarrollo local
 

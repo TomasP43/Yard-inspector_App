@@ -10,7 +10,11 @@ Reemplaza la app de **AppSheet** que corre hoy sobre un Google Form + Sheets, y 
 
 ## Qué hace
 
-Cuatro pantallas, según el diseño del proyecto de Claude Design **"UI mockups pending details"**:
+Dos pantallas, las dos diseñadas en el proyecto de Claude Design **"UI mockups pending details"**.
+
+### La del inspector — `/yard/`
+
+Cuatro vistas, pensadas para el teléfono:
 
 | Pantalla | Qué muestra |
 |---|---|
@@ -24,6 +28,21 @@ Y tocando cualquier fila se abre el **detalle del equipo**: sus KPIs, el desvío
 Tres cosas que en AppSheet no existían: el tablero, el detalle por equipo, y que antes de cargar un control nuevo haya que decir qué pasó con el NG anterior.
 
 Los inspectores trabajan **sin conexión**. En la playa la señal se corta, así que la app guarda las inspecciones en el dispositivo y las sincroniza cuando vuelve la señal.
+
+### La de gerencia — `/yard/gerencia/`
+
+Pantalla ancha, de escritorio. Conmuta entre **anual** y **mensual**, y desde el gráfico de evolución se entra al detalle de un mes o de un día.
+
+| Bloque | Para qué |
+|---|---|
+| **KPIs** | Controles, tasa de observación, unidades retiradas y demoras, contra el mes anterior |
+| **Evolución** | Barras de controles y NG, línea de retiros. Se toca un mes y se abre el detalle |
+| **Pareto** | Qué desvíos concentran el 80% de las observaciones, con curva acumulada |
+| **Impacto en la carga** | Cuántas observaciones frenan un camión, por tipo de control y por desvío |
+| **Reincidencia** | Qué pasó después de cada observación, con watchlist de equipos que repiten |
+| **Tráfico y auditores** | Tendencia por tráfico y volumen/detección de cada auditor |
+
+**No calcula nada en el navegador.** Necesita agregados sobre el histórico completo, así que espera un endpoint que devuelva todo masticado. Ver `YI-004` en [REQUERIMIENTOS.md](REQUERIMIENTOS.md).
 
 ## Stack
 
@@ -58,19 +77,36 @@ docker compose -f docker-compose.yml -f docker-compose.dev.yml up
 
 Las migraciones las aplica **el backend al arrancar**, llevando registro en `migracion_aplicada`. Agregar una es dejar el `.sql` en `migrations/`. Para rehacer la base desde cero: `docker compose down -v`. Ver [CLAUDE.md](CLAUDE.md#migraciones) para el detalle.
 
-## Cómo probarlo
+## Mirar el front sin levantar nada
 
-**Ahora mismo no hay herramientas en el repo para eso.** Había dos —un preview con datos falsos que no necesitaba Docker, y un chequeo de humo contra el VPS— y se sacaron el 26-08-2026 para revisarlas con el equipo. Quedaron en el historial de git.
+No hace falta Docker ni base: `tools/preview/` monta las dos pantallas con datos falsos que imitan la forma real de la API.
 
-Hasta que vuelvan, la única forma de ver la app funcionando es desplegarla.
+```bash
+bash tools/preview/armar.sh
+```
+
+```bash
+perl tools/preview/serve.pl .preview 4173
+```
+
+- PWA del inspector: http://127.0.0.1:4173/
+- Tablero de gerencia: http://127.0.0.1:4173/gerencia/
+
+`.preview/` está en `.gitignore` y se regenera entera en cada corrida, así que nunca queda vieja.
+
+> El chequeo de humo contra el VPS (`verificar.sh`) sigue fuera del repo, para revisarlo con el equipo. Está en el historial de git.
 
 ## Estructura
 
 ```
 ├── node/
-│   ├── src/            # API Express + Sequelize
-│   └── public/         # PWA (app shell, service worker, cola)
+│   ├── src/            # API Express + Sequelize — referencia, no se toca
+│   └── public/
+│       ├── css/tokens.css   # paleta compartida por las dos pantallas
+│       ├── index.html …     # PWA del inspector
+│       └── gerencia/        # tablero de gerencia
 ├── migrations/         # 001 esquema · 002 fotos · 003 histórico · 004 desvíos
+├── tools/preview/      # mirar las dos pantallas con datos falsos
 ├── REQUERIMIENTOS.md   # lo que el backend tiene que dar
 ├── DECISIONS.md        # por qué el proyecto es como es
 └── CLAUDE.md           # decisiones de diseño en detalle
