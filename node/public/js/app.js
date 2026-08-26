@@ -137,8 +137,21 @@ function aplicarTema(claro) {
 /** Sirve si trae al menos lo que arma el formulario. */
 const catalogoUsable = (c) => !!(c && Array.isArray(c.responsables) && Array.isArray(c.desvios));
 
+/** true cuando IndexedDB no contesta: sin ella no hay cola ni offline. */
+let SIN_BASE = false;
+
 async function cargarCatalogos() {
-  CAT = await DB.leerMeta('catalogos');
+  // Envuelto: si IndexedDB no contesta, esta linea reventaba antes del try y se
+  // llevaba puesto el arranque entero -- la app quedaba sin catalogos, sin
+  // pantallas y sin ningun mensaje. La base es una mejora (permite trabajar sin
+  // senal), no un requisito para abrir.
+  try {
+    CAT = await DB.leerMeta('catalogos');
+  } catch (e) {
+    console.error('[db] no responde, se sigue contra la red', e);
+    SIN_BASE = true;
+    CAT = null;
+  }
   if (!catalogoUsable(CAT)) CAT = null;
 
   // Envuelto: un cache viejo o a medias no puede impedir que despues se pida
@@ -148,7 +161,7 @@ async function cargarCatalogos() {
   }
 
   try {
-    const etag = await DB.leerMeta('catalogos_etag');
+    const etag = SIN_BASE ? null : await DB.leerMeta('catalogos_etag').catch(() => null);
     const r = await fetch('api/catalogos', {
       credentials: 'same-origin',
       headers: etag ? { 'If-None-Match': etag } : {}
@@ -156,12 +169,30 @@ async function cargarCatalogos() {
     if (r.status === 304) return;
     if (!r.ok) return;
     CAT = await r.json();
-    await DB.guardarMeta('catalogos', CAT);
-    await DB.guardarMeta('catalogos_etag', r.headers.get('ETag'));
+
+    // Pintar PRIMERO y guardar despues. Al reves, si la base fallaba al
+    // escribir, se saltaba a catch con los catalogos ya traidos y el formulario
+    // sin armar: red bien, pantalla vacia.
     pintarCatalogos();
+    guardarSuave(DB.guardarMeta('catalogos', CAT));
+    guardarSuave(DB.guardarMeta('catalogos_etag', r.headers.get('ETag')));
   } catch (e) {
     if (!CAT) estado('Sin catálogos', 'malo');
   }
+
+  if (SIN_BASE) {
+    const el = $('#estado');
+    estado('Sin memoria local', 'malo');
+    el.title = 'Este navegador no deja guardar datos. Podés cargar con señal, pero lo que cargues sin conexión se pierde.';
+  }
+}
+
+/**
+ * El cache es una mejora, no parte del camino. Un fallo al escribir no puede
+ * cortar nada: se anota que no hay base y se sigue.
+ */
+function guardarSuave(promesa) {
+  return promesa.catch(() => { SIN_BASE = true; });
 }
 
 // `items` con respaldo a proposito: un catalogo incompleto tiene que dejar la
@@ -205,11 +236,16 @@ async function cargarVentana() {
   try {
     const d = await pedir(`api/inspecciones?desde=${desde.toISOString()}&limite=500`);
     VENTANA = d;
-    await DB.guardarCache('ventana', d);
+    // Sin await: guardar el cache no puede demorar ni romper el pintado.
+    guardarSuave(DB.guardarCache('ventana', d));
     return true;
   } catch (e) {
-    const c = await DB.leerCache('ventana');
-    if (c) { VENTANA = c; estado('Datos guardados', 'aviso'); }
+    try {
+      const c = await DB.leerCache('ventana');
+      if (c) { VENTANA = c; estado('Datos guardados', 'aviso'); }
+    } catch (e2) {
+      SIN_BASE = true;
+    }
     return false;
   }
 }
@@ -955,7 +991,13 @@ $('#c-file-chk').addEventListener('change', (e) => tomarFoto(e.target, 'chk'));
 
 Sync.alCambiar((s) => {
   if (s.tipo === 'sincronizando') estado('Sincronizando…', 'aviso');
-  else if (s.tipo === 'sin_conexion') estado(`Sin señal · ${s.pendientes || 0}`, 'aviso');
+  else if (s.tipo === 'sin_base') {
+    // No hay donde encolar. Es lo mas grave que le puede pasar a esta app y
+    // tiene que decirlo, porque cambia como se puede trabajar: solo con senal.
+    SIN_BASE = true;
+    estado('Sin memoria local', 'malo');
+    $('#estado').title = 'Este navegador no deja guardar datos. Podés cargar con señal, pero lo que cargues sin conexión se pierde.';
+  } else if (s.tipo === 'sin_conexion') estado(`Sin señal · ${s.pendientes || 0}`, 'aviso');
   else if (s.tipo === 'sesion_vencida') estado('Sesión vencida', 'malo');
   else if (s.tipo === 'encolada') estado(`En cola · ${s.pendientes}`, 'aviso');
   else if (s.tipo === 'listo') {

@@ -94,15 +94,73 @@
   }
   INSP.sort((a, b) => new Date(b.registrado_en) - new Date(a.registrado_en));
 
-  const json = (o) => Promise.resolve(new Response(JSON.stringify(o), {
-    status: 200,
+  const json = (o, status) => Promise.resolve(new Response(JSON.stringify(o), {
+    status: status || 200,
     headers: { 'Content-Type': 'application/json', ETag: 'preview' }
   }));
+
+  /**
+   * Alta de un control, con el mismo contrato que el servidor real.
+   *
+   * Esto tiene que estar: sin el, el `if (s.includes('api/inspecciones'))` de
+   * abajo atrapaba tambien los POST y contestaba 200 con un listado. La cola lo
+   * leia como "guardado" y sacaba el control, asi que la carga *parecia* andar
+   * sin probar nada. Un preview que miente es peor que no tenerlo.
+   */
+  function crear(cuerpo) {
+    const b = JSON.parse(cuerpo || '{}');
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(b.uuid || '')) {
+      return json({ error: 'uuid_invalido' }, 400);
+    }
+    if (!b.equipo_codigo) return json({ error: 'equipo_requerido' }, 400);
+
+    // Idempotencia: reenviar el mismo uuid devuelve 200 con lo que ya existe,
+    // nunca 409. Con un 409 el cliente no sabe si puede sacarlo de la cola.
+    const ya = INSP.find((i) => i.uuid === b.uuid);
+    if (ya) return json({ inspeccion: ya, duplicada: true }, 200);
+
+    // Los desvios escritos a mano los resuelve el servidor, no el cliente: se
+    // escriben sin senal, cuando no hay forma de consultar el catalogo.
+    const nuevos = (b.desvios_nuevos || []).map((nombre) => {
+      const igual = desvios.find((d) => Similitud.normalizar(d.nombre) === Similitud.normalizar(nombre));
+      if (igual) return igual;
+      const creado = { id: desvios.length + 1, nombre, activo: true, revisar: true, usos_historicos: 0 };
+      desvios.push(creado);
+      return creado;
+    });
+
+    const insp = {
+      id: ++id,
+      uuid: b.uuid,
+      registrado_en: b.registrado_en,
+      resultado: b.resultado,
+      detalle: b.detalle || null,
+      auditor: { id: 0, nombre: CATALOGOS.usuario.nombre, email: CATALOGOS.usuario.email },
+      responsable: responsables.find((r) => r.id === b.responsable_id) || null,
+      equipo: { id: 0, codigo: Number(b.equipo_codigo) },
+      tipo: tipos.find((t) => t.id === b.tipo_desvio_id) || null,
+      demora: demoras.find((d) => d.id === b.demora_id) || null,
+      controlador: null,
+      estadoControl: null,
+      desvios: [
+        ...(b.desvio_ids || []).map((x) => desvios.find((d) => d.id === x)).filter(Boolean),
+        ...nuevos
+      ].map((d) => ({ id: d.id, nombre: d.nombre })),
+      fotos: (b.fotos || []).map((_, i) => ({ id: i, orden: i + 1, ruta: null, orientacion: 'libre' }))
+    };
+
+    INSP.unshift(insp);
+    INSP.sort((a, c) => new Date(c.registrado_en) - new Date(a.registrado_en));
+    return json({ inspeccion: insp }, 201);
+  }
 
   const real = window.fetch.bind(window);
   window.fetch = (url, opts) => {
     const s = String(url && url.url ? url.url : url);
     if (!s.includes('api/')) return real(url, opts);
+
+    const metodo = ((opts && opts.method) || 'GET').toUpperCase();
+    if (metodo === 'POST' && s.includes('api/inspecciones')) return crear(opts && opts.body);
 
     if (s.includes('api/catalogos')) return json(CATALOGOS);
 

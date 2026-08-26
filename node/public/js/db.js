@@ -12,10 +12,50 @@ const DB = (() => {
   const VERSION = 1;
   let _db = null;
 
+  /**
+   * Cuanto se espera a que IndexedDB conteste antes de dar la base por perdida.
+   *
+   * `indexedDB.open` puede **no disparar ningun evento, nunca**: ni onsuccess,
+   * ni onerror, ni onblocked. Pasa con un `deleteDatabase` pendiente, en iOS en
+   * modo privado, y con la cuota agotada. Sin este tope, la primera linea de
+   * cargarCatalogos() se queda esperando para siempre y la app **no arranca**:
+   * sin catalogos, sin pantallas pintadas, sin ningun mensaje. Pantalla muerta.
+   *
+   * Tres segundos es de sobra para abrir una base local; si no contesto en ese
+   * tiempo no va a contestar.
+   */
+  const ESPERA_APERTURA = 3000;
+
+  // Si la base no abrio una vez, no va a abrir: modo privado, cuota agotada o
+  // un borrado trabado no se arreglan solos. Se recuerda el fallo para no
+  // pagar los 3 segundos de espera en cada guardado -- el inspector carga
+  // treinta camiones por jornada y tres segundos por camion son un minuto y
+  // medio mirando un boton.
+  let _fallo = null;
+
   function abrir() {
     if (_db) return Promise.resolve(_db);
+    if (_fallo) return Promise.reject(_fallo);
     return new Promise((res, rej) => {
-      const req = indexedDB.open(NOMBRE, VERSION);
+      let resuelto = false;
+      const terminar = (fn, arg) => {
+        if (resuelto) return;
+        resuelto = true;
+        if (fn === rej) _fallo = arg;
+        fn(arg);
+      };
+
+      const reloj = setTimeout(
+        () => terminar(rej, new Error('indexeddb_no_responde')),
+        ESPERA_APERTURA
+      );
+
+      let req;
+      // El propio open() tira en algunos navegadores con el almacenamiento
+      // bloqueado, antes de devolver el request.
+      try { req = indexedDB.open(NOMBRE, VERSION); }
+      catch (e) { clearTimeout(reloj); terminar(rej, e); return; }
+
       req.onupgradeneeded = () => {
         const db = req.result;
         if (!db.objectStoreNames.contains('meta')) db.createObjectStore('meta');
@@ -25,10 +65,16 @@ const DB = (() => {
         }
         if (!db.objectStoreNames.contains('cache')) db.createObjectStore('cache');
       };
-      req.onsuccess = () => { _db = req.result; res(_db); };
-      req.onerror = () => rej(req.error);
+      req.onsuccess = () => { clearTimeout(reloj); _db = req.result; terminar(res, _db); };
+      req.onerror = () => { clearTimeout(reloj); terminar(rej, req.error); };
+      // Otra pestana tiene la base abierta con otra version: no va a destrabarse
+      // sola, mejor fallar rapido y seguir contra la red.
+      req.onblocked = () => { clearTimeout(reloj); terminar(rej, new Error('indexeddb_bloqueada')); };
     });
   }
+
+  /** true si la base contesta. Lo usa la app para avisar que no hay offline. */
+  const disponible = () => abrir().then(() => true, () => false);
 
   function tx(store, modo, fn) {
     return abrir().then((db) => new Promise((res, rej) => {
@@ -51,6 +97,8 @@ const DB = (() => {
   }
 
   return {
+    disponible,
+
     // --- meta / catalogos ---
     guardarMeta: (k, v) => tx('meta', 'readwrite', (s) => s.put(v, k)),
     leerMeta: (k) => tx('meta', 'readonly', (s) => s.get(k)),

@@ -196,3 +196,43 @@ quedaría colgado para siempre, que es justo lo que este paso vino a evitar.
 **Reversibilidad:** alta, es solo cliente. Pero ojo: hoy la resolución **no se
 persiste** como tal — se refleja en si el desvío vuelve a aparecer o no en el
 control nuevo. Guardarla explícitamente necesita una tabla y es la 009.
+
+---
+
+## D-013 · IndexedDB y el service worker son mejoras, no requisitos para abrir
+
+**Pregunta:** ¿qué pasa si el navegador no da almacenamiento local?
+
+**Evidencia, encontrada corriendo la app:** tres cuelgues distintos, todos con la
+misma forma — una promesa que **no se resuelve nunca**, que ningún `try/catch`
+atrapa porque no rechaza:
+
+| Dónde | Qué pasaba |
+|---|---|
+| `navigator.serviceWorker.ready` en `encolar()` | El control quedaba guardado en la cola pero **no se mandaba**, no aparecía el aviso y el botón se quedaba en "Guardando…" para siempre |
+| `indexedDB.open()` en la primera línea de `cargarCatalogos()` | La app **no arrancaba**: sin catálogos, sin pantallas pintadas, sin ningún mensaje |
+| `DB.leerCola()` dentro de `sincronizar()` | El estado quedaba en "Sincronizando…" para siempre |
+
+Los tres pasan de verdad: modo privado en iOS, cuota agotada, un
+`deleteDatabase` trabado, `sw.js` con un error, http sin contexto seguro.
+
+**Decisión:** nada que sea una mejora puede estar en el camino crítico.
+
+- `indexedDB.open` tiene **tope de 3 segundos** y recuerda el fallo, para no
+  pagar la espera en cada guardado.
+- El registro de Background Sync va **sin `await`**.
+- Escribir el cache **nunca** corta el pintado: se pinta primero y se guarda
+  después.
+- Si no hay base pero hay señal, el control **se manda directo**. Se pierde
+  poder cargar sin conexión, no poder trabajar.
+- Y se **avisa**: pill "Sin memoria local" con el detalle en el title.
+
+**Motivo:** el inspector tiene que poder cargar. Que el navegador no le preste
+memoria es un problema del navegador, no una razón para que la app se rinda —
+y sobre todo, no una razón para que se rinda **en silencio**.
+
+**Reversibilidad:** alta. Son topes y guardas, no cambios de arquitectura.
+
+**Cómo se encontró:** ejecutando el flujo de carga en el navegador, no leyendo
+el código. Los tres eran invisibles en revisión: no hay error, no hay excepción,
+no hay nada en consola. Ver D-005.
