@@ -82,17 +82,15 @@ function aplicarTema(claro) {
 // --------------------------------------------------------------- estructura
 
 function pintarLateral() {
-  const items = [
-    { ico: 'gauge', txt: 'Tablero gerencia', activo: true },
-    { ico: 'clipboard-check', txt: 'Patrulla de hoy', href: '../#hoy' },
-    { ico: 'file-text', txt: 'Historial completo', href: '../#historial' },
-    { ico: 'truck', txt: 'Equipos', href: '../#camion' }
-  ];
-  $('#menu').innerHTML = items.map((i) =>
-    i.activo
-      ? `<span class="it activo">${ico(i.ico, 16)}<span>${esc(i.txt)}</span></span>`
-      : `<a href="${esc(i.href)}">${ico(i.ico, 16)}<span>${esc(i.txt)}</span></a>`
-  ).join('');
+  // Un solo item: el tablero es la unica pantalla que hay de este lado.
+  //
+  // El diseño trae ademas "Patrulla de hoy", "Historial completo" y "Equipos",
+  // pero apuntaban a `../#hoy` y compañia -- y la PWA no lee el hash, asi que
+  // los tres caian en la misma pantalla por defecto. "Equipos" ni siquiera
+  // existe como vista. Un menu que promete cuatro lugares y lleva a uno es peor
+  // que un menu de uno.
+  $('#menu').innerHTML =
+    `<span class="it activo">${ico('gauge', 16)}<span>Tablero gerencia</span></span>`;
 
   // Quien esta mirando. Viene con el tablero: es el mismo usuario de la sesion
   // de ttfa, no se elige.
