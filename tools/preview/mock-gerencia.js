@@ -65,11 +65,11 @@
       volumen,
       n,
       ng,
-      // La tasa cambia de denominador en el corte, y por eso viaja dicho cual
-      // se uso. Sin `ngBase` la pantalla no puede saber que un 9% y un 49% no
-      // se comparan, ni pintarlos con criterios distintos.
-      ngPct: Math.round((ng / (n || volumen)) * 100),
-      ngBase: n ? 'controles' : 'volumen',
+      // La tasa del grafico es SIEMPRE sobre camiones movidos. Es la unica que
+      // se puede calcular los doce meses, asi que es la unica comparable de
+      // punta a punta. La tasa sobre controles existe tambien, pero solo desde
+      // jul-2026, y vive en los KPIs -- no en la serie.
+      obsPct: Math.round((ng / volumen) * 1000) / 10,
       rechazo,
       rechazoPct: Math.round((rechazo / volumen) * 1000) / 10
     };
@@ -101,6 +101,7 @@
     mesesConControles: conControlesAnual.length,
     observaciones: obsAnual,
     volumen: volumenAnual,
+    obsPct: Math.round((obsAnual / volumenAnual) * 1000) / 10,
     ngPct: Math.round((conControlesAnual.reduce((a, m) => a + m.ng, 0) / totalAnual) * 100),
     okPct: null,
     rechazo: retirosAnual, demoraCarga: 75, criticoPct: 12,
@@ -120,13 +121,15 @@
     // cosa -- se controlo nada, no es que no se sepa cuanto se controlo.
     const n = sin ? 0 : entre(14, 42);
     const ngPct = n ? entre(38, 60) : null;
+    const volumen = sin ? 0 : entre(60, 130);
+    const ng = n ? Math.round((n * ngPct) / 100) : null;
     return {
       label: String(dia).padStart(2, '0'),
       clave: `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(dia).padStart(2, '0')}`,
-      volumen: sin ? 0 : entre(60, 130),
+      volumen,
       n,
-      ng: n ? Math.round((n * ngPct) / 100) : null,
-      ngPct,
+      ng,
+      obsPct: volumen ? Math.round((ng / volumen) * 1000) / 10 : null,
       rechazo: n ? entre(0, 3) : 0,
       rechazoPct: n ? entre(0, 12) : 0
     };
@@ -139,7 +142,8 @@
     mesesConControles: serieMensual.filter((d) => d.n > 0).length,
     observaciones: serieMensual.reduce((a, d) => a + (d.ng || 0), 0),
     volumen: serieMensual.reduce((a, d) => a + d.volumen, 0),
-    ngPct: 44, ngBase: 'controles', okPct: 56,
+    obsPct: 12.4,
+    ngPct: 44, okPct: 56,
     rechazo: retirosMes, demoraCarga: 9, criticoPct: 14,
     pareto: pareto(9)
   };

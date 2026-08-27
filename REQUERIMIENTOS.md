@@ -144,8 +144,8 @@ deduplicación del catálogo, las trampas de los datos— está en
     todayCount, todayNg
   }
 
-  series[] = [{ label, clave, volumen, n, ng, ngPct, ngBase, rechazo, rechazoPct }]
-  stats    = { n, mesesConControles, observaciones, volumen, ngPct, ngBase,
+  series[] = [{ label, clave, volumen, n, ng, obsPct, rechazo, rechazoPct }]
+  stats    = { volumen, observaciones, obsPct, n, mesesConControles, ngPct,
                okPct, rechazo, demoraCarga, criticoPct,
                pareto[{ name, count, cumPct }] }
   ```
@@ -169,11 +169,20 @@ deduplicación del catálogo, las trampas de los datos— está en
   Esos meses van con **`n: null`**. Ni cero (diría que no se controló nada) ni
   `n = ng` (diría que todo control terminó mal). Lo que falta es el denominador.
 
-- **`ngBase` dice contra qué se calculó `ngPct`**, porque el denominador cambia
-  en jul-2026: antes es `ng / volumen` (`'volumen'`), después es `ng / n`
-  (`'controles'`). Son escalas distintas — 9% y 49% no se comparan — y sin este
-  campo la pantalla no puede ni pintarlas con criterios distintos ni poner la
-  marca vertical donde ocurre el corte.
+- **Dos tasas, y no se mezclan nunca.**
+
+  | Campo | Cuenta | Dónde se usa |
+  |---|---|---|
+  | `obsPct` = `ng / volumen` | los doce meses | el gráfico y el KPI |
+  | `ngPct` = `ng / n` | solo donde hay controles | el pie del KPI, dicho sobre cuántos meses sale |
+
+  El gráfico usa **siempre** `obsPct`. Es la única comparable de punta a punta.
+  Una serie que cambiara de denominador en jul-2026 saltaría de 12% a 49% por
+  cambio de método, no de calidad, y quien la mirara rápido leería un derrumbe
+  que no ocurrió.
+
+  La barra tiene dos colores y un solo significado: el alto es `volumen` y el
+  rojo es `ng` dentro de ese total. La fracción roja **es** `obsPct`.
 
 - **`volumen` no sale de la base de patrullas.** Es el volumen operativo por mes,
   hoy en una tabla dinámica de Excel abierta por transportista y destino. El

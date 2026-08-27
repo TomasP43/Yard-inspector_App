@@ -199,15 +199,18 @@ function pintarKpis() {
       // La tasa sobre controles solo se puede calcular donde hay OK cargados.
       // El pie dice sobre cuantos meses sale, que si no se lee como si fuera
       // del año entero.
-      label: 'Con observación', valor: st.ngPct == null ? '—' : st.ngPct, unidad: '%',
-      color: colorPct(st.ngPct),
-      delta: dNg == null
-        ? (st.okPct == null ? 'sin controles cargados' : `${st.okPct}% pasaron OK`)
-        : `${signo(dNg)} pp vs. ${mesPrev}`,
-      deltaColor: dNg != null && dNg > 0 ? 'var(--ttfa-red)' : 'var(--status-ok)',
+      // El titular es la misma tasa que dibuja el grafico -- observados sobre
+      // movidos -- para que la pantalla cuente una sola historia. La tasa sobre
+      // controles es otra cosa y va abajo, dicho sobre cuantos meses sale.
+      // Entero: el numero grande lleva letter-spacing y el punto decimal salia
+      // separado, "9 . 6". El decimal si sirve arriba de cada barra, donde el
+      // rango es de 3% a 20% y hace falta distinguir 9,3 de 9,8.
+      label: 'Con observación', valor: st.obsPct == null ? '—' : Math.round(st.obsPct), unidad: '%',
+      delta: 'de los camiones movidos',
+      deltaColor: 'var(--text-muted)',
       pie: anual
-        ? `${st.n} controles en ${st.mesesConControles} de 12 meses`
-        : `${st.okPct}% OK`
+        ? `${st.ngPct}% de los controles, en ${st.mesesConControles} de 12 meses`
+        : `${st.ngPct}% de los controles`
     },
     {
       label: 'Unidades retiradas', valor: st.rechazo, unidad: '', tono: 'rojo',
@@ -261,24 +264,27 @@ function pintarLeyenda(st, serie, anual) {
 
   // Controles: solo existen donde se cargaron los OK. Decir "4961 controles"
   // sumando los meses en que solo se cargaba el NG mezclaba dos cosas.
-  // `n == null` es "no se sabe cuantos controles hubo"; `n === 0` es "no hubo",
-  // que se sabe perfectamente. Solo el primero merece aclaracion. Mezclarlos
-  // hacia que los sabados y domingos aparecieran como jornadas sin cargar.
+  // Las dos bandas de la barra, en el mismo orden en que se leen: el total
+  // movido y, dentro, la parte observada.
+  $('#ll-ctrl').textContent = st.volumen;
+  $('#ll-ng').innerHTML =
+    st.observaciones + nota(` · ${st.obsPct}% de los movidos`);
+
+  // Los controles no estan en el grafico -- existen solo desde jul-2026 -- pero
+  // se dicen, con sobre cuantos meses salen, para que el 53% del KPI de arriba
+  // tenga de donde agarrarse.
   const sinDato = serie.filter((w) => w.n == null).length;
   const conDato = serie.length - sinDato;
-  $('#ll-ctrl').innerHTML = conDato === 0
-    ? nota('no se cargaban')
-    : st.n + (sinDato ? nota(` · ${conDato} de ${serie.length} ${unidad}`) : '');
+  $('#ll-ctrl-nota').innerHTML = conDato === 0
+    ? ''
+    : `${st.n} controles${sinDato ? ` en ${conDato} de ${serie.length} ${unidad}` : ''}`;
 
-  // Observaciones: se conocen siempre, en los doce meses. Es la unica serie
-  // comparable de punta a punta y por eso va sin asterisco.
-  $('#ll-ng').textContent = serie.reduce((a, w) => a + (w.ng || 0), 0);
-
-  // Retiros contra el volumen movido, no contra los controles: la linea naranja
-  // se dibuja en su propia escala y no en el eje de la izquierda, asi que a ojo
-  // parece del orden de las barras. El cociente dice de que tamaño es.
+  // La linea naranja se dibuja en su propia escala y no en el eje de la
+  // izquierda, asi que a ojo parece del orden de las barras. El porcentaje dice
+  // de que tamaño es. Va como tasa y no como cociente para no repetir el total
+  // movido, que ya esta dos etiquetas mas a la izquierda.
   $('#ll-ret').innerHTML = st.volumen
-    ? `${st.rechazo} / ${st.volumen}${nota(' camiones movidos')}`
+    ? st.rechazo + nota(` · ${Math.round((st.rechazo / st.volumen) * 1000) / 10}% de los movidos`)
     : String(st.rechazo);
 }
 
@@ -289,7 +295,7 @@ function pintarEvolucion() {
   const claves = Object.keys((anual ? D.monthDetail : D.dayDetail) || {});
 
   $('#evo-eyebrow').textContent = anual
-    ? 'Observaciones y controles por mes · últimos 12 meses'
+    ? 'Camiones movidos y observados por mes · últimos 12 meses'
     : `Controles por día · ${D.meta.curMonthLabel}`;
   $('#evo-titulo').textContent = anual ? 'Evolución del año' : 'Evolución del mes';
   $('#evo-pista').textContent = anual ? 'Tocá un mes para abrir el detalle' : 'Tocá un día para abrir el detalle';
@@ -297,10 +303,8 @@ function pintarEvolucion() {
   pintarLeyenda(src.stats, serie, anual);
 
   // Escala redondeada a multiplos de 50: un eje con "437" arriba no se lee.
-  // La escala mide lo que se dibuja: donde no hay controles, la barra son las
-  // observaciones. Con `w.n` a secas los meses viejos valian 0 y el eje salia
-  // calculado sobre tres barras de doce.
-  const crudo = Math.max(1, ...serie.map((w) => (w.n == null ? (w.ng || 0) : w.n)));
+  // La escala mide lo que se dibuja, y lo que se dibuja son camiones movidos.
+  const crudo = Math.max(1, ...serie.map((w) => w.volumen || 0));
   const paso = Math.max(1, Math.ceil(crudo / 4 / 50) * 50);
   const tope = paso * 4;
 
@@ -322,44 +326,27 @@ function pintarEvolucion() {
     const k = claves[i];
     const sel = k && k === elegido;
 
-    // La barra es lo que se cargo ese mes. Donde hay controles es el total, con
-    // el NG adentro; donde no los hay son las observaciones, y entonces la
-    // barra va entera en rojo -- porque eso es literalmente lo que son. Pintar
-    // esos meses de gris decia "muchos controles y ninguna observacion", que es
-    // el reves exacto de lo que paso.
-    const cargado = w.n == null ? (w.ng || 0) : w.n;
-    const alto = Math.round((cargado / tope) * ALTO_BARRA) + 2;
-    const altoNg = w.ng == null ? 0 : Math.round((w.ng / tope) * ALTO_BARRA);
-
-    // El color de la tasa vale para NG sobre controles, que es donde los cortes
-    // del diseño significan algo. Sobre volumen un 9% no es "verde": es otra
-    // escala, y se muestra en gris para no invitar a compararlos.
-    const sobreControles = w.ngBase !== 'volumen';
-    const color = sel ? 'var(--text-strong)'
-      : sobreControles ? colorPct(w.ngPct)
-      : 'var(--text-faint)';
+    // Dos colores y un solo significado: el alto es el total de camiones
+    // movidos y el rojo es la parte de ese total que tuvo observacion. La
+    // fraccion roja **es** la tasa, asi que se lee sin leer el numero.
+    //
+    // El denominador no cambia nunca. Los controles existen solo desde
+    // jul-2026, y una serie que cambiara de denominador en el medio daria un
+    // salto de 12% a 49% que es de metodo y no de calidad.
+    const alto = Math.round((w.volumen / tope) * ALTO_BARRA) + 2;
+    const altoNg = Math.round(((w.ng || 0) / tope) * ALTO_BARRA);
 
     return `
       <button type="button" class="col${sel ? ' sel' : ''}" data-k="${esc(k || '')}">
-        <small style="color:${color};font-weight:${sel ? '600' : '400'}">
-          ${w.ngPct == null ? '—' : w.ngPct + '%'}
+        <small style="color:${sel ? 'var(--text-strong)' : 'var(--text-muted)'};font-weight:${sel ? '600' : '400'}">
+          ${w.obsPct == null ? '—' : w.obsPct + '%'}
         </small>
         <span class="barra" style="height:${alto}px"><i style="height:${altoNg}px"></i></span>
       </button>`;
   }).join('');
 
-  // Marca del corte: la primera barra que mide sobre controles. Va entre esa y
-  // la anterior, no encima de ninguna, porque el cambio pasa en el medio.
-  const iCorte = serie.findIndex((w) => w.ngBase !== 'volumen');
-  const hayCorte = iCorte > 0 && serie.some((w) => w.ngBase === 'volumen');
-  const corte = hayCorte
-    ? `<div class="corte" style="left:${((iCorte / n) * 100).toFixed(2)}%"></div>`
-    : '';
-  $('#ll-corte').hidden = !hayCorte;
-
   $('#evo-plot').innerHTML = `
     ${guias}
-    ${corte}
     <svg viewBox="0 0 100 100" preserveAspectRatio="none">
       <polyline points="${puntos}" fill="none" stroke="var(--status-warn)" stroke-width="1.5"
                 vector-effect="non-scaling-stroke" stroke-linejoin="round"></polyline>
