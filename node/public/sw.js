@@ -11,8 +11,14 @@
  * service worker y su cache. Los caches de esa etapa se limpian abajo.
  * v7: front nuevo sobre el design system TTFA (iconos.js, zonas.js).
  * v8: los tokens salen a css/tokens.css, compartidos con el tablero.
+ * v9: se fueron dos desvios del catalogo (oxido avanzado y oxido y suciedad).
+ *     Este es el caso que obliga a subir la version y no alcanzaba con dejar
+ *     que el stale-while-revalidate se ponga al dia solo: zonas.js esta en el
+ *     SHELL, asi que el inspector seguia viendo las opciones viejas hasta la
+ *     SEGUNDA carga. Un catalogo desactualizado en la pantalla de carga no es
+ *     un detalle estetico -- se cargan desvios que ya no existen.
  */
-const VERSION = 'v8';
+const VERSION = 'v9';
 const CACHE = `yard-${VERSION}`;
 
 // El app shell tiene que alcanzar para abrir la app sin conexion. Rutas
