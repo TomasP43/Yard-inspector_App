@@ -134,6 +134,7 @@ deduplicación del catálogo, las trampas de los datos— está en
                                    rows[{ time, eq, trafico, cat, ng, desvio }] } },
 
     catCounts:  [[tipo, n], ...],
+    empresas:   [{ name, volumen, ng, pct, pareto[], paretoAparte, catCounts[] }],
     impacto:    { total, outcome[{key,n}], cats[], topFreno[], trend[] },
     reincidencia: { corregido, reincidio, sinRecontrol, tasa, medianaDias,
                     watchTotal, watchlist[] },
@@ -254,6 +255,19 @@ deduplicación del catálogo, las trampas de los datos— está en
 - **`volumen` no sale de la base de patrullas.** Es el volumen operativo por mes,
   hoy en una tabla dinámica de Excel abierta por transportista y destino. El
   mapeo a los flujos de patrullas está resuelto y documentado en YI-006.
+
+- **`empresas[]` es la tasa de NG por transportista, y cada una trae su propio
+  corte.** `pct = ng / volumen` de **esa** empresa, no sobre el total: la
+  pregunta es cuál anda peor, no cuál mueve más. Sin dividir por el volumen
+  propio, la que más mueve encabeza siempre por ser la más grande.
+
+  Cada entrada lleva además su `pareto`, su `paretoAparte` y sus `catCounts`,
+  porque al tocar una empresa las dos tarjetas de al lado pasan a mostrar lo de
+  ella. Son los mismos agregados que a nivel total, filtrados por empresa.
+
+  **No es un gráfico de torta, y no puede serlo:** una torta reparte un total
+  entre sus partes, y estas tasas tienen cada una su propio denominador — no
+  suman 100. Van en barras, que además es lo que ya usa esa tarjeta.
 
 - **`pareto` va SIN el óxido, y lo que se saca viaja en `paretoAparte`.**
 

@@ -32,6 +32,10 @@ const UMBRAL_PARETO = 80;
 let D = null;                 // el tablero que devolvio el servidor
 let periodo = 'anual';
 let elegido = null;           // clave del mes o del dia abierto en el detalle
+let empresa = null;           // transportista que filtra el Pareto y los tipos
+
+/** Los datos de la empresa filtrada, o null si estan todas. */
+const empresaSel = () => (empresa ? (D.empresas || []).find((e) => e.name === empresa) : null) || null;
 
 // ------------------------------------------------------------------ utilidades
 
@@ -558,11 +562,15 @@ function detalleDia(d) {
 // ----------------------------------------------------------------- pareto
 
 function pintarPareto() {
-  const st = (periodo === 'anual' ? D.annual : D.monthly).stats;
+  const base = (periodo === 'anual' ? D.annual : D.monthly).stats;
+  // Con una empresa elegida, el Pareto es el de ella. `paretoAparte` viaja
+  // junto, porque el peso del oxido tambien cambia por empresa.
+  const st = empresaSel() || base;
   const filas = st.pareto || [];
 
   const dentro = filas.filter((p) => p.cumPct <= UMBRAL_PARETO).length || filas.length;
-  $('#pareto-eyebrow').textContent = `${dentro} desvíos explican el ${UMBRAL_PARETO}% del resto`;
+  $('#pareto-eyebrow').textContent =
+    `${dentro} desvíos explican el ${UMBRAL_PARETO}% del resto${empresa ? ` · ${empresa}` : ''}`;
   $('#pareto-titulo').textContent = 'Desvíos que concentran el problema';
 
   // Lo que quedo afuera de la tabla. El oxido solo es la mitad de los desvios:
@@ -608,8 +616,14 @@ function pintarPareto() {
 }
 
 function pintarPorTipo() {
-  const total = (D.catCounts || []).reduce((a, c) => a + c[1], 0) || 1;
-  $('#por-tipo').innerHTML = (D.catCounts || []).map(([nombre, n]) => {
+  const sel = empresaSel();
+  const cats = (sel ? sel.catCounts : D.catCounts) || [];
+  $('#tipo-eyebrow').textContent = sel
+    ? `Sobre las observaciones de ${sel.name}`
+    : 'Sobre total de observaciones';
+
+  const total = cats.reduce((a, c) => a + c[1], 0) || 1;
+  $('#por-tipo').innerHTML = cats.map(([nombre, n]) => {
     const pct = Math.round((n / total) * 100);
     return `
       <div class="f">
@@ -617,6 +631,46 @@ function pintarPorTipo() {
         <span class="pista"><i style="width:${pct}%;background:${COLOR_TIPO[nombre] || 'var(--gray-400)'}"></i></span>
       </div>`;
   }).join('');
+
+  pintarPorEmpresa();
+}
+
+/**
+ * Tasa de NG por transportista: NG sobre los camiones que movio esa empresa.
+ *
+ * **Cada barra tiene su propio denominador**, asi que no suman 100 y por eso no
+ * es una torta: una torta reparte un total entre sus partes y esto no es un
+ * total repartido. La barra se dibuja contra la peor tasa, no contra 100, que
+ * si todas rondan el 15% doce barras cortas no dejan comparar nada.
+ *
+ * Dividir por el volumen propio es el punto: sin eso, la empresa que mas mueve
+ * encabeza siempre por mover mas, no por andar peor.
+ */
+function pintarPorEmpresa() {
+  const lista = [...(D.empresas || [])].sort((a, b) => b.pct - a.pct);
+  const peor = Math.max(1, ...lista.map((e) => e.pct));
+
+  // La referencia es la tasa de toda la flota, que ya viene calculada. Los
+  // cortes de `colorPct` no sirven aca: son para NG sobre controles, donde 55%
+  // es malo, y esta tasa ronda el 15% -- pintaria todo de verde siempre. Estar
+  // por encima del promedio de la flota si es una referencia de verdad.
+  const prom = (periodo === 'anual' ? D.annual : D.monthly).stats.obsPct;
+
+  $('#por-empresa').innerHTML = lista.map((e) => `
+    <button type="button" class="f${e.name === empresa ? ' sel' : ''}" data-emp="${esc(e.name)}"
+            aria-pressed="${e.name === empresa}">
+      <div class="cab">
+        <span>${esc(e.name)}</span>
+        <b>${esc(e.pct)}% <small>${esc(e.ng)} de ${esc(e.volumen)}</small></b>
+      </div>
+      <span class="pista"><i style="width:${(e.pct / peor) * 100}%;background:${
+        prom != null && e.pct > prom ? 'var(--ttfa-red)' : 'var(--status-ok)'}"></i></span>
+    </button>`).join('') || '<p class="nota">Sin datos por empresa.</p>';
+
+  $('#empresa-nota').textContent = !lista.length ? ''
+    : empresa ? `Mostrando ${empresa}. Tocá de nuevo para ver todas.`
+    : prom == null ? 'Tocá una empresa para filtrar las dos tarjetas.'
+    : `Rojo: por encima del ${prom}% de la flota · tocá una para filtrar`;
 }
 
 // ------------------------------------------------------- impacto en la carga
@@ -888,6 +942,15 @@ document.addEventListener('click', (e) => {
     periodo = p.dataset.p;
     elegido = null;   // el detalle es de otro corte, no se arrastra
     cargar();
+    return;
+  }
+
+  const emp = e.target.closest('[data-emp]');
+  if (emp) {
+    // Volver a tocarla muestra todas otra vez, igual que con los meses.
+    empresa = empresa === emp.dataset.emp ? null : emp.dataset.emp;
+    pintarPorTipo();   // repinta tambien la lista de empresas
+    pintarPareto();
     return;
   }
 

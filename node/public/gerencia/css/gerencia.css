@@ -501,6 +501,27 @@
 .barras-h .pista { height: 6px; background: var(--pista); border-radius: var(--radius-pill); overflow: hidden; }
 .barras-h .pista i { display: block; height: 100%; border-radius: var(--radius-pill); }
 
+/* Las barras que filtran son <button>: hay que devolverles el aspecto de fila.
+   El padding negativo a los costados da area de click sin correr el texto. */
+.barras-h.clicable .f {
+  margin: 0 -8px;
+  padding: 4px 8px;
+  width: calc(100% + 16px);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.barras-h.clicable .f:hover { background: var(--surface-hover); }
+.barras-h.clicable .f.sel { background: var(--ttfa-red-08); }
+.barras-h.clicable .f.sel .cab span:first-child {
+  color: var(--text-strong);
+  font-weight: var(--weight-semibold);
+}
+.barras-h .cab small { color: var(--text-faint); font-size: 11px; margin-left: 4px; }
+
 /* -------------------------------------------------------- impacto: cintas */
 
 .cinta { display: flex; height: 34px; border-radius: 2px; overflow: hidden; }

@@ -348,6 +348,36 @@
     monthly: ['jun', 'jul', 'ago'].map((m) => ({ label: m, n: entre(40, 300), pct: entre(28, 70) }))
   }));
 
+  /**
+   * Tasa de NG por empresa transportista.
+   *
+   * NG sobre camiones movidos de esa empresa, no sobre el total: la pregunta es
+   * cual anda peor, no cual mueve mas. Sin dividir por el volumen propio, la
+   * empresa mas grande encabeza siempre por ser la mas grande.
+   *
+   * **Volumenes inventados**, como todo este archivo. Cuantos camiones mueve
+   * cada transportista es informacion comercial y el preview se publica abierto;
+   * lo real viaja por el contrato. Los nombres si son los que usa la operacion.
+   */
+  const empresas = [
+    { name: 'Furlong', volumen: 9800 },
+    { name: 'TTFA', volumen: 5100 },
+    { name: 'Autoport', volumen: 2300 },
+    { name: 'CAT', volumen: 1100 },
+    { name: 'Green Mile', volumen: 380 }
+  ].map((e) => {
+    const ng = Math.round((e.volumen * entre(8, 34)) / 100);
+    // Cada empresa trae su propio Pareto y su propio desglose por tipo: al
+    // tocarla, las dos tarjetas de al lado pasan a ser las de ella.
+    const p = pareto(entre(7, 12));
+    const cats = TIPOS.map((t) => [t, entre(20, 900)]);
+    return {
+      ...e, ng, pct: Math.round((ng / e.volumen) * 1000) / 10,
+      pareto: p.items, paretoAparte: p.aparte,
+      catCounts: cats.sort((a, b) => b[1] - a[1])
+    };
+  }).sort((a, b) => b.pct - a.pct);
+
   // Nombres inventados a proposito. El preview se publica en una web abierta y
   // no corresponde poner nombres de gente real al lado de "52% NG, +10 pp vs.
   // el promedio del equipo": eso es la evaluacion de una persona.
@@ -392,6 +422,7 @@
     impacto,
     reincidencia,
     traficoTrend,
+    empresas,
     auditorBench: { teamPct, list: auditores },
     pendientes: Array.from({ length: 4 }, () => ({
       eq: String(entre(120, 7999)),
