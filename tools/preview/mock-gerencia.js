@@ -139,17 +139,22 @@
     obsPct: Math.round((obsAnual / volumenAnual) * 1000) / 10,
     retiroProm: marcarZ(serieAnual),
 
-    // El embudo de los KPIs: controles -> NG -> retiros y demoras. Las cuatro
-    // cifras salen de los MISMOS meses, que son los que tienen control cargado.
-    // Mezclar retiros de doce meses con controles de dos daria un porcentaje
-    // que no es de nada.
+    // El embudo de los KPIs: base -> NG -> retiros y demoras. Las cuatro cifras
+    // salen de los mismos meses y se dividen por la misma base.
+    //
+    // En la ventana de doce meses la base son los **camiones movidos**, que es
+    // lo unico que se conoce de punta a punta: `n` va null porque no existe un
+    // total de controles del periodo -- solo algunos meses los tienen.
+    // Cuantos meses tienen control cargado sale de `mesesConControles`, que la
+    // pantalla usa para decirlo en meses y no en porcentaje: un "18% del
+    // periodo fue controlado" se leia como que se controla poco, cuando lo que
+    // pasa es que diez de los doce meses no tienen el dato.
     embudo: {
-      meses: conControlesAnual.length,
-      n: totalAnual,
-      ng: conControlesAnual.reduce((a, m) => a + m.ng, 0),
-      rechazo: conControlesAnual.reduce((a, m) => a + m.rechazo, 0),
-      demora: conControlesAnual.reduce((a, m) => a + m.demora, 0),
-      volumen: conControlesAnual.reduce((a, m) => a + m.volumen, 0)
+      n: null,
+      volumen: volumenAnual,
+      ng: obsAnual,
+      rechazo: retirosAnual,
+      demora: serieAnual.reduce((a, m) => a + m.demora, 0)
     },
     ngPct: Math.round((conControlesAnual.reduce((a, m) => a + m.ng, 0) / totalAnual) * 100),
     okPct: null,
@@ -201,8 +206,9 @@
     retiroProm: marcarZ(serieMensual),
     // El mes en curso es posterior al corte: todos los dias tienen control
     // cargado, asi que el embudo es el mes entero.
+    // El mes en curso es posterior al corte: todos los dias tienen control y
+    // `n === volumen`, asi que la base son los controlados.
     embudo: {
-      meses: null,
       n: totalMes,
       ng: serieMensual.reduce((a, d) => a + (d.ng || 0), 0),
       rechazo: retirosMes,

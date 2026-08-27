@@ -214,34 +214,54 @@ function pintarKpis() {
   const sel = elegido ? fuente[elegido] : null;
   const d = sel || st.embudo;
 
-  const cuando = sel ? sel.label
-    : anual ? `en ${st.embudo.meses} de 12 meses`
-    : 'mes en curso';
+  // El denominador es el mismo numero que encabeza el bloque, y cambia de
+  // nombre segun el mes:
+  //
+  //   con controles cargados  -> "Controlados". Desde jul-2026 se controla todo
+  //                              lo que se mueve, asi que es el volumen entero.
+  //   sin controles cargados  -> "Camiones movidos", el unico que se conoce.
+  //
+  // Antes este bloque se restringia a los meses con control y los viejos salian
+  // con "—" en las cuatro tarjetas. Ya no hace falta: los movidos se conocen
+  // siempre, asi que cualquier mes tiene sobre que medirse.
+  const controlado = d.n != null;
+  const base = controlado ? d.n : d.volumen;
+  const deQue = controlado ? 'de los controlados' : 'de los camiones movidos';
 
-  const pct = (v) => (d.n ? Math.round((v / d.n) * 1000) / 10 + '%' : '—');
-  const deControles = d.n ? 'de los controles' : 'sin controles cargados';
+  const pct = (v) => (base && v != null ? Math.round((v / base) * 1000) / 10 + '%' : '—');
 
   const kpis = [
     {
-      // El unico que no se divide por controles, porque seria 100%. Va la
-      // cobertura, que es la pregunta que si tiene sentido hacerle: de todo lo
-      // que se movio, cuanto se controlo.
-      label: 'Controles', valor: d.n == null ? '—' : d.n, unidad: '',
-      delta: d.n && d.volumen ? `${Math.round((d.n / d.volumen) * 100)}% de los camiones movidos` : '',
+      // No se divide por si mismo, obviamente. Cuando hay controles va la
+      // cobertura: desde jul-2026 tiene que dar 100%, y un mes por debajo
+      // significa que se dejo de controlar algo.
+      label: controlado ? 'Controlados' : 'Camiones movidos',
+      valor: base == null ? '—' : base, unidad: '',
+      // Cuando hay controles, la cobertura. Cuando no, **cuantos meses de la
+      // ventana no tienen control cargado** -- que no es lo mismo.
+      //
+      // Aca decia "18% del periodo fue controlado", que era 3427/19572 y se
+      // leia como "se controla poco". Lo que pasa es lo contrario: en los meses
+      // que tienen el dato la cobertura es 100%, y el 18% sale de que diez de
+      // los doce meses no tienen control cargado porque el OK no se registraba.
+      delta: controlado && d.volumen
+        ? `${Math.round((d.n / d.volumen) * 100)}% de los camiones movidos`
+        : sel ? 'sin controles cargados ese mes'
+        : `${st.mesesConControles} de 12 meses con control cargado`,
       deltaColor: 'var(--text-muted)',
-      pie: cuando
+      pie: sel ? sel.label : anual ? 'últimos 12 meses' : 'mes en curso'
     },
     {
       label: 'Con observación', valor: d.ng == null ? '—' : d.ng, unidad: '', tono: 'ambar',
-      delta: pct(d.ng), deltaColor: 'var(--text-muted)', pie: deControles
+      delta: pct(d.ng), deltaColor: 'var(--text-muted)', pie: deQue
     },
     {
       label: 'Retiros', valor: d.rechazo == null ? '—' : d.rechazo, unidad: '', tono: 'rojo',
-      delta: pct(d.rechazo), deltaColor: 'var(--text-muted)', pie: deControles
+      delta: pct(d.rechazo), deltaColor: 'var(--text-muted)', pie: deQue
     },
     {
       label: 'Demora de carga', valor: d.demora == null ? '—' : d.demora, unidad: '', tono: 'ambar',
-      delta: pct(d.demora), deltaColor: 'var(--text-muted)', pie: deControles
+      delta: pct(d.demora), deltaColor: 'var(--text-muted)', pie: deQue
     }
   ];
 
@@ -375,6 +395,15 @@ function pintarEvolucion() {
     return `<i style="left:${x}%;bottom:${y}%"></i>${pct}`;
   }).join('');
 
+  // Marca del mes en que se empezo a cargar el control. Va entre la ultima
+  // barra sin control y la primera con, no encima de ninguna, porque el cambio
+  // ocurre en el medio. Sin entrada en la leyenda: la linea sola alcanza y el
+  // texto ocupaba media fila.
+  const iCorte = serie.findIndex((w) => w.n != null);
+  const corte = (iCorte > 0 && serie.some((w) => w.n == null))
+    ? `<div class="corte" style="left:${((iCorte / n) * 100).toFixed(2)}%"></div>`
+    : '';
+
   const cols = serie.map((w, i) => {
     const k = claves[i];
     const sel = k && k === elegido;
@@ -400,6 +429,7 @@ function pintarEvolucion() {
 
   $('#evo-plot').innerHTML = `
     ${guias}
+    ${corte}
     <svg viewBox="0 0 100 100" preserveAspectRatio="none">
       <polyline points="${puntos}" fill="none" stroke="var(--status-warn)" stroke-width="1.5"
                 vector-effect="non-scaling-stroke" stroke-linejoin="round"></polyline>
