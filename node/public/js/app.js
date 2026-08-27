@@ -782,7 +782,6 @@ function irA(nombre) {
   $('#badge-cab').hidden = true;
 
   $$('.tab').forEach((t) => t.classList.toggle('activo', t.dataset.v === vistaPrevia));
-  $$('.drawer .it').forEach((t) => t.classList.toggle('activo', t.dataset.v === vistaPrevia));
 
   if (!esDetalle) {
     const p = PANTALLAS[nombre];
@@ -807,14 +806,12 @@ function pintarNavegacion() {
       ${ico(p.icono, 20)}<span>${k === 'hoy' ? 'Hoy' : k === 'cargar' ? 'Cargar' : p.titulo.split(' ')[0]}</span>
     </button>`).join('');
 
-  const items = [
-    { v: 'tablero', icono: 'gauge', txt: 'Tablero' },
-    { v: 'hoy', icono: 'clipboard-check', txt: 'Patrulla de hoy' },
-    { v: 'historial', icono: 'file-text', txt: 'Historial completo' },
-    { v: 'cargar', icono: 'plus', txt: 'Nuevo control' }
-  ];
-  $('#drawer-nav').innerHTML = items.map((i) =>
-    `<button type="button" class="it${vista === i.v ? ' activo' : ''}" data-v="${i.v}">${ico(i.icono, 17)}<span>${i.txt}</span></button>`).join('');
+  // Un solo item: es el unico modulo que hay. Los cuatro que estaban aca eran
+  // los mismos cuatro de la barra de abajo, asi que el cajon no llevaba a
+  // ningun lado nuevo -- solo repetia, y con el pulgar mas lejos. Moverse entre
+  // pantallas se hace abajo; el cajon queda para el tema y el usuario.
+  $('#drawer-nav').innerHTML =
+    `<span class="it activo">${ico('truck', 17)}<span>Control de equipo</span></span>`;
 
   $('#menu').innerHTML = ico('menu', 20);
   $('#volver').innerHTML = ico('chevron-left', 20);
@@ -832,9 +829,6 @@ document.addEventListener('click', (e) => {
 
   const tab = t.closest('.tab');
   if (tab) { irA(tab.dataset.v); return; }
-
-  const it = t.closest('.drawer .it');
-  if (it) { irA(it.dataset.v); return; }
 
   const tgl = t.closest('[data-ng]');
   if (tgl) { soloNg = tgl.dataset.ng === 'true'; verHoy(); return; }

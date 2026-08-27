@@ -24,8 +24,9 @@
  * v11: se fue el datalist del numero de equipo (index.html y app.js).
  * v12: se fue el paso "Tipo de control" del formulario.
  * v13: el tablero de gerencia sale del cache -- ver el fetch de abajo.
+ * v14: el cajon lateral queda con un solo item.
  */
-const VERSION = 'v13';
+const VERSION = 'v14';
 const CACHE = `yard-${VERSION}`;
 
 // El app shell tiene que alcanzar para abrir la app sin conexion. Rutas
