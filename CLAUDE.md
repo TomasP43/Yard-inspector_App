@@ -165,7 +165,11 @@ Segunda pantalla, en `/yard/gerencia/`. Portada del diseño **"Dashboard Gerenci
 
 Por eso hay un solo pedido, `GET api/tablero?periodo=`, con el contrato en `REQUERIMIENTOS.md` (YI-004). Toda la costura esta en `gerencia/js/datos.js`: conectar el tablero es cambiar ese archivo.
 
-**Una trampa del dato que hay que respetar:** antes de junio de 2026 no se distinguia OK de NG. Esos meses **no tienen** tasa de observacion, y la respuesta tiene que mandar `ngPct: null`, no cero. Si manda cero, la pantalla dice que esos meses salieron todos perfectos.
+**Una trampa del dato que hay que respetar: hasta jun-2026 el OK no se cargaba.** El formulario se llenaba solo cuando habia algo para reportar, asi que esas 2.809 filas son **100% NG** — verificado contra `003_datos_historicos.sql`, el primer OK del historico es de junio de 2026. No es que no se distinguiera OK de NG: es que el OK no existia como registro.
+
+Eso obliga a tres cantidades y no dos: `volumen` (camiones movidos, siempre se sabe), `ng` (observaciones, siempre se sabe) y `n` (controles, **solo desde jul-2026**). Los meses viejos van con `n: null` — ni cero, que diria que no se controlo nada, ni `n = ng`, que diria que todo control termino mal. Lo que falta es el denominador.
+
+La tasa cambia de denominador en jul-2026 y por eso viaja `ngBase`: antes es sobre volumen, despues sobre controles. Un 9% y un 49% ahi no se comparan, y el grafico lleva una marca vertical donde ocurre el corte. Ver YI-004 y YI-006 en `REQUERIMIENTOS.md`.
 
 Los dos frentes comparten `css/tokens.css` — la paleta — y `js/iconos.js`. **No comparten layout**: uno es un telefono con barra fija abajo y el otro una pantalla de 1440 con barra lateral. Mezclarlos daba colisiones tontas, como el `main { position: fixed }` de la PWA comiendose el scroll del tablero.
 

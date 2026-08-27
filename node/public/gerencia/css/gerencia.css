@@ -400,8 +400,26 @@
   font-weight: var(--weight-semibold);
   color: var(--text-body);
 }
-/* Aclaracion al lado de la cifra ("3 de 12 meses con tracking"). Vuelve a la
-   tipografia del texto: en mono se leia como si fuera parte del numero. */
+/* Marca del cambio de denominador. Punteada y no solida para que se lea como
+   una anotacion sobre el grafico y no como una serie mas. */
+.evo-plot .corte {
+  position: absolute;
+  top: 0;
+  bottom: 6px;
+  width: 0;
+  border-left: 1px dashed var(--text-faint);
+  pointer-events: none;
+}
+.leyenda i.marca {
+  width: 0;
+  height: 11px;
+  border-radius: 0;
+  background: none;
+  border-left: 1px dashed var(--text-faint);
+}
+
+/* Aclaracion al lado de la cifra ("3 de 12 meses"). Vuelve a la tipografia del
+   texto: en mono se leia como si fuera parte del numero. */
 .leyenda .ll b span {
   font-family: var(--font-core);
   font-weight: var(--weight-regular);

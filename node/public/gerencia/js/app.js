@@ -173,32 +173,45 @@ function pintarKpis() {
   const prev = (D.monthly && D.monthly.priorStats) || {};
   const mesPrev = D.meta.priorMonthLabel;
 
-  const retiroPct = st.n ? Math.round((st.rechazo / st.n) * 1000) / 10 : 0;
+  // Los retiros se miden contra los camiones movidos, no contra los controles:
+  // "6.8% del total auditado" salia de dividir por un denominador que existe
+  // solo en dos meses de doce.
+  const retiroPct = st.volumen ? Math.round((st.rechazo / st.volumen) * 1000) / 10 : 0;
   const dRetiro = anual ? null : st.rechazo - (prev.rechazo || 0);
   const dNg = anual || st.ngPct == null || prev.ngPct == null ? null : st.ngPct - prev.ngPct;
   const dDemora = anual ? null : st.demoraCarga - (prev.demoraCarga || 0);
 
   const kpis = [
     {
-      label: 'Controles realizados', valor: st.n, unidad: '', tono: '',
-      delta: anual ? 'últimos 12 meses' : `${signo(st.n - D.monthly.priorTotal)} vs. ${mesPrev}`,
+      // Observaciones y no controles. Los controles solo existen desde que se
+      // cargan los OK; sumarlos con los meses en que solo se cargaba el NG daba
+      // un total que no era cantidad de nada.
+      label: 'Observaciones', valor: st.observaciones, unidad: '', tono: '',
+      // El delta compara observaciones con observaciones. Salia de restar
+      // controles contra el total del mes anterior, que es otra cosa.
+      delta: anual
+        ? 'últimos 12 meses'
+        : `${signo(st.observaciones - (prev.observaciones || 0))} vs. ${mesPrev}`,
       deltaColor: 'var(--text-muted)',
-      pie: anual ? `${D.meta.total} históricos` : 'mes en curso'
+      pie: anual ? `sobre ${st.volumen} camiones movidos` : 'mes en curso'
     },
     {
-      // El NG solo existe desde que se empezo a distinguir OK de NG. Antes de
-      // eso el dato no es cero: no existe, y se dice.
+      // La tasa sobre controles solo se puede calcular donde hay OK cargados.
+      // El pie dice sobre cuantos meses sale, que si no se lee como si fuera
+      // del año entero.
       label: 'Con observación', valor: st.ngPct == null ? '—' : st.ngPct, unidad: '%',
       color: colorPct(st.ngPct),
       delta: dNg == null
-        ? (st.okPct == null ? 'sin tracking' : `${st.okPct}% pasaron OK`)
+        ? (st.okPct == null ? 'sin controles cargados' : `${st.okPct}% pasaron OK`)
         : `${signo(dNg)} pp vs. ${mesPrev}`,
       deltaColor: dNg != null && dNg > 0 ? 'var(--ttfa-red)' : 'var(--status-ok)',
-      pie: anual ? 'meses con tracking' : `${st.okPct}% OK`
+      pie: anual
+        ? `${st.n} controles en ${st.mesesConControles} de 12 meses`
+        : `${st.okPct}% OK`
     },
     {
       label: 'Unidades retiradas', valor: st.rechazo, unidad: '', tono: 'rojo',
-      delta: `${retiroPct}% del total auditado`,
+      delta: `${retiroPct}% de los camiones movidos`,
       deltaColor: dRetiro != null && dRetiro > 0 ? 'var(--ttfa-red)' : 'var(--text-muted)',
       pie: dRetiro == null ? 'últimos 12 meses' : `${signo(dRetiro)} vs. ${mesPrev}`
     },
@@ -242,28 +255,31 @@ const ALTO_BARRA = 176;
  * diria que salieron todos perfectos; lo que pasa es que no se sabe.
  */
 function pintarLeyenda(st, serie, anual) {
-  $('#ll-ctrl').textContent = st.n;
-
-  // Retiros contra controles. La linea naranja se dibuja en su propia escala y
-  // no en el eje de la izquierda, asi que a ojo parece del orden de los
-  // controles; el cociente dice de que tamaño es en realidad.
-  $('#ll-ret').textContent = `${st.rechazo} / ${st.n}`;
-
-  // El denominador son los que TIENEN controles, no todas las barras. En la
-  // vista mensual los sabados y domingos vienen con n=0 y ng=null: no son dias
-  // sin tracking, son dias sin trabajo. Contarlos inventaba media docena de
-  // jornadas sin medir que nunca ocurrieron.
-  const conControles = serie.filter((w) => w.n > 0);
-  const conNg = conControles.filter((w) => w.ng != null);
-  const ng = conNg.reduce((a, w) => a + w.ng, 0);
-  const unidad = anual ? 'meses' : 'días';
-
   // La aclaracion va aparte del numero: en mono parecia parte de la cifra.
   const nota = (t) => `<span>${t}</span>`;
-  $('#ll-ng').innerHTML =
-    conNg.length === 0 ? nota('sin tracking')
-    : conNg.length === conControles.length ? String(ng)
-    : ng + nota(` · ${conNg.length} de ${conControles.length} ${unidad} con tracking`);
+  const unidad = anual ? 'meses' : 'días';
+
+  // Controles: solo existen donde se cargaron los OK. Decir "4961 controles"
+  // sumando los meses en que solo se cargaba el NG mezclaba dos cosas.
+  // `n == null` es "no se sabe cuantos controles hubo"; `n === 0` es "no hubo",
+  // que se sabe perfectamente. Solo el primero merece aclaracion. Mezclarlos
+  // hacia que los sabados y domingos aparecieran como jornadas sin cargar.
+  const sinDato = serie.filter((w) => w.n == null).length;
+  const conDato = serie.length - sinDato;
+  $('#ll-ctrl').innerHTML = conDato === 0
+    ? nota('no se cargaban')
+    : st.n + (sinDato ? nota(` · ${conDato} de ${serie.length} ${unidad}`) : '');
+
+  // Observaciones: se conocen siempre, en los doce meses. Es la unica serie
+  // comparable de punta a punta y por eso va sin asterisco.
+  $('#ll-ng').textContent = serie.reduce((a, w) => a + (w.ng || 0), 0);
+
+  // Retiros contra el volumen movido, no contra los controles: la linea naranja
+  // se dibuja en su propia escala y no en el eje de la izquierda, asi que a ojo
+  // parece del orden de las barras. El cociente dice de que tamaño es.
+  $('#ll-ret').innerHTML = st.volumen
+    ? `${st.rechazo} / ${st.volumen}${nota(' camiones movidos')}`
+    : String(st.rechazo);
 }
 
 function pintarEvolucion() {
@@ -273,7 +289,7 @@ function pintarEvolucion() {
   const claves = Object.keys((anual ? D.monthDetail : D.dayDetail) || {});
 
   $('#evo-eyebrow').textContent = anual
-    ? 'Controles por mes · últimos 12 meses'
+    ? 'Observaciones y controles por mes · últimos 12 meses'
     : `Controles por día · ${D.meta.curMonthLabel}`;
   $('#evo-titulo').textContent = anual ? 'Evolución del año' : 'Evolución del mes';
   $('#evo-pista').textContent = anual ? 'Tocá un mes para abrir el detalle' : 'Tocá un día para abrir el detalle';
@@ -281,7 +297,10 @@ function pintarEvolucion() {
   pintarLeyenda(src.stats, serie, anual);
 
   // Escala redondeada a multiplos de 50: un eje con "437" arriba no se lee.
-  const crudo = Math.max(1, ...serie.map((w) => w.n));
+  // La escala mide lo que se dibuja: donde no hay controles, la barra son las
+  // observaciones. Con `w.n` a secas los meses viejos valian 0 y el eje salia
+  // calculado sobre tres barras de doce.
+  const crudo = Math.max(1, ...serie.map((w) => (w.n == null ? (w.ng || 0) : w.n)));
   const paso = Math.max(1, Math.ceil(crudo / 4 / 50) * 50);
   const tope = paso * 4;
 
@@ -302,19 +321,45 @@ function pintarEvolucion() {
   const cols = serie.map((w, i) => {
     const k = claves[i];
     const sel = k && k === elegido;
-    const alto = Math.round((w.n / tope) * ALTO_BARRA) + 2;
+
+    // La barra es lo que se cargo ese mes. Donde hay controles es el total, con
+    // el NG adentro; donde no los hay son las observaciones, y entonces la
+    // barra va entera en rojo -- porque eso es literalmente lo que son. Pintar
+    // esos meses de gris decia "muchos controles y ninguna observacion", que es
+    // el reves exacto de lo que paso.
+    const cargado = w.n == null ? (w.ng || 0) : w.n;
+    const alto = Math.round((cargado / tope) * ALTO_BARRA) + 2;
     const altoNg = w.ng == null ? 0 : Math.round((w.ng / tope) * ALTO_BARRA);
+
+    // El color de la tasa vale para NG sobre controles, que es donde los cortes
+    // del diseño significan algo. Sobre volumen un 9% no es "verde": es otra
+    // escala, y se muestra en gris para no invitar a compararlos.
+    const sobreControles = w.ngBase !== 'volumen';
+    const color = sel ? 'var(--text-strong)'
+      : sobreControles ? colorPct(w.ngPct)
+      : 'var(--text-faint)';
+
     return `
       <button type="button" class="col${sel ? ' sel' : ''}" data-k="${esc(k || '')}">
-        <small style="color:${sel ? 'var(--text-strong)' : colorPct(w.ngPct)};font-weight:${sel ? '600' : '400'}">
+        <small style="color:${color};font-weight:${sel ? '600' : '400'}">
           ${w.ngPct == null ? '—' : w.ngPct + '%'}
         </small>
         <span class="barra" style="height:${alto}px"><i style="height:${altoNg}px"></i></span>
       </button>`;
   }).join('');
 
+  // Marca del corte: la primera barra que mide sobre controles. Va entre esa y
+  // la anterior, no encima de ninguna, porque el cambio pasa en el medio.
+  const iCorte = serie.findIndex((w) => w.ngBase !== 'volumen');
+  const hayCorte = iCorte > 0 && serie.some((w) => w.ngBase === 'volumen');
+  const corte = hayCorte
+    ? `<div class="corte" style="left:${((iCorte / n) * 100).toFixed(2)}%"></div>`
+    : '';
+  $('#ll-corte').hidden = !hayCorte;
+
   $('#evo-plot').innerHTML = `
     ${guias}
+    ${corte}
     <svg viewBox="0 0 100 100" preserveAspectRatio="none">
       <polyline points="${puntos}" fill="none" stroke="var(--status-warn)" stroke-width="1.5"
                 vector-effect="non-scaling-stroke" stroke-linejoin="round"></polyline>
@@ -350,16 +395,22 @@ function pintarDetalle() {
 
   const pct = (v) => (d.n ? Math.round((v / d.n) * 100) : 0);
   $('#detalle-kpis').innerHTML = `
-    <div><span class="eq-label">Controles</span><b>${d.n}</b></div>
+    <div>
+      <span class="eq-label">Controles</span>
+      <b>${d.n == null ? '—' : d.n}</b>
+      <small>${d.volumen ? d.volumen + ' camiones movidos' : ''}</small>
+    </div>
     <div>
       <span class="eq-label">Con observación</span>
-      <b class="ambar">${d.ngTracked === false ? '—' : d.ng}</b>
-      <small>${d.ngTracked === false ? 'sin tracking ese mes' : pct(d.ng) + '% del total'}</small>
+      <b class="ambar">${d.ng}</b>
+      <small>${d.n == null ? 'sin controles cargados ese mes' : pct(d.ng) + '% de los controles'}</small>
     </div>
     <div>
       <span class="eq-label">Retiros</span>
       <b class="rojo">${d.rechazo}</b>
-      <small>${pct(d.rechazo)}% del total</small>
+      <small>${d.volumen
+        ? Math.round((d.rechazo / d.volumen) * 1000) / 10 + '% de los movidos'
+        : pct(d.rechazo) + '% de los controles'}</small>
     </div>`;
 
   $('#detalle-cuerpo').innerHTML = anual ? detalleMes(d) : detalleDia(d);
@@ -685,7 +736,7 @@ function pintarOperativo() {
 
 function pintar() {
   $('#subtitulo').textContent = periodo === 'anual'
-    ? `Últimos 12 meses · ${D.meta.total} controles históricos`
+    ? `Últimos 12 meses · ${D.meta.total} registros históricos`
     : `${D.meta.curMonthLabel} · actualizado ${fmtFecha(D.meta.updated)}`;
 
   pintarLateral();

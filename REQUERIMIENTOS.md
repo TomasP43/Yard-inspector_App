@@ -144,17 +144,40 @@ deduplicación del catálogo, las trampas de los datos— está en
     todayCount, todayNg
   }
 
-  series[] = [{ label, clave, n, ng, ngPct, rechazo, rechazoPct }]
-  stats    = { n, ngTracked, ngPct, okPct, rechazo, demoraCarga, criticoPct,
+  series[] = [{ label, clave, volumen, n, ng, ngPct, ngBase, rechazo, rechazoPct }]
+  stats    = { n, mesesConControles, observaciones, volumen, ngPct, ngBase,
+               okPct, rechazo, demoraCarga, criticoPct,
                pareto[{ name, count, cumPct }] }
   ```
 
   La forma exacta, con datos, está en `tools/preview/mock-gerencia.js`.
 
-- **⚠ Ojo con esto:** `ngPct` tiene que poder venir **`null`**, y no cero. Antes
-  de junio de 2026 no se distinguía OK de NG, así que esos meses **no tienen**
-  tasa de observación. La pantalla lo muestra como "sin tracking"; si el backend
-  manda 0, va a decir que esos meses salieron todos perfectos.
+- **⚠ Lo más importante de todo el contrato: hay tres cantidades, no dos.**
+
+  | Campo | Qué es | Cuándo se conoce |
+  |---|---|---|
+  | `volumen` | camiones movidos ese mes | siempre — sale de operaciones, no de la patrulla |
+  | `ng` | observaciones cargadas | siempre |
+  | `n` | controles hechos, OK + NG | **solo desde jul-2026** |
+
+  **Hasta jun-2026 el OK no se cargaba.** El formulario se llenaba únicamente
+  cuando había algo para reportar, así que esas 2.809 filas son 100% NG y no se
+  sabe sobre cuántos controles salieron. Verificado contra
+  `003_datos_historicos.sql`: el primer OK del histórico es de junio de 2026, y
+  todos los meses anteriores dan 100% NG sin una sola excepción.
+
+  Esos meses van con **`n: null`**. Ni cero (diría que no se controló nada) ni
+  `n = ng` (diría que todo control terminó mal). Lo que falta es el denominador.
+
+- **`ngBase` dice contra qué se calculó `ngPct`**, porque el denominador cambia
+  en jul-2026: antes es `ng / volumen` (`'volumen'`), después es `ng / n`
+  (`'controles'`). Son escalas distintas — 9% y 49% no se comparan — y sin este
+  campo la pantalla no puede ni pintarlas con criterios distintos ni poner la
+  marca vertical donde ocurre el corte.
+
+- **`volumen` no sale de la base de patrullas.** Es el volumen operativo por mes,
+  hoy en una tabla dinámica de Excel abierta por transportista y destino. El
+  mapeo a los flujos de patrullas está resuelto y documentado en YI-006.
 
 - **`clave` en `series[]`** es lo que ata cada barra con su entrada en
   `monthDetail` / `dayDetail`. Sin eso el drill-down no puede resolver qué
@@ -177,6 +200,46 @@ deduplicación del catálogo, las trampas de los datos— está en
 - **Antecedente:** en la migración del histórico ya se fusionaron casos así en
   `controlador` (`Codero` → `Cordero`). En `usuario` quedó sin hacer.
 - **Mientras tanto:** el mock reproduce el caso a propósito, para que se vea.
+
+---
+
+### YI-006 — El volumen de camiones movidos, por mes y por flujo
+- **Estado:** pendiente
+- **Prioridad:** **bloqueante** para la serie histórica del tablero
+- **Tipo:** origen de datos nuevo
+- **Qué necesito:** una fuente de `volumen` — camiones movidos por mes y por
+  flujo — cargable desde jul-2024. Hoy vive en una tabla dinámica de Excel que
+  mantiene operaciones; hay que decidir si se importa periódicamente a una tabla
+  `volumen_mensual (anio, mes, flujo_id, camiones)` o si sale de un sistema.
+- **Para qué:** es el único denominador que existe antes de jul-2026. Sin él,
+  los meses en que solo se cargaba el NG no tienen contra qué medirse y el
+  tablero no puede mostrar una serie comparable.
+
+- **El mapeo ya está resuelto.** La tabla de operaciones cruza transportista ×
+  destino; el campo `Responsable` de las patrullas mezcla las dos dimensiones en
+  una sola lista. Cada columna cae en exactamente un flujo, ninguna se repite:
+
+  | Flujo en patrullas | Columnas de operaciones |
+  |---|---|
+  | Trafico Brasil | Furlong·BR + TTFA·BR |
+  | Trafico Autoport | Autoport·BR |
+  | Trafico Chile | TTFA·CHI |
+  | Trafico Green Mile | Green Mile·CHI |
+  | Trafico CAT | CAT·Puerto |
+  | Trafico Puerto / Cruce | Furlong·Puerto + Furlong·Cruce |
+  | Trafico Paraguay | Furlong·Paraguay |
+  | Trafico Bolivia | TTFA·Bolivia |
+  | Trafico Uruguay | Furlong·Uruguay |
+
+  `TTFA` y `Playa` no son carriles y no tienen volumen.
+
+- **⚠ Dos cosas del dato que conviene no olvidar:**
+  - Los valores traen decimales (`108,12`, `40,5`). Se redondean a la unidad.
+  - **La cobertura es muy despareja entre flujos.** Medido sobre jun–ago 2026,
+    que es donde se conocen los controles: siete flujos caen entre 76% y 101%,
+    pero `Trafico Puerto / Cruce` es el **66% de todo el volumen** y tiene 11
+    controles en tres meses. Cualquier tasa global sobre volumen queda dominada
+    por tráfico que casi no se inspecciona.
 
 ---
 

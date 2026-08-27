@@ -7,10 +7,11 @@
  * `GET api/tablero`** (ver YI-004 en REQUERIMIENTOS.md). Si el contrato cambia,
  * esto tiene que cambiar con el o el preview empieza a mentir.
  *
- * Los ordenes de magnitud salen del historico real: ~4.200 controles en 12
- * meses, tasa NG cerca del 50%, y el dato incomodo de que **antes de junio de
- * 2026 no se distinguia OK de NG**. Esos meses van con `ngPct: null`, que no es
- * lo mismo que cero, y la pantalla tiene que mostrarlo como "sin tracking".
+ * Los ordenes de magnitud salen del historico real, incluido el dato incomodo:
+ * **hasta jun-2026 el OK no se cargaba**. El formulario se llenaba solo cuando
+ * habia algo para reportar, asi que esas 2.809 filas son 100% NG y no se sabe
+ * sobre cuantos controles salieron. No es que no se distinguiera OK de NG --
+ * es que el OK no existia como registro. Esos meses van con `n: null`.
  *
  * NO se despliega. Solo lo carga tools/preview/armar.sh dentro de .preview/.
  */
@@ -35,25 +36,53 @@
   const NUM = ['09', '10', '11', '12', '01', '02', '03', '04', '05', '06', '07', '08'];
 
   // ------------------------------------------------------------ serie anual
-  // Los tres ultimos meses son los unicos con OK/NG; antes va null.
+  //
+  // Tres cantidades distintas, y el chiste esta en cual falta cuando:
+  //
+  //   volumen  camiones movidos. Se sabe siempre, sale de operaciones.
+  //   ng       observaciones. Se sabe siempre.
+  //   n        controles hechos (OK + NG). **Solo desde jun-2026.**
+  //
+  // Hasta mayo de 2026 el OK no se cargaba: el formulario se llenaba unicamente
+  // cuando habia algo para reportar. Por eso esas filas son 100% NG y no se
+  // sabe sobre cuantos controles salieron -- `n: null`, no cero. Con cero la
+  // pantalla dice que no se controlo nada; con `n = ng` diria que todo control
+  // termino mal. Las dos cosas son mentira: el dato que falta es el denominador.
+  //
+  // Numeros inventados, como todo este archivo. La forma es la de verdad.
+  // El corte es jul-2026: los dos ultimos meses de la ventana.
+  const CORTE = MESES.length - 2;
+
   const serieAnual = MESES.map((m, i) => {
-    const n = entre(80, 690);
-    const conTracking = i >= 9;
-    const ngPct = conTracking ? entre(42, 62) : null;
+    const volumen = entre(700, 2600);
+    const conControles = i >= CORTE;
+    const ng = entre(80, 340);
+    const n = conControles ? ng + entre(150, 380) : null;
     const rechazo = entre(4, 42);
     return {
       label: `${m} '${ANIOS[i]}`,
       clave: `20${ANIOS[i]}-${NUM[i]}`,
+      volumen,
       n,
-      ng: ngPct == null ? null : Math.round((n * ngPct) / 100),
-      ngPct,
+      ng,
+      // La tasa cambia de denominador en el corte, y por eso viaja dicho cual
+      // se uso. Sin `ngBase` la pantalla no puede saber que un 9% y un 49% no
+      // se comparan, ni pintarlos con criterios distintos.
+      ngPct: Math.round((ng / (n || volumen)) * 100),
+      ngBase: n ? 'controles' : 'volumen',
       rechazo,
-      rechazoPct: Math.round((rechazo / n) * 1000) / 10
+      rechazoPct: Math.round((rechazo / volumen) * 1000) / 10
     };
   });
 
-  const totalAnual = serieAnual.reduce((a, m) => a + m.n, 0);
+  const conControlesAnual = serieAnual.filter((m) => m.n != null);
+  const totalAnual = conControlesAnual.reduce((a, m) => a + m.n, 0);
+  const obsAnual = serieAnual.reduce((a, m) => a + m.ng, 0);
+  const volumenAnual = serieAnual.reduce((a, m) => a + m.volumen, 0);
   const retirosAnual = serieAnual.reduce((a, m) => a + m.rechazo, 0);
+  // Filas cargadas en la ventana: las observaciones de todos los meses mas los
+  // OK de los meses que los tienen. No es `totalAnual`, que son controles.
+  const filasAnual = obsAnual + conControlesAnual.reduce((a, m) => a + (m.n - m.ng), 0);
 
   function pareto(cuantos) {
     const base = DESVIOS.slice(0, cuantos).map((name, i) => ({
@@ -68,10 +97,16 @@
   }
 
   const statsAnual = {
-    n: totalAnual, ngTracked: true, ngPct: 49, okPct: 51,
+    n: totalAnual,
+    mesesConControles: conControlesAnual.length,
+    observaciones: obsAnual,
+    volumen: volumenAnual,
+    ngPct: Math.round((conControlesAnual.reduce((a, m) => a + m.ng, 0) / totalAnual) * 100),
+    okPct: null,
     rechazo: retirosAnual, demoraCarga: 75, criticoPct: 12,
     pareto: pareto(12)
   };
+  statsAnual.okPct = 100 - statsAnual.ngPct;
 
   // ----------------------------------------------------------- serie mensual
   const hoy = new Date();
@@ -80,11 +115,15 @@
     const dia = i + 1;
     // Un par de dias sin patrulla: los fines de semana existen.
     const sin = dia % 7 === 0 || dia % 7 === 6;
+    // El mes en curso es posterior a jun-2026, asi que aca los controles se
+    // saben todos: `n` nunca es null. Un dia sin patrulla es n=0, que es otra
+    // cosa -- se controlo nada, no es que no se sepa cuanto se controlo.
     const n = sin ? 0 : entre(14, 42);
     const ngPct = n ? entre(38, 60) : null;
     return {
       label: String(dia).padStart(2, '0'),
       clave: `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(dia).padStart(2, '0')}`,
+      volumen: sin ? 0 : entre(60, 130),
       n,
       ng: n ? Math.round((n * ngPct) / 100) : null,
       ngPct,
@@ -96,7 +135,11 @@
   const totalMes = serieMensual.reduce((a, d) => a + d.n, 0);
   const retirosMes = serieMensual.reduce((a, d) => a + d.rechazo, 0);
   const statsMensual = {
-    n: totalMes, ngTracked: true, ngPct: 44, okPct: 56,
+    n: totalMes,
+    mesesConControles: serieMensual.filter((d) => d.n > 0).length,
+    observaciones: serieMensual.reduce((a, d) => a + (d.ng || 0), 0),
+    volumen: serieMensual.reduce((a, d) => a + d.volumen, 0),
+    ngPct: 44, ngBase: 'controles', okPct: 56,
     rechazo: retirosMes, demoraCarga: 9, criticoPct: 14,
     pareto: pareto(9)
   };
@@ -105,8 +148,7 @@
   const monthDetail = {};
   serieAnual.forEach((m) => {
     monthDetail[m.clave] = {
-      label: m.label, n: m.n, ng: m.ng ?? m.n, rechazo: m.rechazo,
-      ngTracked: m.ngPct != null,
+      label: m.label, volumen: m.volumen, n: m.n, ng: m.ng, rechazo: m.rechazo,
       topDesvios: DESVIOS.slice(0, 5).map((name, i) => ({ name, count: entre(6, 90 - i * 12) })),
       topEquipos: Array.from({ length: 5 }, () => ({ name: String(entre(120, 7999)), count: entre(2, 9) })),
       rechazoList: Array.from({ length: entre(0, 6) }, () => ({
@@ -218,10 +260,14 @@
   window.TABLERO = {
     meta: {
       usuario: { nombre: 'Usuario Demo', email: 'demo@ejemplo.com' },
-      // El historico completo tiene que ser >= lo del ultimo año, obviamente.
-      // Lo estaba fijando a mano y quedaba "4961 en 12 meses / 4268 historicos",
-      // que es imposible y se leia en pantalla.
-      total: totalAnual + 938,
+      // Filas cargadas, no controles: hasta may-2026 una fila es una
+      // observacion y desde jun-2026 es un control. Sumarlas como "controles"
+      // mezclaba dos cosas distintas.
+      //
+      // Tiene que ser >= lo del ultimo año, obviamente. Lo estaba fijando a
+      // mano y quedaba "4961 en 12 meses / 4268 historicos", que es imposible
+      // y se leia en pantalla.
+      total: filasAnual + 938,
       updated: `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`,
       curMonthLabel: `${MESES[11]} ${hoy.getFullYear()}`,
       priorMonthLabel: MESES[10]
@@ -229,7 +275,7 @@
     annual: { series: serieAnual, total: totalAnual, rechazo: retirosAnual, stats: statsAnual },
     monthly: {
       series: serieMensual, stats: statsMensual,
-      priorStats: { n: 684, ngPct: 49, rechazo: 27, demoraCarga: 12 },
+      priorStats: { n: 684, observaciones: 335, ngPct: 49, rechazo: 27, demoraCarga: 12 },
       priorTotal: 684
     },
     monthDetail,
