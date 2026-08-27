@@ -478,6 +478,16 @@ function verControl(uuid) {
   const dv = nombresDesvio(i);
   const eq = i.equipo ? i.equipo.codigo : null;
 
+  /**
+   * Agregar una observacion solo se puede el mismo dia.
+   *
+   * La observacion pertenece al **viaje**, y cuando termina la jornada ese
+   * viaje cerro: el camion ya salio. Sumarle algo despues seria inventar que se
+   * vio lo que no se vio. Lo que aparezca despues se carga en el proximo
+   * control del equipo, y ahi lo abierto vuelve por la via de la reincidencia.
+   */
+  const deHoy = dia0(i.registrado_en).getTime() === dia0(new Date()).getTime();
+
   $('#titulo').textContent = eq ? 'Equipo ' + eq : 'Control';
   $('#eyebrow').textContent = `${fmtDia(i.registrado_en)} · ${hhmm(i.registrado_en)} · ${trafico(i.responsable)}`;
   $('#badge-cab').hidden = false;
@@ -543,19 +553,24 @@ function verControl(uuid) {
     : `<section class="card ficha${ng ? ' acento' : ''}">${ficha}</section>`}
 
 
-    <!-- Un control puede salir OK y que despues aparezca algo. No se edita este
-         -- a esta hora estaba OK y eso fue cierto -- se carga uno nuevo. -->
-    <button type="button" class="btn sec" id="ctrl-agregar" style="margin-top:16px">
-      ${ico('plus', 16)} Agregar observación a este equipo
-    </button>
+    ${deHoy ? `
+      <!-- Un control puede salir OK y que despues aparezca algo. No se edita
+           este -- a esa hora estaba OK y eso fue cierto -- se carga uno nuevo. -->
+      <button type="button" class="btn sec" id="ctrl-agregar" style="margin-top:16px"
+              data-eq="${esc(eq || '')}" data-resp="${esc(i.responsable ? i.responsable.id : '')}">
+        ${ico('plus', 16)} Agregar observación a este equipo
+      </button>`
+    : `
+      <p class="nota cerrado">
+        ${ico('info', 14)}
+        El viaje de ${fmtDia(i.registrado_en).toLowerCase()} ya cerró. Lo que aparezca
+        se carga en el próximo control del equipo.
+      </p>`}
 
     ${eq ? `
       <button type="button" class="btn sec" data-eq="${esc(eq)}" style="margin-top:10px">
         ${ico('file-text', 16)} Ver historial del equipo ${esc(eq)}
       </button>` : ''}`;
-
-  $('#ctrl-agregar').dataset.eq = eq || '';
-  $('#ctrl-agregar').dataset.resp = i.responsable ? i.responsable.id : '';
 }
 
 async function verDetalle(eq) {

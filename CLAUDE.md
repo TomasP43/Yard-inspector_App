@@ -157,6 +157,16 @@ Dos partes que no existian en AppSheet:
 
 Los campos que el diseño no muestra (`controlador`, `estado_control`) **no se sacaron**: quedan plegados en "Mas datos del control". La operacion los sigue usando; lo que cambio es que ya no estorban el camino rapido.
 
+## El viaje cierra con la jornada
+
+Un control puede salir OK y que despues aparezca algo. Desde el detalle del control hay un boton que abre el formulario precargado con ese equipo y **carga un control nuevo**: a la hora en que se cargo el primero, el equipo estaba OK, y eso fue cierto.
+
+**Ese boton solo aparece en los controles de hoy.** La observacion pertenece al viaje, y cuando termina la jornada el viaje cerro: el camion ya salio. Sumarle algo despues seria decir que se vio lo que no se vio. En un control viejo, donde iba el boton queda el aviso de que el viaje cerro.
+
+Lo que aparezca despues vuelve por el otro camino: **la proxima vez que ese equipo se controle**, si quedo algo abierto, el paso de resolucion lo trae de vuelta. Esa es la unica via para tocar un desvio de un viaje anterior, y es a proposito.
+
+Enlazar el control que corrige con el corregido esta pedido en YI-009. Sin eso los dos cuentan como controles separados, que es defendible -- son dos revisiones del mismo camion -- pero sube el denominador y el numerador de la jornada.
+
 ## El tablero de gerencia
 
 Segunda pantalla, en `/yard/gerencia/`. Portada del diseño **"Dashboard Gerencia"** del mismo proyecto de Claude Design. Es de escritorio: barra lateral, conmutador anual/mensual, y drill-down desde el grafico al detalle de un mes o de un dia.

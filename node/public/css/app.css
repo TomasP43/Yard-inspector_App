@@ -905,3 +905,18 @@ details.ficha[open] .ver-obs .ico { transform: rotate(90deg); }
   cursor: zoom-out;
 }
 .visor img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: var(--radius-sm); }
+
+/* Aviso de viaje cerrado, donde iba el boton de agregar observacion. Ocupa el
+   mismo lugar a proposito: que se vea por que no esta, en vez de que el boton
+   desaparezca sin explicacion. */
+.nota.cerrado {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 16px;
+  padding: 12px 14px;
+  border: 1px dashed var(--line-rule);
+  border-radius: var(--radius-md);
+  line-height: 1.45;
+}
+.nota.cerrado .ico { flex: 0 0 auto; margin-top: 1px; }
