@@ -43,6 +43,15 @@ perl -0pi -e 's{</body>}{<script src="../js/demo.js"></script>\n</body>}' "$DST/
 # dos archivos mas, y si no entran al SHELL la demo abre rota sin conexion.
 perl -0pi -e "s{  './js/app\.js'}{  './js/app.js',\n  './js/mock.js',\n  './js/demo.js'}" "$DST/sw.js"
 
+# La copia del preview lleva su propia version de service worker, con la marca
+# de tiempo del build. El SW solo se reinstala si su archivo cambio, asi que sin
+# esto cada cambio en mock.js o en el front se veia UNA CARGA TARDE: el codigo
+# ya estaba bien y la pantalla mostraba lo anterior. Paso media docena de veces.
+#
+# En produccion VERSION se sube a mano y a conciencia; el preview se rearma
+# veinte veces por tarde y no tiene por que.
+perl -0pi -e "s/const VERSION = '([^']*)';/const VERSION = '\$1-$(date +%s)';/" "$DST/sw.js"
+
 faltante=0
 for marca in \
   "$DST/index.html:js/mock.js" \

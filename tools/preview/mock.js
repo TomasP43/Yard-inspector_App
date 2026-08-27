@@ -104,6 +104,43 @@
       });
     }
   }
+  /**
+   * Los controles cargados desde la app sobreviven a la recarga.
+   *
+   * Sin esto el mock se portaba PEOR que produccion, no mejor: cargabas un
+   * control, lo veias en la lista, recargabas y no estaba. Del otro lado el
+   * servidor lo guarda, asi que perderlo escondia el unico camino que importa
+   * probar de punta a punta -- cargar, sincronizar, volver a entrar y que este.
+   *
+   * Van a localStorage y no a IndexedDB a proposito: IndexedDB ya la usa la app
+   * para la cola, y mezclar el almacen del mock con el de la app haria que
+   * limpiar uno se lleve el otro.
+   *
+   * Para empezar de cero: abrir con `?limpiar` en la URL.
+   */
+  const CLAVE = 'yard-preview-controles';
+
+  function leerGuardados() {
+    try { return JSON.parse(localStorage.getItem(CLAVE) || '[]'); } catch (e) { return []; }
+  }
+  function guardarControl(insp) {
+    try {
+      const a = leerGuardados();
+      a.push(insp);
+      localStorage.setItem(CLAVE, JSON.stringify(a));
+    } catch (e) { /* modo privado o cuota llena: el preview sigue andando */ }
+  }
+
+  if (location.search.includes('limpiar')) {
+    try { localStorage.removeItem(CLAVE); } catch (e) { /* modo privado */ }
+  }
+
+  leerGuardados().forEach((i) => {
+    if (INSP.some((x) => x.uuid === i.uuid)) return;   // por si acaso: sin duplicar
+    INSP.push(i);
+    id = Math.max(id, i.id || 0);                      // que el proximo id no choque
+  });
+
   INSP.sort((a, b) => new Date(b.registrado_en) - new Date(a.registrado_en));
 
   const json = (o, status) => Promise.resolve(new Response(JSON.stringify(o), {
@@ -150,11 +187,17 @@
       desvios: [
         ...(b.desvio_ids || []).map((x) => desvios.find((d) => d.id === x)).filter(Boolean)
       ].map((d) => ({ id: d.id, nombre: d.nombre })),
-      fotos: (b.fotos || []).map((_, i) => ({ id: i, orden: i + 1, ruta: null, orientacion: 'libre' }))
+      // Con `ruta: null` el control recien cargado quedaba sin foto aunque el
+      // inspector hubiera sacado tres. El servidor real devuelve la ruta del
+      // archivo que acaba de guardar, asi que aca se devuelve una de muestra.
+      fotos: (b.fotos || []).map((_, i) => ({
+        id: i, orden: i + 1, ruta: `demo-${(i % 4) + 1}.svg`, orientacion: 'libre'
+      }))
     };
 
     INSP.unshift(insp);
     INSP.sort((a, c) => new Date(c.registrado_en) - new Date(a.registrado_en));
+    guardarControl(insp);
     return json({ inspeccion: insp }, 201);
   }
 

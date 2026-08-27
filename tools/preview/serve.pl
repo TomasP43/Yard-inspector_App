@@ -1,6 +1,7 @@
 use strict;
 use warnings;
 use IO::Socket::INET;
+use IO::Select;
 
 # Servidor estatico minimo, solo para mirar el front en el navegador.
 my ($root, $port) = @ARGV;
@@ -27,6 +28,15 @@ my $srv = IO::Socket::INET->new(
 print "sirviendo $root en http://127.0.0.1:$port/\n";
 
 while (my $c = $srv->accept) {
+  # Este servidor atiende de a una conexion. Chrome abre varias de mas -- para
+  # el `addAll` del service worker abre seis o siete a la vez -- y por algunas
+  # no manda nunca nada. Sin este timeout, una conexion muda dejaba el servidor
+  # bloqueado leyendo para siempre, y con el la pagina a medio cargar y el
+  # service worker atascado en `installing`.
+  #
+  # Costo dos ratos de buscar un bug que no estaba en la app.
+  unless (IO::Select->new($c)->can_read(2)) { close $c; next; }
+
   my $req = <$c>;
   next unless $req;
   while (my $l = <$c>) { last if $l =~ /^\r?\n$/ }
