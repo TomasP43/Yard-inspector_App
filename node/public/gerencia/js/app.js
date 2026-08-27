@@ -482,24 +482,33 @@ function pintarDetalle() {
 
   $('#detalle-titulo').textContent = d.label || elegido;
 
-  const pct = (v) => (d.n ? Math.round((v / d.n) * 100) : 0);
+  // Misma regla que el bloque de arriba: la primera celda cambia de nombre
+  // segun el mes y las otras dos se dividen por ese numero. Aca habia quedado
+  // la logica vieja, que en un mes sin control cargado mostraba "Controles —"
+  // con el total movido de renglon chiquito. El numero estaba, pero en el lugar
+  // equivocado y detras de un guion.
+  const controlado = d.n != null;
+  const base = controlado ? d.n : d.volumen;
+  const sobre = controlado ? 'de los controlados' : 'de los camiones movidos';
+  const tasa = (v) => (base && v != null ? Math.round((v / base) * 1000) / 10 + '% ' + sobre : '—');
+
   $('#detalle-kpis').innerHTML = `
     <div>
-      <span class="eq-label">Controles</span>
-      <b>${d.n == null ? '—' : d.n}</b>
-      <small>${d.volumen ? d.volumen + ' camiones movidos' : ''}</small>
+      <span class="eq-label">${controlado ? 'Controlados' : 'Camiones movidos'}</span>
+      <b>${base == null ? '—' : base}</b>
+      <small>${controlado && d.volumen
+        ? Math.round((d.n / d.volumen) * 100) + '% de los camiones movidos'
+        : 'sin controles cargados ese mes'}</small>
     </div>
     <div>
       <span class="eq-label">Con observación</span>
-      <b class="ambar">${d.ng}</b>
-      <small>${d.n == null ? 'sin controles cargados ese mes' : pct(d.ng) + '% de los controles'}</small>
+      <b class="ambar">${d.ng == null ? '—' : d.ng}</b>
+      <small>${tasa(d.ng)}</small>
     </div>
     <div>
       <span class="eq-label">Retiros</span>
-      <b class="rojo">${d.rechazo}</b>
-      <small>${d.volumen
-        ? Math.round((d.rechazo / d.volumen) * 1000) / 10 + '% de los movidos'
-        : pct(d.rechazo) + '% de los controles'}</small>
+      <b class="rojo">${d.rechazo == null ? '—' : d.rechazo}</b>
+      <small>${tasa(d.rechazo)}</small>
     </div>`;
 
   $('#detalle-cuerpo').innerHTML = anual ? detalleMes(d) : detalleDia(d);
