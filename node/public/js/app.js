@@ -44,7 +44,7 @@ let vistosHistorial = 0;   // cuantos pasaron el filtro por tipo, acumulado
 let form = null;
 function formVacio() {
   return {
-    ng: true, tipo: '5s', zona: 0, desvios: new Set(), nuevos: [],
+    ng: true, zona: 0, desvios: new Set(), nuevos: [],
     demora: 'Cargo', fotos: [], checklist: null, resoluciones: {},
     pendientes: null // ultimo control NG de este equipo, si lo hay
   };
@@ -557,10 +557,6 @@ function pintarFormulario() {
     `<button type="button" data-v="${v}" class="${form.ng === (v === 'NG') ? 'sel' : ''}">${ico(i, 15)}${v}</button>`).join('');
   $('#c-ng').hidden = !form.ng;
 
-  // --- tipo de control
-  $('#c-tipos').innerHTML = TIPOS.map((t) =>
-    `<button type="button" class="tag${form.tipo === t ? ' sel' : ''}" data-tipo="${esc(t)}">${esc(t)}</button>`).join('');
-
   // --- zonas y desvios de la zona elegida
   const zonas = Zonas.repartir(CAT.desvios);
   if (form.zona >= zonas.length) form.zona = 0;
@@ -576,7 +572,7 @@ function pintarFormulario() {
       </button>`;
   }).join('');
 
-  $('#c-zona-lbl').textContent = '3 · Desvío en ' + actual.zona.toLowerCase();
+  $('#c-zona-lbl').textContent = '2 · Desvío en ' + actual.zona.toLowerCase();
   const marcados = form.desvios.size + form.nuevos.length;
   $('#c-zona-meta').textContent = marcados
     ? marcados + (marcados === 1 ? ' marcado' : ' marcados')
@@ -757,14 +753,14 @@ async function guardar(e) {
       fotos.push({ blob: await Camara.comprimir(x.file), orientacion: 'libre' });
     }
 
-    const tipo = (CAT.tipos_desvio || []).find((t) => t.nombre === form.tipo);
     const demora = (CAT.demoras || []).find((d) => d.nombre === form.demora);
 
     await Sync.encolar({
       responsable_id: Number(f.responsable_id.value),
       equipo_codigo: codigo,
       resultado: form.ng ? 'NG' : 'OK',
-      tipo_desvio_id: form.ng && tipo ? tipo.id : null,
+      // Ya no viaja `tipo_desvio_id`: lo deriva el servidor del desvio, que es
+      // lo unico que lo determina. Ver YI-008.
       desvio_ids: form.ng ? [...form.desvios] : [],
       desvios_nuevos: form.ng ? form.nuevos.slice() : [],
       demora_id: form.ng && demora ? demora.id : null,
@@ -884,9 +880,6 @@ document.addEventListener('click', (e) => {
   // ---- formulario
   const seg = t.closest('#c-seg button');
   if (seg) { form.ng = seg.dataset.v === 'NG'; pintarFormulario(); return; }
-
-  const tipo = t.closest('[data-tipo]');
-  if (tipo) { form.tipo = tipo.dataset.tipo; pintarFormulario(); return; }
 
   const zona = t.closest('[data-zona]');
   if (zona) { form.zona = Number(zona.dataset.zona); pintarFormulario(); return; }

@@ -132,19 +132,18 @@ try {
       </div>
 
       <div id="c-ng" hidden>
+        <!-- Aca estaba "1 · Tipo de control". Lo sacamos como poka-yoke: el
+             tipo lo determina el desvio, asi que preguntarlo era dar una
+             oportunidad de equivocarse sin ganar nada. En el historico 60 de 71
+             desvios se cargaron con mas de un tipo. Ver YI-008. -->
         <div class="paso">
-          <span class="eq-label">1 · Tipo de control</span>
-          <div class="tags" id="c-tipos"></div>
-        </div>
-
-        <div class="paso">
-          <span class="eq-label">2 · Zona del equipo</span>
+          <span class="eq-label">1 · Zona del equipo</span>
           <div class="zonas" id="c-zonas"></div>
         </div>
 
         <div class="paso">
           <div class="cab">
-            <span class="eq-label" id="c-zona-lbl">3 · Desvío</span>
+            <span class="eq-label" id="c-zona-lbl">2 · Desvío</span>
             <span class="mono" id="c-zona-meta" style="font-size:11px;color:var(--text-faint)"></span>
           </div>
           <div class="checks" id="c-desvios"></div>

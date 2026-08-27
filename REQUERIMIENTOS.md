@@ -447,6 +447,65 @@ deduplicación del catálogo, las trampas de los datos— está en
 
 ---
 
+### YI-008 — El tipo de control sale del desvío, no del inspector
+- **Estado:** pendiente
+- **Prioridad:** alta
+- **Tipo:** poka-yoke + catálogo
+- **Qué necesito:**
+  1. Cargar `desvio_catalogo.tipo_desvio_id` para los 71 desvíos.
+  2. Que `POST /api/inspecciones` **derive** el tipo de los desvíos de la
+     inspección y deje de esperar `tipo_desvio_id` — el front ya no lo manda.
+  3. Que los agregados por tipo (`catCounts`, `impacto.cats`, `criticoPct`) se
+     calculen por desvío y no por inspección.
+
+- **Por qué:** medido sobre el histórico, el campo no mide lo que dice medir.
+
+  | | |
+  |---|---|
+  | Desvíos cargados con **más de un tipo** | **60 de 71** |
+  | Usos sobre desvíos inconsistentes | **3.577 de 3.609 (99%)** |
+  | Peor caso: *Rueda de auxilio en mal estado* | 4 tipos, el dominante 39% |
+  | Aun *Óxido en batea*, con 1.183 usos | 4 tipos, el dominante 81% |
+
+  El tipo terminaba diciendo **quién cargó la observación**, no qué se
+  encontró.
+
+- **Por qué derivar y no borrar:** la pregunta sirve — cuánto de lo que se
+  encuentra es seguridad y cuánto es 5s es una pregunta de gerencia. Lo que
+  fallaba era el origen del dato. El tipo es una propiedad **del desvío**:
+  *Óxido en batea* es lo que es sin importar qué patrulla lo encontró.
+
+- **El poka-yoke es que la pregunta desaparezca.** No un aviso ni un valor por
+  defecto editable: si el inspector no elige, no puede elegir mal. La decisión
+  se toma **una vez por desvío** — 71 veces, por alguien que conoce la
+  operación — en lugar de 3.609 veces, de pie y con guantes.
+
+- **Una inspección con dos desvíos de tipos distintos cuenta en los dos.** Es
+  más correcto que forzarla a uno solo, que es lo que se hacía.
+
+- **Criterio propuesto**, agrupando por naturaleza del hallazgo y no por zona
+  (una zona mezcla: en *Batea* conviven el óxido, que es 5s, y el piso
+  desoldado, que es taller):
+
+  | Tipo | Criterio | Desvíos |
+  |---|---|---|
+  | Seguridad | pone en riesgo a una persona, o es un elemento de seguridad | 21 |
+  | Mantenimiento | algo roto, gastado, con pérdida o que no funciona | 26 |
+  | 5s | sucio o fuera de lugar; **nada roto** | 12 |
+  | Calidad | el equipo no está listo para cargar, o falta documentación | 11 |
+
+  Contra el tipo dominante del histórico, **cambian 21 de 71**. Los de más
+  peso: *Óxido avanzado* (337 usos) pasa a 5s, que además resuelve el conflicto
+  con la fusión — óxido normal era 5s al 81% y el avanzado Mantenimiento al
+  50%; *Cubierta / rueda en mal estado* (38) pasa a Seguridad; *Rampa
+  desoldada* (28) y *Derrame en tanque* (27) pasan a Mantenimiento.
+
+- **⚠ `Otro` (71 usos) no puede tener tipo**, porque no es un desvío: es el
+  cajón de sastre, y su tipo dominante llega al 41%. Hay que abrirlo — mirar
+  qué se cargó ahí y repartirlo — o darlo de baja.
+
+---
+
 ## Nota sobre lo que el backend tiene y la app no usa
 
 No es un requerimiento, es para que nadie los tome por carga viva:
