@@ -17,8 +17,12 @@
  *     SHELL, asi que el inspector seguia viendo las opciones viejas hasta la
  *     SEGUNDA carga. Un catalogo desactualizado en la pantalla de carga no es
  *     un detalle estetico -- se cargan desvios que ya no existen.
+ * v10: se fue tambien 'suciedad avanzada en batea'. **Todo cambio en un archivo
+ *     del SHELL necesita subir esto**, porque el navegador solo reinstala el
+ *     service worker si el archivo cambio -- y si VERSION no se mueve, no
+ *     cambio. zonas.js es del SHELL.
  */
-const VERSION = 'v9';
+const VERSION = 'v10';
 const CACHE = `yard-${VERSION}`;
 
 // El app shell tiene que alcanzar para abrir la app sin conexion. Rutas

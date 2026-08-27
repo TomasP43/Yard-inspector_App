@@ -29,8 +29,9 @@ const Zonas = (() => {
       // asi que la combinacion se carga marcando los dos. Como item propio
       // partia el mismo concepto en tres renglones. Ver YI-007.
       'Óxido en batea',
+      // 'Suciedad avanzada en batea' se fusiono con 'Suciedad en batea', por lo
+      // mismo que el oxido: la severidad no la distinguia nadie igual.
       'Suciedad en batea',
-      'Suciedad avanzada en batea',
       'Bidones sueltos en batea',
       'Objetos sueltos en batea',
       'Sunchos sin acomodar',

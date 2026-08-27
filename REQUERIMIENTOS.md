@@ -391,15 +391,30 @@ deduplicación del catálogo, las trampas de los datos— está en
 - **Estado:** pendiente
 - **Prioridad:** media
 - **Tipo:** catálogo + migración de histórico
-- **Qué necesito:** dos cosas, en la misma transacción.
-  1. Reasignar el histórico: `inspeccion_desvio.desvio_id` de *Óxido avanzado en
-     batea* pasa a *Óxido en batea*. En el histórico son **337 y 1.183 usos**
-     respectivamente.
-  2. Desactivar *Óxido avanzado en batea* en `desvio_catalogo` (`activo = 0`),
-     no borrarlo — si alguna fila quedara apuntando, borrarlo la rompe.
-- **Para qué:** es el mismo desvío. La severidad no la distinguía nadie de forma
-  consistente, así que separarlos sólo repartía el mismo concepto en dos
-  renglones y ninguno de los dos servía para decidir.
+- **Qué necesito:** la familia óxido/suciedad queda en **dos** desvíos, *Óxido
+  en batea* y *Suciedad en batea*. Los otros cuatro se reparten entre esos dos y
+  se desactivan (`activo = 0`, **no** borrar: si alguna fila quedara apuntando,
+  borrarlo la rompe).
+
+  | Desvío | Usos | Qué se hace |
+  |---|---|---|
+  | Óxido en batea | 1.183 | queda |
+  | Suciedad en batea | 486 | queda |
+  | Óxido avanzado en batea | 337 | → *Óxido en batea* |
+  | Suciedad avanzada en batea | 77 | → *Suciedad en batea* |
+  | Óxido y suciedad en batea | 239 | → los dos (ver abajo) |
+  | Oxido y suciedad avanzada | 3 | → los dos |
+
+- **Para qué:** hoy el mismo concepto está repartido en seis renglones que
+  cruzan tres dimensiones — qué es, qué tan grave, y si vienen juntos. La
+  severidad no la distinguía nadie de forma consistente, y la combinación es
+  redundante porque el campo ya es multivalor. Ninguno de los seis servía para
+  decidir nada.
+
+- **⚠ `Oxido y suciedad avanzada` es la que se escapa de cualquier búsqueda:**
+  va sin tilde en *Óxido* y sin el *"en batea"* del final, así que no aparece
+  filtrando por ninguno de los dos. Son 3 usos, pero es el ejemplo exacto de por
+  qué el catálogo necesita esta limpieza.
 
 - **⚠ Esto no es una fusión por parecido.** La regla del proyecto es que
   **nunca** se fusiona por similitud automática — `Matafuego vencido` y
@@ -412,11 +427,11 @@ deduplicación del catálogo, las trampas de los datos— está en
   no aparece entre las opciones. **En producción sigue apareciendo hasta que se
   toque el catálogo**, porque el catálogo manda sobre el mapa de zonas.
 
-- **`Óxido y suciedad en batea` (239 usos) se parte en dos.** El campo es
-  multivalor: la combinación se carga marcando *Óxido en batea* y *Suciedad en
-  batea*, así que como ítem propio partía el mismo concepto en tres renglones.
+- **Las dos combinaciones se parten en dos filas cada una.** El campo es
+  multivalor: se cargan marcando *Óxido en batea* y *Suciedad en batea*.
 
-  La migración **no es un `UPDATE`**, porque una fila pasa a ser dos:
+  Para esas dos la migración **no es un `UPDATE`**, porque una fila pasa a ser
+  dos:
 
   1. Por cada `inspeccion_desvio` que apunte a la combinación, insertar la fila
      de *Óxido en batea* y la de *Suciedad en batea* para esa inspección.
