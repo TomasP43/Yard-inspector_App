@@ -234,14 +234,22 @@
    */
   const tokenDe = (codigo) => 'b' + codigo + '-' + (codigo * 7919 % 100000).toString(36);
 
-  const BAHIAS = Array.from({ length: 18 }, (_, i) => ({
+  /**
+   * Las 8 bahias de la playa, de las que **se patrullan la 3 a la 8**.
+   *
+   * La 1 y la 2 quedan en la tabla con `activo: 0` en vez de no existir: la
+   * numeracion es fisica, y el dia que se decida controlarlas es prender un
+   * flag y no renumerar todo. El endpoint devuelve solo las activas.
+   */
+  const TODAS = Array.from({ length: 8 }, (_, i) => ({
     id: i + 1,
     codigo: i + 1,
     nombre: 'Bahía ' + (i + 1),
     token: tokenDe(i + 1),
-    activo: true,
+    activo: i + 1 >= 3,
     control: null
   }));
+  const BAHIAS = TODAS.filter((b) => b.activo);
 
   const CLAVE_B = 'yard-preview-bahias';
   let claveActual = null;
@@ -291,9 +299,11 @@
       : new Date();
     const ahora = new Date();
 
-    // 11 de 18 controladas, 3 de ellas con faltantes.
-    BAHIAS.slice(0, 11).forEach((b, i) => {
-      const conFalta = i % 4 === 1;
+    // 4 de las 6 controladas: quedan dos pendientes para que se vea el estado
+    // que la pantalla existe para mostrar. Una con novedades, otra con una
+    // auditoria encima.
+    BAHIAS.slice(0, 4).forEach((b, i) => {
+      const conFalta = i === 1;
       // Una cada ~12 minutos desde que abrio el turno, sin pasarse de ahora.
       const hora = new Date(Math.min(arranque.getTime() + i * 12 * 60000, ahora.getTime()));
       b.control = {
@@ -346,8 +356,12 @@
     // front, alcanzaria con un POST a mano para saltearla.
     if (!b.foto) return json({ error: 'foto_requerida' }, 400);
 
-    const bah = BAHIAS.find((x) => x.id === b.bahia_id);
+    // Se busca sobre TODAS y despues se mira `activo`: una bahia que existe
+    // pero no se patrulla tiene que decir eso y no "no existe". Con un 404 el
+    // dia que se prenda la 1 nadie va a saber por que fallaba.
+    const bah = TODAS.find((x) => x.id === b.bahia_id);
     if (!bah) return json({ error: 'bahia_desconocida' }, 404);
+    if (!bah.activo) return json({ error: 'bahia_no_se_patrulla' }, 409);
 
     // Idempotencia por uuid: reenviar devuelve 200 con lo que ya existe.
     if (bah.control && bah.control.uuid === b.uuid) {

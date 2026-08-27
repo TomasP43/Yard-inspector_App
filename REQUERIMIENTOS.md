@@ -591,6 +591,15 @@ deduplicación del catálogo, las trampas de los datos— está en
   - `bahia.token` es lo que va impreso en el QR. **Aleatorio por bahía**, no
     derivable del código: con `?b=3` cualquiera "escanea" escribiendo la URL.
 
+- **Son 8 bahías y se patrullan la 3 a la 8.** Las ocho van en la tabla; la 1 y
+  la 2 con `activo = 0`. No se omiten: la numeración es física, y el día que se
+  decida controlarlas es prender un flag, no renumerar. `GET api/bahias`
+  devuelve solo las activas, y un POST sobre una inactiva contesta
+  **409 `bahia_no_se_patrulla`** — no un 404, que el día que se prenda la 1
+  nadie entendería por qué fallaba.
+
+  Se imprimen **6 QR**, uno por bahía activa.
+
 - **Los 12 ítems del papel**, con su `cantidad_std`: Distance checkers 1 ·
   Almohadillas de puertas 1 · Soportes de carteles 1 · Arneses de seguridad 2 ·
   Reglas de medición 1 · Escaleras burro 4 · Recapados 2 · Portallaves 1 ·
