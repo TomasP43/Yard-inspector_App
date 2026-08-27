@@ -29,6 +29,15 @@ let VENTANA = null;     // respuesta de los ultimos DIAS_VENTANA dias
 let vista = 'hoy';
 let vistaPrevia = 'hoy';
 let equipoDetalle = null;
+
+/**
+ * Los controles que ya se dibujaron, por uuid.
+ *
+ * El detalle de un control no vuelve a pedirlo al servidor: la fila que se toco
+ * ya trae todo. Ademas asi el detalle abre sin senal, que es la mitad del
+ * sentido de esta app.
+ */
+const VISTOS = new Map();
 let soloNg = false;
 let filtro = 'Todos';
 let offsetHistorial = 0;
@@ -262,8 +271,13 @@ function fila(i) {
     ? `<img src="uploads/${esc(foto.ruta)}" alt="" loading="lazy">`
     : `<small>${nf ? nf + (nf > 1 ? ' fotos' : ' foto') : 'sin foto'}</small>`;
 
+  // La fila lleva al detalle DEL CONTROL, no al del equipo. Del equipo se sigue
+  // llegando, pero desde adentro: tocar una fila y caer en el historial completo
+  // del camion era saltearse lo que se acababa de tocar.
+  VISTOS.set(i.uuid, i);
+
   return `
-    <button type="button" class="fila" data-eq="${esc(i.equipo ? i.equipo.codigo : '')}"
+    <button type="button" class="fila" data-insp="${esc(i.uuid)}"
             style="border-left-color:${ng ? 'var(--ttfa-red)' : 'transparent'}">
       <span class="miniatura">${mini}</span>
       <span class="txt">
@@ -448,6 +462,71 @@ async function verHistorial(reiniciar) {
 }
 
 // ----------------------------------------------------------------- detalle
+
+/**
+ * Detalle de un control puntual.
+ *
+ * Sale de `VISTOS`, no de la red: la fila que se toco ya tenia todo, y asi el
+ * detalle abre sin senal.
+ *
+ * El boton de agregar observacion **crea un control nuevo**, no edita este. Es
+ * a proposito: a la hora que se cargo, el equipo estaba OK, y eso fue cierto.
+ * Ademas editar un registro ya sincronizado pedirìa un PUT con su propia
+ * semantica offline y romperia la idempotencia por uuid de la cola. Ver YI-009.
+ */
+function verControl(uuid) {
+  const i = VISTOS.get(uuid);
+  if (!i) { irA(vistaPrevia); return; }
+
+  const ng = esNg(i);
+  const dv = nombresDesvio(i);
+  const eq = i.equipo ? i.equipo.codigo : null;
+
+  $('#titulo').textContent = eq ? 'Equipo ' + eq : 'Control';
+  $('#eyebrow').textContent = `${fmtDia(i.registrado_en)} · ${hhmm(i.registrado_en)} · ${trafico(i.responsable)}`;
+  $('#badge-cab').hidden = false;
+  $('#badge-cab').innerHTML = ng
+    ? '<span class="badge warn">NG</span>'
+    : '<span class="badge ok">OK</span>';
+
+  const fotos = (i.fotos || []).filter((f) => f.ruta);
+  const dato = (k, v) => (v ? `<div class="d-fila"><span class="eq-label">${k}</span><span>${esc(v)}</span></div>` : '');
+
+  $('#ctrl-cuerpo').innerHTML = `
+    <section class="card${ng ? ' acento' : ''}">
+      <header><span class="eq-label">${ng ? 'Observaciones' : 'Resultado'}</span></header>
+      ${ng && dv.length
+        ? `<div class="tags">${dv.map((d) => `<span class="tag sel">${esc(d)}</span>`).join('')}</div>`
+        : '<p class="nota" style="padding:0">Pasó sin observaciones.</p>'}
+      ${i.detalle ? `<p style="margin:12px 0 0;font-size:14px;color:var(--text-body)">${esc(i.detalle)}</p>` : ''}
+    </section>
+
+    ${fotos.length ? `
+      <div class="fotos" style="margin-top:14px">
+        ${fotos.map((f) => `<div class="foto"><img src="uploads/${esc(f.ruta)}" alt="" loading="lazy"></div>`).join('')}
+      </div>` : ''}
+
+    <section class="card" style="margin-top:14px">
+      ${dato('Resolución', i.demora && i.demora.nombre)}
+      ${dato('Auditor', nombreCorto(i.auditor))}
+      ${dato('Controlador', i.controlador && i.controlador.nombre)}
+      ${dato('Estado', i.estadoControl && i.estadoControl.nombre)}
+    </section>
+
+    <!-- Un control puede salir OK y que despues aparezca algo. No se edita este
+         -- a esta hora estaba OK y eso fue cierto -- se carga uno nuevo. -->
+    <button type="button" class="btn sec" id="ctrl-agregar" style="margin-top:16px">
+      ${ico('plus', 16)} Agregar observación a este equipo
+    </button>
+
+    ${eq ? `
+      <button type="button" class="btn sec" data-eq="${esc(eq)}" style="margin-top:10px">
+        ${ico('file-text', 16)} Ver historial del equipo ${esc(eq)}
+      </button>` : ''}`;
+
+  $('#ctrl-agregar').dataset.eq = eq || '';
+  $('#ctrl-agregar').dataset.resp = i.responsable ? i.responsable.id : '';
+}
 
 async function verDetalle(eq) {
   equipoDetalle = eq;
@@ -642,6 +721,23 @@ function pintarFotos() {
 }
 
 /** Busca el ultimo control del equipo para saber si quedo algo abierto. */
+/**
+ * Abre el formulario ya cargado con el equipo y el trafico de un control que ya
+ * existe. Se usa cuando un control salio OK y despues aparecio algo.
+ *
+ * Arranca en NG: si se viene de "agregar observacion", no hay otra razon.
+ */
+function precargarEquipo(codigo, responsableId) {
+  if (!codigo) return;
+  const f = $('#form');
+  f.equipo_codigo.value = codigo;
+  if (responsableId) f.responsable_id.value = responsableId;
+  form.ng = true;
+  pintarFormulario();
+  mirarEquipo(codigo);
+  f.equipo_codigo.blur();
+}
+
 async function mirarEquipo(codigo) {
   form.pendientes = null;
   form.resoluciones = {};
@@ -732,14 +828,14 @@ const PANTALLAS = {
 };
 
 function irA(nombre) {
-  if (nombre !== 'detalle') vistaPrevia = nombre;
+  if (nombre !== 'detalle' && nombre !== 'control') vistaPrevia = nombre;
   vista = nombre;
   cerrarDrawer();
 
   $$('.vista').forEach((v) => { v.hidden = v.id !== 'v-' + nombre; });
   $('#scroll').scrollTop = 0;
 
-  const esDetalle = nombre === 'detalle';
+  const esDetalle = nombre === 'detalle' || nombre === 'control';
   $('#menu').hidden = esDetalle;
   $('#volver').hidden = !esDetalle;
   $('#refrescar').hidden = esDetalle;
@@ -788,6 +884,14 @@ document.addEventListener('click', (e) => {
   const t = e.target;
 
   // abrir el detalle de un equipo desde cualquier fila
+  const filaCtrl = t.closest('[data-insp]');
+  if (filaCtrl) { irA('control'); verControl(filaCtrl.dataset.insp); return; }
+
+  // Agregar observacion: abre el formulario precargado con ese equipo. Es un
+  // control NUEVO, no una edicion del anterior.
+  const agregar = t.closest('#ctrl-agregar');
+  if (agregar) { irA('cargar'); precargarEquipo(agregar.dataset.eq, agregar.dataset.resp); return; }
+
   const filaEq = t.closest('[data-eq]');
   if (filaEq && filaEq.dataset.eq) { irA('detalle'); verDetalle(filaEq.dataset.eq); return; }
 

@@ -135,7 +135,8 @@ Cuatro pantallas y un detalle, segun el diseño del proyecto de Claude Design **
 | **Hoy** | Los controles de la jornada agrupados por turno, con filtro Todos / Solo NG |
 | **Historial** | Todo, con dos filtros (Todos / Solo NG) y paginado |
 | **Cargar** | El formulario |
-| **Detalle** | Se abre tocando cualquier fila: KPIs del equipo, desvio recurrente y su historial completo |
+| **Detalle del control** | Se abre tocando cualquier fila de Hoy o del Historial: que se cargo en ese control puntual, con sus fotos y su resolucion. Desde aca se salta al historial del equipo, y se agrega una observacion sobre el mismo equipo |
+| **Detalle del equipo** | KPIs del equipo, desvio recurrente y su historial completo |
 
 Tres cosas del design system **no se portaron tal cual, a proposito**:
 

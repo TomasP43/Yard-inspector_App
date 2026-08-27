@@ -481,6 +481,37 @@ deduplicación del catálogo, las trampas de los datos— está en
 
 ---
 
+### YI-009 — Enlazar el control que corrige a otro anterior
+- **Estado:** pendiente
+- **Prioridad:** menor
+- **Tipo:** campo de datos
+- **Qué necesito:** un campo opcional en `inspeccion`, algo como
+  `corrige_uuid`, y que el `POST` lo acepte.
+- **Para qué:** un control puede salir OK y que **después** se le encuentre
+  algo. La pantalla de detalle ya tiene el botón "Agregar observación a este
+  equipo", que abre el formulario precargado y **carga un control nuevo**.
+
+- **Por qué un control nuevo y no editar el anterior**, que es lo primero que
+  uno piensa:
+  - A la hora en que se cargó, el equipo **estaba** OK. Eso fue cierto y
+    reescribirlo es perder la única información que hay sobre cuándo apareció
+    el problema.
+  - Editar un registro ya sincronizado pide un `PUT` con su propia semántica
+    offline: qué pasa si el dispositivo edita algo que en el servidor ya cambió.
+  - Rompe la idempotencia por `uuid` de la cola, que es lo que hoy garantiza
+    que reintentar no duplique.
+
+- **Qué falta sin el campo:** los dos controles quedan sueltos. Se ven los dos
+  en el historial del equipo, con sus horas, así que la información **está** —
+  lo que falta es poder decir "este corrige a aquel", y que el tablero pueda
+  decidir si cuenta uno o dos controles para ese camión ese día.
+
+- **Mientras tanto:** cuentan como dos controles, que es defendible — son dos
+  revisiones del mismo camión en el día. Si eso infla la cobertura de forma
+  molesta, este campo es la salida.
+
+---
+
 ## Nota sobre lo que el backend tiene y la app no usa
 
 No es un requerimiento, es para que nadie los tome por carga viva:

@@ -819,3 +819,23 @@ main {
   transform: rotate(45deg) translate(-2px, -2px);
 }
 #c-mas[open] > summary::after { transform: rotate(-135deg) translate(-1px, -1px); }
+
+/* --------------------------------------------- detalle de un control puntual */
+
+/* Ficha de datos secundarios: resolucion, auditor, controlador, estado. Etiqueta
+   a la izquierda y valor a la derecha, que es como se leen de un vistazo. */
+.d-fila {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--line-hairline);
+  font-size: 13.5px;
+  color: var(--text-body);
+}
+.d-fila:last-child { border-bottom: 0; padding-bottom: 0; }
+.d-fila:first-child { padding-top: 0; }
+
+/* Los dos botones del pie ocupan el ancho: son acciones, no adornos. */
+#ctrl-cuerpo .btn { width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; }
