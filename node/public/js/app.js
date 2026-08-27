@@ -264,22 +264,18 @@ function fila(i) {
   const ng = esNg(i);
   const tono = ng ? 'warn' : 'ok';
   const dv = nombresDesvio(i);
-  const foto = (i.fotos || []).find((f) => f.ruta);
-  const nf = (i.fotos || []).length;
-
-  const mini = foto
-    ? `<img src="uploads/${esc(foto.ruta)}" alt="" loading="lazy">`
-    : `<small>${nf ? nf + (nf > 1 ? ' fotos' : ' foto') : 'sin foto'}</small>`;
 
   // La fila lleva al detalle DEL CONTROL, no al del equipo. Del equipo se sigue
   // llegando, pero desde adentro: tocar una fila y caer en el historial completo
   // del camion era saltearse lo que se acababa de tocar.
   VISTOS.set(i.uuid, i);
 
+  // Sin miniatura. Estaba a la izquierda de cada fila y en la mayoria decia
+  // "sin foto": ocupaba ancho en la pantalla mas angosta para no decir nada.
+  // Las fotos se ven en el detalle, que es donde se las mira de verdad.
   return `
     <button type="button" class="fila" data-insp="${esc(i.uuid)}"
             style="border-left-color:${ng ? 'var(--ttfa-red)' : 'transparent'}">
-      <span class="miniatura">${mini}</span>
       <span class="txt">
         <span class="cab">
           <span class="eq">${i.equipo ? esc(i.equipo.codigo) : 's/eq'}</span>
@@ -499,13 +495,24 @@ function verControl(uuid) {
   // Las fotos van arriba a la derecha, dentro de la misma caja. Son lo que
   // prueba el desvio, asi que tienen que verse sin bajar: abajo quedaban
   // despues de los datos y en un telefono eso es fuera de pantalla.
+  // Dos miniaturas y, si hay mas, un tercer casillero con cuantas quedan. En
+  // fila: apiladas empujaban la caja a lo alto y el resto de los datos quedaba
+  // fuera de pantalla, que era justo lo que se venia a arreglar.
+  //
+  // El "+N" tambien abre: lleva a la primera de las que no entraron, asi el
+  // casillero no es solo un cartel.
+  const VISIBLES = 2;
   const tiras = fotos.length ? `
       <div class="fotos-mini">
-        ${fotos.slice(0, 3).map((f) => `
+        ${fotos.slice(0, VISIBLES).map((f) => `
           <button type="button" class="mini" data-ver="uploads/${esc(f.ruta)}">
             <img src="uploads/${esc(f.ruta)}" alt="" loading="lazy">
           </button>`).join('')}
-        ${fotos.length > 3 ? `<span class="mas-fotos">+${fotos.length - 3}</span>` : ''}
+        ${fotos.length > VISIBLES ? `
+          <button type="button" class="mini mas" data-ver="uploads/${esc(fotos[VISIBLES].ruta)}"
+                  aria-label="Ver las otras ${fotos.length - VISIBLES} fotos">
+            +${fotos.length - VISIBLES}
+          </button>` : ''}
       </div>` : '';
 
   const ficha = `

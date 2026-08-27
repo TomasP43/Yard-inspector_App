@@ -98,7 +98,8 @@
         // `ruta` con archivo de verdad, no null: la app pide `uploads/<ruta>` y
         // con null nunca se veia una foto en el preview. Los .svg de muestra
         // los copia armar.sh a .preview/uploads/.
-        fotos: Array.from({ length: ng ? entre(1, 3) : entre(0, 1) },
+        // Hasta 6 y no 3: con tres nunca se veia el casillero "+N" de la ficha.
+        fotos: Array.from({ length: ng ? entre(1, 6) : entre(0, 1) },
           (_, i) => ({ id: i, orden: i + 1, ruta: `demo-${entre(1, 4)}.svg`, orientacion: 'libre' }))
       });
     }
