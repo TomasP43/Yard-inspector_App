@@ -30,7 +30,7 @@
  *     lo usa para normalizar y enganchar el catalogo con el mapa de zonas.
  *     Sacarlo tiraba zonas.js entero y con el la app -- probado a los golpes.
  */
-const VERSION = 'v27';
+const VERSION = 'v28';
 const CACHE = `yard-${VERSION}`;
 
 // El app shell tiene que alcanzar para abrir la app sin conexion. Rutas
@@ -52,6 +52,7 @@ const SHELL = [
   './js/db.js',
   './js/zonas.js',
   './js/camera.js',
+  './js/escaner.js',
   './js/sync.js',
   './js/bahias.js',
   './js/app.js'

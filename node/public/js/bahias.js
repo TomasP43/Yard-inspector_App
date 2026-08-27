@@ -7,21 +7,36 @@
  * pierda: es que **se llena en la oficina sin ir a mirar** y despues se deja en
  * la bahia. Todo lo de aca esta puesto contra eso.
  *
- * Como se entra: el inspector escanea el QR pegado en la bahia, que abre
- * `/yard/?b=<token>`. El shell ya esta cacheado, asi que el escaneo funciona
- * sin señal -- salvo el primero de un telefono nuevo, que necesita bajar la app.
+ * **Como se entra: desde la ronda, y el QR habilita.** El inspector toca la
+ * bahia en la lista, la pantalla le pide escanear el QR del cartel, y recien
+ * ahi aparece el checklist. El escaneo va con la camara **dentro de la app**.
  *
- * **El QR no prueba presencia, y conviene tenerlo claro.** Un QR es una URL
- * impresa: se puede fotografiar una vez y escanear desde la oficina. Lo que
- * hace caro mentir son las otras dos cosas:
+ * Se probo primero al reves -- el QR llevaba una URL y abria la app -- y este
+ * orden es mejor por tres razones:
  *
- *   - la foto, que sale de la camara y no de la galeria;
- *   - que cualquiera puede escanear el mismo QR durante el turno y ver lo que
- *     se reporto, parado en la bahia. Firmar de taquito pasa a ser una apuesta
- *     a que nadie vaya a mirar, que es algo que el papel nunca tuvo.
+ *   - si la sesion de ttfa vencio, la URL cae en un login y el inspector queda
+ *     con el telefono en la mano frente a la bahia. Entrando desde la app, ya
+ *     esta autenticado;
+ *   - un telefono nuevo necesitaba señal para el primer escaneo. Desde la app,
+ *     eso ya paso;
+ *   - la ronda queda como centro: ves que falta, tocas, escaneas, cargas.
  *
- * Si igual siguen firmando sin ir, el paso siguiente es NFC en vez de QR: hay
- * que apoyar el telefono en el tag y eso no se fotografia.
+ * **El QR lleva SOLO el token, no una URL.** Si llevara una URL, escanearlo con
+ * la camara del sistema abriria la app por afuera del gate y el bloqueo seria
+ * decorativo. Con token pelado, la camara del telefono muestra un texto sin
+ * sentido y la unica puerta es esta.
+ *
+ * **Sin escanear no se carga. Sin excepcion.** Es una decision tomada sabiendo
+ * el costo: un sticker mojado o despegado deja esa bahia sin poder controlarse
+ * hasta que lo reimpriman. A cambio, es lo unico que obliga a que el control se
+ * haga EN la bahia, que es todo el punto -- el papel que esto reemplaza se
+ * llenaba en la oficina, y cualquier escape que dejemos aca lo reabre.
+ *
+ * Lo que el QR sigue sin probar es la presencia: se puede fotografiar el
+ * sticker una vez y mostrarle la foto a la camara. Lo que encarece mentir son
+ * la foto de la bahia y **que cualquiera puede auditar el control durante el
+ * turno, parado ahi**. Si aun asi siguen firmando sin ir, el escalon siguiente
+ * es NFC: hay que apoyar el telefono en el tag y eso no se fotografia.
  */
 const Bahias = (() => {
 
@@ -33,6 +48,16 @@ const Bahias = (() => {
   let form = null;
   /** Borrador de la auditoria. */
   let audit = null;
+
+  /**
+   * Bahias cuyo QR se escaneo en esta sesion, por `codigo|turno`.
+   *
+   * Vive en memoria y no en disco: si la app se recarga, se vuelve a escanear.
+   * Es lo correcto -- el desbloqueo dice "estoy parado aca ahora", y eso no
+   * sobrevive a cerrar la app y volver dentro de un rato desde la oficina.
+   */
+  const desbloqueadas = new Set();
+  const llaveDesbloqueo = (b, t) => b.codigo + '|' + t.clave;
 
   const vacio = () => ({ respuestas: new Map(), foto: null, obs: '' });
 
@@ -214,14 +239,14 @@ const Bahias = (() => {
 
   // ----------------------------------------------------------- vista bahia
 
-  /** Abre el detalle de una bahia. `porQR` cambia el encabezado. */
-  function verBahia(codigo, porQR) {
+  /** Abre el detalle de una bahia. */
+  function verBahia(codigo) {
     abierta = String(codigo);
     form = vacio();
     audit = null;
     irA('bahia');
-    if (!DATOS) cargar().then(() => pintarBahia(porQR));
-    pintarBahia(porQR);
+    if (!DATOS) cargar().then(pintarBahia);
+    pintarBahia();
   }
 
   /** Entrada por QR: `/yard/?b=<token>`. */
@@ -242,7 +267,7 @@ const Bahias = (() => {
     });
   }
 
-  function pintarBahia(porQR) {
+  function pintarBahia() {
     const b = bahiaPorCodigo(abierta);
     const cuerpo = $('#b-cuerpo');
     if (!b) {
@@ -253,12 +278,74 @@ const Bahias = (() => {
     $('#titulo').textContent = b.nombre || 'Bahía ' + b.codigo;
     $('#eyebrow').textContent = (DATOS.turnoLocal || Turnos.de(new Date())).nombre;
 
-    cuerpo.innerHTML = (porQR ? avisoQR(b) : '')
-      + (b.control ? fichaControl(b) : formulario(b));
+    const t = DATOS.turnoLocal || Turnos.de(new Date());
+    const habilitada = desbloqueadas.has(llaveDesbloqueo(b, t));
+
+    cuerpo.innerHTML = b.control ? fichaControl(b)
+      : habilitada ? formulario(b)
+      : gate(b);
   }
 
-  const avisoQR = (b) =>
-    `<p class="nota qr">${ico('qr-code', 15)}<span>Escaneaste el QR de la bahía <b>${esc(b.codigo)}</b>.</span></p>`;
+  /**
+   * Sin escanear el QR no se carga. Es la decision del proyecto y es dura: un
+   * sticker mojado deja esa bahia sin poder controlarse hasta que lo reimpriman.
+   *
+   * A cambio, es lo unico que hace que el control tenga que hacerse **en la
+   * bahia**. El papel que esto reemplaza se llenaba en la oficina, y cualquier
+   * escape que dejemos aca lo reabre.
+   */
+  function gate(b) {
+    const sinLector = !Escaner.soportado();
+    return `
+      <section class="card gate">
+        <div class="gate-ico">${ico('qr-code', 34)}</div>
+        <b>Escaneá el QR de la bahía ${esc(b.codigo)}</b>
+        <p>Está pegado en el cartel de la bahía. Sin escanearlo no se puede
+           cargar el control: es lo que deja constancia de que el control se
+           hizo acá.</p>
+        ${sinLector
+          ? `<p class="nota alerta">${ico('alert-triangle', 14)}
+               <span>Este teléfono no puede leer QR desde la app.</span></p>`
+          : `<button type="button" id="b-escanear" class="btn">${ico('camera', 17)} Escanear</button>`}
+      </section>`;
+  }
+
+  /**
+   * El QR lleva el token pelado. Se acepta igual una URL con `?b=` por si algun
+   * sticker viejo quedo impreso asi, pero lo que se compara es siempre el token.
+   */
+  function tokenDeTexto(txt) {
+    const s = String(txt || '').trim();
+    const m = /[?&]b=([^&\s]+)/.exec(s);
+    return m ? decodeURIComponent(m[1]) : s;
+  }
+
+  /** Abre la camara y desbloquea la bahia si el QR es el de esta bahia. */
+  async function escanearPara(b) {
+    const t = DATOS.turnoLocal || Turnos.de(new Date());
+    try {
+      await Escaner.abrir(`Bahía ${b.codigo}`, (txt) => {
+        const tk = tokenDeTexto(txt);
+        if (tk === b.token) return true;
+        // Escanear el QR de la bahia de al lado es el error mas facil de
+        // cometer y el mas confuso si solo dice "codigo invalido".
+        const otra = bahiaPorToken(tk);
+        return otra
+          ? `Ese es el QR de la bahía ${otra.codigo}. Estás cargando la ${b.codigo}.`
+          : 'Ese QR no es de ninguna bahía.';
+      });
+      desbloqueadas.add(llaveDesbloqueo(b, t));
+      pintarBahia();
+    } catch (e) {
+      const m = {
+        cancelado: null,
+        sin_permiso: 'La app necesita permiso de cámara para leer el QR.',
+        sin_camara: 'No se pudo abrir la cámara de este teléfono.',
+        sin_soporte: 'Este teléfono no puede leer QR desde la app.'
+      }[e.message];
+      if (m) toast('No se pudo escanear', m, true);
+    }
+  }
 
   // --- el formulario, cuando la bahia no se controlo todavia
 
@@ -509,7 +596,7 @@ const Bahias = (() => {
       toast('Auditoría registrada', b.nombre || 'Bahía ' + b.codigo);
       audit = null;
       await cargar();
-      pintarBahia(false);
+      pintarBahia();
     } catch (e) {
       toast('No se pudo guardar', String(e.message || e), true);
       if (btn) { btn.disabled = false; btn.textContent = 'Registrar auditoría'; }
@@ -563,7 +650,7 @@ const Bahias = (() => {
         estado_ok: previo.estado_ok !== false,
         comentario: previo.comentario || ''
       });
-      pintarBahia(false);
+      pintarBahia();
       return;
     }
 
@@ -573,7 +660,7 @@ const Bahias = (() => {
       const r = form.respuestas.get(id);
       capturar();
       r.cantidad = Math.max(0, Math.min(99, r.cantidad + Number(cant.dataset.d)));
-      pintarBahia(false);
+      pintarBahia();
       return;
     }
 
@@ -581,7 +668,7 @@ const Bahias = (() => {
     if (ub) {
       capturar();
       form.respuestas.get(Number(ub.dataset.ub)).ubicacion_ok = ub.dataset.v === '1';
-      pintarBahia(false);
+      pintarBahia();
       return;
     }
 
@@ -589,7 +676,7 @@ const Bahias = (() => {
     if (est) {
       capturar();
       form.respuestas.get(Number(est.dataset.est)).estado_ok = est.dataset.v === '1';
-      pintarBahia(false);
+      pintarBahia();
       return;
     }
 
@@ -597,20 +684,26 @@ const Bahias = (() => {
       if (form.foto) URL.revokeObjectURL(form.foto.url);
       form.foto = null;
       capturar();
-      pintarBahia(false);
+      pintarBahia();
+      return;
+    }
+
+    if (t.closest('#b-escanear')) {
+      const b = bahiaPorCodigo(abierta);
+      if (b) escanearPara(b);
       return;
     }
 
     if (t.closest('[data-foto]')) { $('#b-file').click(); return; }
     if (t.closest('#b-guardar')) { capturar(); guardar(); return; }
 
-    if (t.closest('#b-auditar')) { audit = { coincide: undefined, obs: '' }; pintarBahia(false); return; }
+    if (t.closest('#b-auditar')) { audit = { coincide: undefined, obs: '' }; pintarBahia(); return; }
 
     const aud = t.closest('[data-aud]');
     if (aud) {
       audit.obs = ($('#b-aud-obs') || {}).value || audit.obs;
       audit.coincide = aud.dataset.aud === '1';
-      pintarBahia(false);
+      pintarBahia();
       return;
     }
 
@@ -679,13 +772,13 @@ const Bahias = (() => {
     if (form.foto) URL.revokeObjectURL(form.foto.url);
     form.foto = { file, url: URL.createObjectURL(file) };
     capturar();
-    pintarBahia(false);
+    pintarBahia();
   }
 
   /** Vuelve a pedir y repinta lo que este a la vista. Lo usa el sincronizador. */
   async function refrescar(vistaActual) {
     await cargar();
-    if (vistaActual === 'bahia') pintarBahia(false);
+    if (vistaActual === 'bahia') pintarBahia();
     else pintarRonda();
   }
 

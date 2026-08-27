@@ -589,7 +589,17 @@ deduplicación del catálogo, las trampas de los datos— está en
     existe**, nunca 409 — con un 409 el cliente no sabe si puede sacarlo de la
     cola.
   - `bahia.token` es lo que va impreso en el QR. **Aleatorio por bahía**, no
-    derivable del código: con `?b=3` cualquiera "escanea" escribiendo la URL.
+    derivable del código: si fuera `bahia-3`, se adivina sin ir.
+
+- **⚠ El QR lleva SÓLO el token, nunca una URL.** Se entra desde la ronda y el
+  escaneo va con la cámara **dentro de la app**; el QR habilita, no navega. Si
+  el sticker llevara una URL, escanearlo con la cámara del sistema abriría la
+  app por afuera del gate y el bloqueo sería decorativo. Con token pelado, la
+  cámara del teléfono muestra un texto sin sentido.
+
+  **Sin escanear no se carga, sin excepción.** Decisión tomada sabiendo el
+  costo: un sticker mojado deja esa bahía sin poder controlarse hasta que lo
+  reimpriman.
 
 - **Son 8 bahías y se patrullan la 3 a la 8.** Las ocho van en la tabla; la 1 y
   la 2 con `activo = 0`. No se omiten: la numeración es física, y el día que se
@@ -599,6 +609,12 @@ deduplicación del catálogo, las trampas de los datos— está en
   nadie entendería por qué fallaba.
 
   Se imprimen **6 QR**, uno por bahía activa.
+
+- **Falta la hoja para imprimir.** Cada bahía lleva un cartel fijo con el número
+  grande y su QR. No se hizo todavía porque los tokens los genera el backend:
+  sin tokens reales, la hoja sería de mentira. Cuando existan, es una página
+  A4 por bahía con `@media print` — el QR se genera del `token`, sin servicio
+  externo (la intranet no sale a internet).
 
 - **Los 12 ítems del papel**, con su `cantidad_std`: Distance checkers 1 ·
   Almohadillas de puertas 1 · Soportes de carteles 1 · Arneses de seguridad 2 ·

@@ -412,6 +412,54 @@
     return json({ auditoria: aud }, 201);
   }
 
+  /**
+   * Lector de QR simulado.
+   *
+   * El preview corre en una computadora sin camara. Se reemplaza el **hardware**
+   * igual que se reemplaza la API, y nada mas: el gate real se sigue ejecutando
+   * entero -- compara el token, rechaza el de otra bahia con su mensaje, y no
+   * habilita nada si cancelas.
+   *
+   * Muestra los codigos como botones a proposito, incluido el de otra bahia:
+   * poder equivocarse aposta es lo que hace probable que se pruebe el camino de
+   * error, que es donde estaban los bugs.
+   */
+  // `typeof` y no `window.Escaner`: los scripts de la app declaran sus modulos
+  // con `const`, que vive en el ambito lexico global pero **no** cuelga de
+  // `window`. Con `window.Escaner` el override se salteaba en silencio y el
+  // preview quedaba con el lector real, o sea sin lector.
+  if (typeof Escaner !== 'undefined') {
+    Escaner.soportado = () => true;
+    Escaner.abrir = (titulo, validar) => new Promise((resolver, rechazar) => {
+      const caja = document.createElement('div');
+      caja.className = 'escaner';
+      caja.innerHTML = `
+        <p class="escaner-titulo">${titulo} · lector simulado</p>
+        <p class="escaner-error" id="sim-error" hidden></p>
+        <div style="position:relative;display:grid;gap:8px;width:min(100%,280px)">
+          ${BAHIAS.map((b) => `<button type="button" class="btn sec" data-sim="${b.token}">QR de la bahía ${b.codigo}</button>`).join('')}
+          <button type="button" class="btn sec" data-sim="basura-123">Un QR cualquiera</button>
+          <button type="button" class="btn" data-sim-cancelar>Cancelar</button>
+        </div>`;
+      document.body.appendChild(caja);
+
+      caja.addEventListener('click', (e) => {
+        if (e.target.closest('[data-sim-cancelar]')) {
+          caja.remove();
+          rechazar(new Error('cancelado'));
+          return;
+        }
+        const b = e.target.closest('[data-sim]');
+        if (!b) return;
+        const veredicto = validar ? validar(b.dataset.sim) : true;
+        if (veredicto === true) { caja.remove(); resolver(b.dataset.sim); return; }
+        const err = caja.querySelector('#sim-error');
+        err.textContent = veredicto;
+        err.hidden = false;
+      });
+    });
+  }
+
   const real = window.fetch.bind(window);
   window.fetch = (url, opts) => {
     const s = String(url && url.url ? url.url : url);

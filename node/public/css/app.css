@@ -1173,3 +1173,63 @@ details.ficha[open] .ver-obs .ico { transform: rotate(90deg); }
 .nov b { font-size: 13px; font-weight: var(--weight-medium); color: var(--text-strong); }
 .nov .mono { font-size: 11.5px; color: var(--ttfa-red); }
 .nov small { font-size: 11.5px; color: var(--text-muted); line-height: 1.4; }
+
+/* ------------------------------------------------------------- gate del QR */
+
+/* Sin escanear no se carga. La pantalla lo dice de frente en vez de mostrar un
+   formulario deshabilitado: un boton gris no explica que hay que hacer. */
+.card.gate { text-align: center; display: grid; gap: 12px; justify-items: center; padding: 24px 18px; }
+.card.gate .gate-ico { color: var(--text-faint); }
+.card.gate b { font-size: 16px; color: var(--text-strong); }
+.card.gate p { margin: 0; max-width: 34ch; font-size: 12.5px; color: var(--text-faint); line-height: 1.5; }
+.card.gate .btn { width: 100%; margin-top: 4px; }
+.card.gate .nota.alerta { justify-content: center; padding: 0; }
+
+/* ------------------------------------------------------------- lector de QR */
+
+.escaner {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 24px;
+  background: #000;
+}
+.escaner video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+/* La mira. No recorta nada -- BarcodeDetector lee el cuadro entero -- pero le
+   dice al inspector donde apuntar, que es la mitad de lo que tarda un escaneo. */
+.escaner-marco {
+  position: relative;
+  width: min(62vw, 260px);
+  aspect-ratio: 1;
+  border: 2px solid rgba(255, 255, 255, .9);
+  border-radius: var(--radius-lg, 14px);
+  box-shadow: 0 0 0 100vmax rgba(0, 0, 0, .55);
+}
+.escaner-titulo, .escaner-error {
+  position: relative;
+  margin: 0;
+  text-align: center;
+  color: #fff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, .8);
+}
+.escaner-titulo { font-size: 15px; font-weight: var(--weight-semibold); }
+.escaner-error {
+  max-width: 32ch;
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
+  background: var(--ttfa-red);
+  font-size: 12.5px;
+  text-shadow: none;
+}
+.escaner .btn { position: relative; width: min(100%, 260px); }

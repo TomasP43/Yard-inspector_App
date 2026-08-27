@@ -232,7 +232,7 @@ try {
     <div id="rr-lista"></div>
   </section>
 
-  <!-- Una bahía: el checklist si todavía no se controló en este turno, o lo
+  <!-- Una bahía: el gate del QR si todavía no se controló en este turno, o lo
        que se reportó más la auditoría si ya se controló. -->
   <section id="v-bahia" class="vista" hidden>
     <div id="b-cuerpo"></div>
@@ -282,6 +282,17 @@ try {
   </div>
 </aside>
 
+<!-- Lector de QR. Es la única puerta para cargar el control de una bahía: el
+     QR lleva sólo el token, así que escanearlo con la cámara del teléfono no
+     lleva a ningún lado. -->
+<div id="escaner" class="escaner" hidden>
+  <video id="escaner-video" playsinline autoplay muted></video>
+  <div class="escaner-marco" aria-hidden="true"></div>
+  <p class="escaner-titulo" id="escaner-titulo"></p>
+  <p class="escaner-error" id="escaner-error" role="alert" hidden></p>
+  <button type="button" class="btn sec" id="escaner-cerrar">Cancelar</button>
+</div>
+
 <!-- Visor de fotos. Se abre tocando una miniatura del detalle del control: en
      un teléfono la miniatura no alcanza para ver un óxido o una fisura. -->
 <button id="visor" class="visor" type="button" aria-label="Cerrar la foto" hidden>
@@ -302,6 +313,7 @@ try {
 <script src="./js/db.js"></script>
 <script src="./js/zonas.js"></script>
 <script src="./js/camera.js"></script>
+<script src="./js/escaner.js"></script>
 <script src="./js/sync.js"></script>
 <!-- Antes de app.js: app.js arranca solo al final y ya llama a Bahias. -->
 <script src="./js/bahias.js"></script>

@@ -81,6 +81,7 @@ yard-inspector/
 │   │   ├── js/zonas.js      # agrupa el catalogo por parte del equipo
 │   │   ├── js/db.js         # IndexedDB: catalogos, cola, cache
 │   │   ├── js/camera.js     # captura y compresion de fotos
+│   │   ├── js/escaner.js    # lector de QR con la camara (BarcodeDetector)
 │   │   ├── js/similitud.js  # espejo cliente de desvioService
 │   │   ├── js/turnos.js     # los turnos de la playa, compartidos
 │   │   ├── js/sync.js       # cola de sincronizacion (patrullas y bahias)
@@ -188,24 +189,46 @@ Reemplaza el papel que hay pegado en cada bahia. **El problema del papel no es
 que se pierda: es que se llena en la oficina sin ir a mirar** y despues se deja
 en la bahia. Todo el diseño esta puesto contra eso.
 
-- Se entra escaneando el **QR de la bahia**, que abre `/yard/?b=<token>`.
+- **Se entra desde la ronda y el QR habilita.** El inspector toca la bahia en la
+  lista, la pantalla le pide escanear el QR del cartel, y recien ahi aparece el
+  checklist. El escaneo va con la camara **dentro de la app**
+  (`js/escaner.js`, `BarcodeDetector`, que Chrome en Android trae nativo).
 - Cada bahia se controla **una vez por turno**. A las 16:00 entra el turno nuevo
   y la ronda vuelve a estar pendiente.
 - **Cualquiera puede escanear el mismo QR durante el turno y auditar** lo que
   reporto el inspector, parado en la bahia.
 
-**El QR no prueba presencia, y conviene tenerlo claro.** Es una URL impresa: se
-fotografia una vez y se escanea desde la oficina. Lo que encarece mentir son la
-foto fresca y la auditoria abierta — firmar de taquito pasa a ser una apuesta a
-que nadie vaya a mirar, que es algo que el papel nunca tuvo. Si igual siguen
-firmando sin ir, el escalon siguiente es **NFC**: hay que apoyar el telefono en
-el tag y eso no se fotografia.
+**Primero se hizo al reves** — el QR llevaba una URL y abria la app — y el orden
+actual es mejor por tres razones: si la sesion de ttfa vencio, la URL cae en un
+login y el inspector queda con el telefono en la mano frente a la bahia; un
+telefono nuevo necesitaba señal para el primer escaneo; y la ronda queda como
+centro, que es el modelo mental correcto.
 
-**Un solo service worker, y el token va en el query string.** Con
-`/yard/bahias/7` habria que enseñarle al SW a resolver rutas que no existen como
-archivo — de ahi salio el 502 de la otra vez. Con `?b=`, el shell cacheado
-responde y **el escaneo funciona sin señal desde el primer dia**; solo el primer
-escaneo de un telefono nuevo necesita bajar la app.
+**El QR lleva SOLO el token, no una URL.** Si llevara una URL, escanearlo con la
+camara del sistema abriria la app por afuera del gate y el bloqueo seria
+decorativo. Con token pelado, la camara del telefono muestra un texto sin
+sentido y la unica puerta es la app.
+
+**Sin escanear no se carga, sin excepcion.** Decision tomada sabiendo el costo:
+un sticker mojado deja esa bahia sin poder controlarse hasta que lo reimpriman.
+A cambio es lo unico que obliga a que el control se haga **en** la bahia, que es
+todo el punto — el papel se llenaba en la oficina, y cualquier escape lo reabre.
+
+**Lo que el QR no prueba es la presencia**, y conviene tenerlo escrito: se puede
+fotografiar el sticker y mostrarle la foto a la camara. Lo que encarece mentir
+son la foto de la bahia y la auditoria abierta — firmar de taquito pasa a ser
+una apuesta a que nadie vaya a mirar, que es algo que el papel nunca tuvo. Si
+igual siguen firmando sin ir, el escalon siguiente es **NFC**: hay que apoyar el
+telefono en el tag y eso no se fotografia.
+
+**No hay libreria de QR empaquetada, a proposito.** Los inspectores usan
+Android, donde `BarcodeDetector` es nativo. Un lector JS en el shell son ~50 KB
+que hay que cachear para offline y una dependencia mas. Si algun dia entra un
+iPhone, `Escaner.soportado()` devuelve `false` y la pantalla lo dice — que se
+sepa, no que falle raro.
+
+**Un solo service worker.** Con `/yard/bahias/7` habria que enseñarle al SW a
+resolver rutas que no existen como archivo, de ahi salio el 502 de la otra vez.
 
 **La ronda superpone la cola local sobre lo que dice el servidor.** `encolar`
 vuelve cuando el control quedo guardado en el telefono, no cuando el servidor lo
