@@ -872,3 +872,43 @@ details.ficha[open] .ver-obs .ico { transform: rotate(90deg); }
 
 /* Los dos botones del pie ocupan el ancho: son acciones, no adornos. */
 #ctrl-cuerpo .btn { width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; }
+
+/* Fotos arriba a la derecha de la ficha. Son lo que prueba el desvio: si van
+   abajo, en un telefono quedan fuera de pantalla. */
+.ficha-fila { display: flex; align-items: flex-start; gap: 12px; }
+.ficha-txt { flex: 1; min-width: 0; }
+
+.fotos-mini { flex: 0 0 auto; display: flex; flex-direction: column; gap: 6px; }
+.fotos-mini .mini {
+  width: 64px;
+  height: 48px;
+  padding: 0;
+  border: 1px solid var(--line-hairline);
+  border-radius: var(--radius-sm);
+  background: var(--surface-inset);
+  overflow: hidden;
+  cursor: pointer;
+}
+.fotos-mini .mini img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.fotos-mini .mas-fotos {
+  text-align: center;
+  font-size: 11px;
+  color: var(--text-faint);
+  font-family: var(--font-mono);
+}
+
+/* Visor a pantalla completa. Es un <button> para que cierre con Enter y con el
+   toque en cualquier lado, que en la mano es lo que uno hace. */
+.visor {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  border: 0;
+  background: rgba(0, 0, 0, .92);
+  cursor: zoom-out;
+}
+.visor img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: var(--radius-sm); }

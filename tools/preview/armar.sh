@@ -23,6 +23,12 @@ cp "$AQUI/mock.js"          "$DST/js/mock.js"
 cp "$AQUI/demo.js"          "$DST/js/demo.js"
 cp "$AQUI/mock-gerencia.js" "$DST/gerencia/js/mock-gerencia.js"
 
+# Fotos de muestra. La app las pide como `uploads/<ruta>`, igual que en
+# produccion: si el mock devolviera un data URI, el front tendria que tratarlas
+# distinto y dejariamos sin probar el camino real.
+mkdir -p "$DST/uploads"
+cp -r "$AQUI/uploads/." "$DST/uploads/"
+
 # --- PWA: el mock va DESPUES de las librerias (usa Zonas) y ANTES de app.js,
 #     que es quien dispara los fetch.
 perl -0pi -e 's{<script src="\./js/app\.js"></script>}{<script src="./js/mock.js"></script>\n<script src="./js/app.js"></script>}' "$DST/index.html"
@@ -48,6 +54,7 @@ do
   archivo="${marca%%:*}"; texto="${marca##*:}"
   grep -q "$texto" "$archivo" || { echo "ERROR: no se enchufo $texto en $archivo"; faltante=1; }
 done
+[ -s "$DST/uploads/demo-1.svg" ] || { echo "ERROR: no se copiaron las fotos de muestra"; faltante=1; }
 [ "$faltante" = 0 ] || exit 1
 
 echo "listo: $DST"

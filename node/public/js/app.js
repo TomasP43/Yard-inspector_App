@@ -496,10 +496,27 @@ function verControl(uuid) {
   // toque: casi siempre esta vacia, y cuando no, es un parrafo que empujaba los
   // datos del control fuera de pantalla. Va con <details> y no con JS, asi
   // funciona igual si algo mas falla.
+  // Las fotos van arriba a la derecha, dentro de la misma caja. Son lo que
+  // prueba el desvio, asi que tienen que verse sin bajar: abajo quedaban
+  // despues de los datos y en un telefono eso es fuera de pantalla.
+  const tiras = fotos.length ? `
+      <div class="fotos-mini">
+        ${fotos.slice(0, 3).map((f) => `
+          <button type="button" class="mini" data-ver="uploads/${esc(f.ruta)}">
+            <img src="uploads/${esc(f.ruta)}" alt="" loading="lazy">
+          </button>`).join('')}
+        ${fotos.length > 3 ? `<span class="mas-fotos">+${fotos.length - 3}</span>` : ''}
+      </div>` : '';
+
   const ficha = `
-      ${ng && dv.length
-        ? `<div class="tags">${dv.map((d) => `<span class="tag sel">${esc(d)}</span>`).join('')}</div>`
-        : '<p class="nota" style="padding:0 0 4px">Pasó sin observaciones.</p>'}
+      <div class="ficha-fila">
+        <div class="ficha-txt">
+          ${ng && dv.length
+            ? `<div class="tags">${dv.map((d) => `<span class="tag sel">${esc(d)}</span>`).join('')}</div>`
+            : '<p class="nota" style="padding:0 0 4px">Pasó sin observaciones.</p>'}
+        </div>
+        ${tiras}
+      </div>
       <div class="datos">
         ${dato('Resolución', i.demora && i.demora.nombre)}
         ${dato('Auditor', nombreCorto(i.auditor))}
@@ -518,10 +535,6 @@ function verControl(uuid) {
       </details>`
     : `<section class="card ficha${ng ? ' acento' : ''}">${ficha}</section>`}
 
-    ${fotos.length ? `
-      <div class="fotos" style="margin-top:14px">
-        ${fotos.map((f) => `<div class="foto"><img src="uploads/${esc(f.ruta)}" alt="" loading="lazy"></div>`).join('')}
-      </div>` : ''}
 
     <!-- Un control puede salir OK y que despues aparezca algo. No se edita este
          -- a esta hora estaba OK y eso fue cierto -- se carga uno nuevo. -->
@@ -894,6 +907,13 @@ document.addEventListener('click', (e) => {
   const t = e.target;
 
   // abrir el detalle de un equipo desde cualquier fila
+  const ver = t.closest('[data-ver]');
+  if (ver) {
+    $('#visor-img').src = ver.dataset.ver;
+    $('#visor').hidden = false;
+    return;
+  }
+
   const filaCtrl = t.closest('[data-insp]');
   if (filaCtrl) { irA('control'); verControl(filaCtrl.dataset.insp); return; }
 
@@ -970,6 +990,10 @@ document.addEventListener('click', (e) => {
 
 $('#menu').addEventListener('click', abrirDrawer);
 $('#scrim').addEventListener('click', cerrarDrawer);
+$('#visor').addEventListener('click', () => {
+  $('#visor').hidden = true;
+  $('#visor-img').src = '';   // que no quede la imagen cargada por atras
+});
 $('#volver').addEventListener('click', () => irA(vistaPrevia));
 $('#tema').addEventListener('click', () =>
   aplicarTema(document.documentElement.getAttribute('data-tema') !== 'claro'));
