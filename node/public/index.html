@@ -139,21 +139,14 @@ try {
             <span class="mono" id="c-zona-meta" style="font-size:11px;color:var(--text-faint)"></span>
           </div>
           <div class="checks" id="c-desvios"></div>
-          <button type="button" id="c-otro" class="btn sec chico" style="margin-top:2px">
-            No está en la lista
-          </button>
-          <div class="caja-nuevo" id="c-nuevo" hidden>
-            <label class="campo">
-              <span>Desvío nuevo</span>
-              <input id="c-nuevo-nombre" type="text" maxlength="160" autocomplete="off"
-                     placeholder="Escribí el desvío que falta">
-            </label>
-            <div id="c-sugerencias"></div>
-            <div class="acciones">
-              <button type="button" id="c-nuevo-cancelar" class="btn sec chico">Cancelar</button>
-              <button type="button" id="c-nuevo-ok" class="btn chico">Agregar</button>
-            </div>
-          </div>
+          <!-- Acá estaba "No está en la lista", que dejaba escribir un desvío
+               nuevo y lo agregaba al catálogo. Se fue: en la zona Otros ya está
+               "Faltante sin clasificar", y lo que se encontró se escribe en el
+               campo Observación de más abajo.
+
+               Es el mismo poka-yoke que el tipo de control: sin la opción de
+               crear, no se puede crear mal. Es lo que produjo las 78 grafías
+               para 71 conceptos que trajo AppSheet. -->
         </div>
 
         <section class="card acento paso" id="c-elegidos" hidden>
@@ -251,8 +244,8 @@ try {
 </div>
 
 <script src="./js/iconos.js"></script>
-<script src="./js/db.js"></script>
 <script src="./js/similitud.js"></script>
+<script src="./js/db.js"></script>
 <script src="./js/zonas.js"></script>
 <script src="./js/camera.js"></script>
 <script src="./js/sync.js"></script>

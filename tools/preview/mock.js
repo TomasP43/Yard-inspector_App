@@ -22,7 +22,6 @@
   const uno = (a) => a[Math.floor(rnd() * a.length)];
 
   const TRAFICOS = ['Brasil', 'Autoport', 'Chile', 'Paraguay', 'Bolivia', 'CAT', 'Uruguay', 'Green Mile'];
-  const TIPOS = ['5s', 'Mantenimiento', 'Seguridad', 'Calidad'];
   const DEMORAS = ['Cargo', 'Se retira', 'Demora en carga'];
   // Nombres inventados a proposito. El preview se publica en una web abierta
   // y no corresponde poner nombres de gente real al lado de sus metricas.
@@ -39,7 +38,6 @@
   // Uno que no esta en ninguna zona, para ver que "Otros" aparece.
   desvios.push({ id: desvios.length + 1, nombre: 'Faltante sin clasificar', activo: true, revisar: true, usos_historicos: 0 });
 
-  const tipos = TIPOS.map((n, i) => ({ id: i + 1, nombre: n }));
   const demoras = DEMORAS.map((n, i) => ({ id: i + 1, nombre: n }));
   const responsables = TRAFICOS.map((n, i) => ({ id: i + 1, nombre: 'Trafico ' + n }));
   const equipos = Array.from({ length: 60 }, () => entre(120, 7999)).sort((a, b) => a - b);
@@ -47,7 +45,6 @@
   const CATALOGOS = {
     usuario: { email: 'demo@ejemplo.com', nombre: 'Usuario Demo' },
     responsables,
-    tipos_desvio: tipos,
     desvios,
     demoras,
     controladores: ['Control A', 'Control B', 'Control C'].map((n, i) => ({ id: i + 1, nombre: n })),
@@ -84,7 +81,6 @@
         auditor: uno(AUDITORES),
         responsable: uno(responsables),
         equipo: { id: 0, codigo: uno(equipos) },
-        tipo: ng ? uno(tipos) : null,
         demora: ng ? uno(demoras) : null,
         controlador: null,
         estadoControl: null,
@@ -121,15 +117,9 @@
     const ya = INSP.find((i) => i.uuid === b.uuid);
     if (ya) return json({ inspeccion: ya, duplicada: true }, 200);
 
-    // Los desvios escritos a mano los resuelve el servidor, no el cliente: se
-    // escriben sin senal, cuando no hay forma de consultar el catalogo.
-    const nuevos = (b.desvios_nuevos || []).map((nombre) => {
-      const igual = desvios.find((d) => Similitud.normalizar(d.nombre) === Similitud.normalizar(nombre));
-      if (igual) return igual;
-      const creado = { id: desvios.length + 1, nombre, activo: true, revisar: true, usos_historicos: 0 };
-      desvios.push(creado);
-      return creado;
-    });
+    // Ya no llegan desvios escritos a mano: el boton "No esta en la lista" se
+    // saco del formulario. Lo que no esta en el catalogo se carga como
+    // "Faltante sin clasificar" y se describe en la observacion.
 
     const insp = {
       id: ++id,
@@ -140,13 +130,11 @@
       auditor: { id: 0, nombre: CATALOGOS.usuario.nombre, email: CATALOGOS.usuario.email },
       responsable: responsables.find((r) => r.id === b.responsable_id) || null,
       equipo: { id: 0, codigo: Number(b.equipo_codigo) },
-      tipo: tipos.find((t) => t.id === b.tipo_desvio_id) || null,
       demora: demoras.find((d) => d.id === b.demora_id) || null,
       controlador: null,
       estadoControl: null,
       desvios: [
-        ...(b.desvio_ids || []).map((x) => desvios.find((d) => d.id === x)).filter(Boolean),
-        ...nuevos
+        ...(b.desvio_ids || []).map((x) => desvios.find((d) => d.id === x)).filter(Boolean)
       ].map((d) => ({ id: d.id, nombre: d.nombre })),
       fotos: (b.fotos || []).map((_, i) => ({ id: i, orden: i + 1, ruta: null, orientacion: 'libre' }))
     };
@@ -179,8 +167,6 @@
       let filas = INSP.slice();
       if (q.get('equipo')) filas = filas.filter((i) => i.equipo.codigo === Number(q.get('equipo')));
       if (q.get('resultado')) filas = filas.filter((i) => i.resultado === q.get('resultado'));
-      // A proposito NO se filtra por tipo: el backend real tampoco lo hace.
-      // Un preview que filtra mejor que produccion esconde justo el problema.
       if (q.get('desde')) {
         const d = new Date(q.get('desde'));
         filas = filas.filter((i) => new Date(i.registrado_en) >= d);

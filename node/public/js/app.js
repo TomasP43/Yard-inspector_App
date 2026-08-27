@@ -39,7 +39,7 @@ let vistosHistorial = 0;   // filas mostradas, acumulado
 let form = null;
 function formVacio() {
   return {
-    ng: true, zona: 0, desvios: new Set(), nuevos: [],
+    ng: true, zona: 0, desvios: new Set(),
     demora: 'Cargo', fotos: [], checklist: null, resoluciones: {},
     pendientes: null // ultimo control NG de este equipo, si lo hay
   };
@@ -538,7 +538,7 @@ function pintarFormulario() {
   }).join('');
 
   $('#c-zona-lbl').textContent = '2 · Desvío en ' + actual.zona.toLowerCase();
-  const marcados = form.desvios.size + form.nuevos.length;
+  const marcados = form.desvios.size;
   $('#c-zona-meta').textContent = marcados
     ? marcados + (marcados === 1 ? ' marcado' : ' marcados')
     : actual.items.length + ' opciones';
@@ -553,15 +553,13 @@ function pintarFormulario() {
   }).join('') || '<p class="nota" style="padding:12px">Esta zona no tiene desvíos en el catálogo.</p>';
 
   // --- elegidos
-  const elegidos = [
-    ...CAT.desvios.filter((d) => form.desvios.has(d.id)).map((d) => ({ txt: d.nombre, id: d.id })),
-    ...form.nuevos.map((n, i) => ({ txt: n, nuevo: i }))
-  ];
+  const elegidos = CAT.desvios.filter((d) => form.desvios.has(d.id))
+    .map((d) => ({ txt: d.nombre, id: d.id }));
   $('#c-elegidos').hidden = !elegidos.length;
   $('#c-elegidos-tags').innerHTML = elegidos.map((e) => `
     <span class="tag sel">${esc(e.txt)}
       <button type="button" class="quitar" aria-label="Quitar"
-        ${e.id !== undefined ? `data-quitar="${e.id}"` : `data-quitar-nuevo="${e.nuevo}"`}>${ico('x', 12)}</button>
+        data-quitar="${e.id}">${ico('x', 12)}</button>
     </span>`).join('');
 
   // --- resolucion
@@ -623,7 +621,13 @@ function pintarPendientes() {
 
 function pintarFotos() {
   const chk = form.checklist;
+  // El checklist va PRIMERO: se pide en todos los controles, OK y NG, asi que
+  // es el que siempre hay que sacar. "Agregar foto" es del desvio y solo
+  // aparece cuando hay NG, asi que va despues.
   $('#c-fotos').innerHTML =
+    `<button type="button" class="foto-add chk${chk ? ' puesta' : ''}" id="c-add-chk">
+       ${ico(chk ? 'circle-check' : 'image', 18)}<span>Checklist batea</span>
+     </button>` +
     form.fotos.map((f, i) => `
       <div class="foto">
         <img src="${f.url}" alt="">
@@ -631,10 +635,7 @@ function pintarFotos() {
       </div>`).join('') +
     (form.fotos.length < 5
       ? `<button type="button" class="foto-add" id="c-add">${ico('camera', 18)}<span>Agregar foto</span></button>`
-      : '') +
-    `<button type="button" class="foto-add chk${chk ? ' puesta' : ''}" id="c-add-chk">
-       ${ico(chk ? 'circle-check' : 'image', 18)}<span>Checklist batea</span>
-     </button>`;
+      : '');
 
   const n = form.fotos.length + (chk ? 1 : 0);
   $('#c-fotos-meta').textContent = n + (n === 1 ? ' foto' : ' fotos');
@@ -658,42 +659,6 @@ async function mirarEquipo(codigo) {
   pintarPendientes();
 }
 
-// ------------------------------------------------- desvio fuera del catalogo
-
-/**
- * El inspector puede agregar un desvio que no esta en la lista, pero antes se
- * le muestran los parecidos. La comprobacion corre contra el catalogo cacheado
- * en IndexedDB, no contra el servidor: esto se usa sin senal.
- *
- * El desvio no se crea aca. Viaja como texto junto a la inspeccion y lo
- * resuelve el servidor al sincronizar, que es el unico que puede decidir si ya
- * existe. Crearlo antes dejaria basura en el catalogo si la inspeccion despues
- * se descarta.
- */
-function verSugerencias() {
-  const texto = $('#c-nuevo-nombre').value.trim();
-  const cont = $('#c-sugerencias');
-  if (texto.length < 3 || !CAT) { cont.innerHTML = ''; return; }
-
-  const ya = Similitud.exacto(texto, CAT.desvios);
-  if (ya) {
-    cont.innerHTML = `<p class="aviso-sim">Ya existe como <b>${esc(ya.nombre)}</b>.</p>
-      <div class="tags"><button type="button" class="tag" data-usar="${ya.id}">Usar ese</button></div>`;
-    return;
-  }
-
-  const cerca = Similitud.similares(texto, CAT.desvios, 4);
-  if (!cerca.length) { cont.innerHTML = '<p class="aviso-sim ok">No hay ninguno parecido.</p>'; return; }
-  cont.innerHTML = '<p class="aviso-sim">¿No será alguno de estos?</p>' +
-    '<div class="tags">' + cerca.map((d) => `<button type="button" class="tag" data-usar="${d.id}">${esc(d.nombre)}</button>`).join('') + '</div>';
-}
-
-function cerrarNuevo() {
-  $('#c-nuevo').hidden = true;
-  $('#c-nuevo-nombre').value = '';
-  $('#c-sugerencias').innerHTML = '';
-}
-
 // ----------------------------------------------------------------- guardar
 
 async function guardar(e) {
@@ -702,7 +667,7 @@ async function guardar(e) {
   const codigo = Number(f.equipo_codigo.value);
 
   if (!codigo) { toast('Falta el equipo', 'Poné el número del camión.', true); return; }
-  if (form.ng && !form.desvios.size && !form.nuevos.length) {
+  if (form.ng && !form.desvios.size) {
     toast('Falta el desvío', 'Un NG necesita al menos una observación.', true);
     return;
   }
@@ -727,7 +692,6 @@ async function guardar(e) {
       // Ya no viaja `tipo_desvio_id`: lo deriva el servidor del desvio, que es
       // lo unico que lo determina. Ver YI-008.
       desvio_ids: form.ng ? [...form.desvios] : [],
-      desvios_nuevos: form.ng ? form.nuevos.slice() : [],
       demora_id: form.ng && demora ? demora.id : null,
       detalle: f.detalle.value.trim() || null,
       controlador_id: f.controlador_id.value ? Number(f.controlador_id.value) : null,
@@ -854,8 +818,6 @@ document.addEventListener('click', (e) => {
   const quitar = t.closest('[data-quitar]');
   if (quitar) { form.desvios.delete(Number(quitar.dataset.quitar)); pintarFormulario(); return; }
 
-  const quitarN = t.closest('[data-quitar-nuevo]');
-  if (quitarN) { form.nuevos.splice(Number(quitarN.dataset.quitarNuevo), 1); pintarFormulario(); return; }
 
   const dem = t.closest('[data-demora]');
   if (dem) { form.demora = dem.dataset.demora; pintarFormulario(); return; }
@@ -875,20 +837,6 @@ document.addEventListener('click', (e) => {
         if (n >= 0) form.zona = n;
       }
     }
-    pintarFormulario();
-    return;
-  }
-
-  const usar = t.closest('[data-usar]');
-  if (usar) {
-    const d = (CAT.desvios || []).find((x) => x.id === Number(usar.dataset.usar));
-    if (d) {
-      form.desvios.add(d.id);
-      const zonas = Zonas.repartir(CAT.desvios);
-      const n = zonas.findIndex((z) => z.items.some((x) => x.id === d.id));
-      if (n >= 0) form.zona = n;
-    }
-    cerrarNuevo();
     pintarFormulario();
     return;
   }
@@ -922,21 +870,6 @@ $('#form').addEventListener('submit', guardar);
 
 $('[name=equipo_codigo]').addEventListener('change', (e) => mirarEquipo(e.target.value.trim()));
 
-$('#c-otro').addEventListener('click', () => {
-  $('#c-nuevo').hidden = false;
-  $('#c-nuevo-nombre').focus();
-});
-$('#c-nuevo-cancelar').addEventListener('click', cerrarNuevo);
-$('#c-nuevo-nombre').addEventListener('input', verSugerencias);
-$('#c-nuevo-ok').addEventListener('click', () => {
-  const n = $('#c-nuevo-nombre').value.replace(/\s+/g, ' ').trim();
-  if (n.length < 3) { toast('Muy corto', 'Escribí al menos 3 letras.', true); return; }
-  const ya = Similitud.exacto(n, CAT.desvios);
-  if (ya) form.desvios.add(ya.id);
-  else form.nuevos.push(n);
-  cerrarNuevo();
-  pintarFormulario();
-});
 
 async function tomarFoto(input, destino) {
   const file = input.files[0];

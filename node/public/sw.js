@@ -25,8 +25,12 @@
  * v12: se fue el paso "Tipo de control" del formulario.
  * v13: el tablero de gerencia sale del cache -- ver el fetch de abajo.
  * v14: el cajon lateral queda con un solo item.
+ * v15: se fue el boton "No esta en la lista".
+ *     similitud.js SE QUEDA aunque el formulario ya no cree desvios: zonas.js
+ *     lo usa para normalizar y enganchar el catalogo con el mapa de zonas.
+ *     Sacarlo tiraba zonas.js entero y con el la app -- probado a los golpes.
  */
-const VERSION = 'v14';
+const VERSION = 'v16';
 const CACHE = `yard-${VERSION}`;
 
 // El app shell tiene que alcanzar para abrir la app sin conexion. Rutas
@@ -43,8 +47,8 @@ const SHELL = [
   './css/tokens.css',
   './css/app.css',
   './js/iconos.js',
-  './js/db.js',
   './js/similitud.js',
+  './js/db.js',
   './js/zonas.js',
   './js/camera.js',
   './js/sync.js',
