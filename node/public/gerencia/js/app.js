@@ -765,6 +765,20 @@ function pintarReincidencia() {
     `Qué pasó después de cada observación · histórico completo${
       rc.excluye ? ` · sin ${rc.excluye.toLowerCase()}` : ''}`;
 
+  // El oxido salio de la tarjeta, pero sigue pasando: cuantos equipos lo tienen
+  // abierto ahora mismo es el dato que esas filas aportaban.
+  const ox = rc.oxidoActivo;
+  $('#reinc-aparte').hidden = !ox;
+  if (ox) {
+    const pct = ox.deTotal ? Math.round((ox.equipos / ox.deTotal) * 100) : null;
+    $('#reinc-aparte').innerHTML = `
+      <span class="eq-label">Con óxido abierto</span>
+      <span class="fila">
+        <b>${esc(ox.equipos)} equipos</b>
+        ${pct == null ? '' : `<span class="pct">${pct}%</span>`}
+      </span>`;
+  }
+
   $('#reinc-tasa').textContent = rc.tasa != null ? rc.tasa : '—';
   $('#reinc-mediana').textContent = rc.medianaDias != null
     ? `mediana de ${rc.medianaDias} días hasta la reaparición`

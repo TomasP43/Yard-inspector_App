@@ -25,8 +25,10 @@ const Zonas = (() => {
       // desvio y la severidad no la distinguia nadie de forma consistente. La
       // baja de verdad es del catalogo en la base (YI-007); sacarlo de aca solo
       // lo saca del preview, porque el catalogo manda sobre este mapa.
+      // 'Óxido y suciedad en batea' tampoco existe mas: el campo es multivalor,
+      // asi que la combinacion se carga marcando los dos. Como item propio
+      // partia el mismo concepto en tres renglones. Ver YI-007.
       'Óxido en batea',
-      'Óxido y suciedad en batea',
       'Suciedad en batea',
       'Suciedad avanzada en batea',
       'Bidones sueltos en batea',

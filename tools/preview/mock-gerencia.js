@@ -24,9 +24,11 @@
   const TIPOS = ['5s', 'Mantenimiento', 'Seguridad', 'Calidad'];
   const TRAFICOS = ['Brasil', 'Autoport', 'Chile', 'Paraguay', 'Bolivia'];
   const DESVIOS = [
-    // 'Óxido avanzado en batea' ya no existe: se fusiono con 'Óxido en batea'.
+    // Dos que ya no existen: 'Óxido avanzado en batea' se fusiono con 'Óxido en
+    // batea', y 'Óxido y suciedad en batea' se partio en sus dos partes -- el
+    // campo es multivalor, asi que la combinacion se carga marcando las dos.
     'Óxido en batea', 'Suciedad en batea',
-    'Fisura en parabrisa', 'Lona en mal estado', 'Óxido y suciedad en batea',
+    'Fisura en parabrisa', 'Lona en mal estado',
     'Parabrisa polarizado / acrílico', 'Matafuego vencido', 'Sunchos sin acomodar',
     'Caño de batea desoldado', 'Rampa desoldada / caída', 'Neumático gastado',
     'Guitarra desoldada / quebrada / fisurada', 'Sin soga precinto'
@@ -345,6 +347,10 @@
   // desvios con desenlace registrado se reduce a poco mas de la mitad.
   const reincidencia = {
     excluye: APARTE,
+    // El oxido sale de la tarjeta, pero no desaparece: cuantos equipos lo
+    // tienen abierto ahora mismo va arriba a la derecha. Es el unico dato que
+    // esas filas aportaban y el que de verdad se puede accionar.
+    oxidoActivo: { equipos: 57, deTotal: 214 },
     corregido: 786, reincidio: 121, sinRecontrol: 98,
     tasa: 12, medianaDias: 15,
     watchTotal: 21,

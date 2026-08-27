@@ -136,7 +136,8 @@ deduplicación del catálogo, las trampas de los datos— está en
     catCounts:  [[tipo, n], ...],
     empresas:   [{ name, volumen, ng, pct, pareto[], paretoAparte, catCounts[] }],
     impacto:    { total, outcome[{key,n}], cats[], topFreno[], trend[] },
-    reincidencia: { corregido, reincidio, sinRecontrol, tasa, medianaDias,
+    reincidencia: { excluye, oxidoActivo{ equipos, deTotal },
+                    corregido, reincidio, sinRecontrol, tasa, medianaDias,
                     watchTotal, watchlist[] },
     traficoTrend: [{ name, totalN, monthly[{label,n,pct}] }],
     auditorBench: { teamPct, list[{name,n,ng,pct}] },
@@ -256,6 +257,16 @@ deduplicación del catálogo, las trampas de los datos— está en
   hoy en una tabla dinámica de Excel abierta por transportista y destino. El
   mapeo a los flujos de patrullas está resuelto y documentado en YI-006.
 
+- **`reincidencia` va sin óxido, y la tasa tiene que salir del mismo universo
+  que la watchlist.** El óxido es la mitad de los desvíos y se repite en casi
+  todos los equipos: dentro, la watchlist es una lista de óxido y no se ve nada
+  más. Si la lista excluyera y `tasa` no, serían dos cosas distintas en la misma
+  tarjeta.
+
+  `excluye` lleva el nombre de lo que se sacó, para que la pantalla lo diga — un
+  filtro que no se ve es peor que no filtrar. Y `oxidoActivo` es lo único que
+  esas filas aportaban: cuántos equipos lo tienen abierto ahora, sobre cuántos.
+
 - **`empresas[]` es la tasa de NG por transportista, y cada una trae su propio
   corte.** `pct = ng / volumen` de **esa** empresa, no sobre el total: la
   pregunta es cuál anda peor, no cuál mueve más. Sin dividir por el volumen
@@ -357,7 +368,7 @@ deduplicación del catálogo, las trampas de los datos— está en
 
 ---
 
-### YI-007 — "Óxido avanzado en batea" se fusiona con "Óxido en batea"
+### YI-007 — Limpieza de la familia óxido en el catálogo
 - **Estado:** pendiente
 - **Prioridad:** media
 - **Tipo:** catálogo + migración de histórico
@@ -382,10 +393,23 @@ deduplicación del catálogo, las trampas de los datos— está en
   no aparece entre las opciones. **En producción sigue apareciendo hasta que se
   toque el catálogo**, porque el catálogo manda sobre el mapa de zonas.
 
-- **Queda una pregunta abierta:** `Óxido y suciedad en batea` (239 usos) sigue
-  en la lista y es una combinación que incluye óxido. El campo ya es multivalor,
-  así que esa fila es redundante — pero partirla en dos es otra decisión y no se
-  tomó.
+- **`Óxido y suciedad en batea` (239 usos) se parte en dos.** El campo es
+  multivalor: la combinación se carga marcando *Óxido en batea* y *Suciedad en
+  batea*, así que como ítem propio partía el mismo concepto en tres renglones.
+
+  La migración **no es un `UPDATE`**, porque una fila pasa a ser dos:
+
+  1. Por cada `inspeccion_desvio` que apunte a la combinación, insertar la fila
+     de *Óxido en batea* y la de *Suciedad en batea* para esa inspección.
+  2. **Saltear la que ya exista.** Hay inspecciones que tienen la combinación
+     *y además* uno de los dos sueltos; sin el `INSERT IGNORE` (o el `NOT
+     EXISTS`) la migración choca contra el UNIQUE de `(inspeccion_id,
+     desvio_id)`.
+  3. Recién entonces borrar las filas de la combinación y desactivar la entrada
+     del catálogo.
+
+  Ojo con el orden: si se borra antes de insertar, se pierde el vínculo y no hay
+  cómo saber qué inspecciones lo tenían.
 
 ---
 
