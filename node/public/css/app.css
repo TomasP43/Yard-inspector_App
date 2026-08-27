@@ -980,3 +980,196 @@ details.ficha[open] .ver-obs .ico { transform: rotate(90deg); }
   cursor: pointer;
 }
 .buscador .limpiar:hover { background: var(--surface-hover); color: var(--text-strong); }
+
+/* ------------------------------------------------------------------ bahias */
+
+/* La ronda del turno. El encabezado dice las dos cosas que importan de pie en
+   la playa: cuanto falta de la ronda y cuanto falta del turno. */
+.card.turno .barra-prog {
+  height: 6px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-raised);
+  overflow: hidden;
+}
+.card.turno .barra-prog span {
+  display: block;
+  height: 100%;
+  background: var(--status-ok);
+  border-radius: inherit;
+  transition: width .25s ease;
+}
+.card.turno .turno-pie {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 10px 0 0;
+  font-size: 11.5px;
+  color: var(--text-faint);
+}
+/* Fuera de turno (00:45 a 06:00). Se apaga en vez de esconderse: la ronda del
+   turno que cerro se sigue pudiendo mirar. */
+.card.turno.apagado .barra-prog span { background: var(--text-faint); }
+
+.bahias { display: grid; gap: 8px; margin-top: 14px; }
+.bahia {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--line-rule);
+  border-left: 3px solid var(--line-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface-card);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.bahia.ok   { border-left-color: var(--status-ok); }
+.bahia.ng   { border-left-color: var(--ttfa-red); }
+.bahia.pend { border-left-color: var(--line-strong); background: var(--surface-raised); }
+
+.bahia .cod {
+  flex: 0 0 auto;
+  min-width: 34px;
+  font-size: 17px;
+  font-weight: var(--weight-semibold);
+  color: var(--text-strong);
+}
+.bahia .txt { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.bahia .txt b { font-size: 13.5px; font-weight: var(--weight-medium); }
+.bahia .txt small { font-size: 11.5px; color: var(--text-faint); }
+.bahia .aud {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.nota.alerta { display: flex; align-items: center; gap: 7px; color: var(--ttfa-red); }
+.nota.qr { display: flex; align-items: center; gap: 7px; color: var(--text-muted); }
+
+/* El checklist. Tres estados por item -- sin tocar / esta / falta -- y no dos:
+   con dos, la pantalla arranca con todo en una posicion y se puede guardar sin
+   mirar, que es el problema del papel que esto vino a reemplazar. */
+.checklist { display: grid; gap: 1px; background: var(--line-hairline); border-radius: var(--radius-md); overflow: hidden; }
+.chk-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  background: var(--surface-card);
+}
+.chk-item > span { flex: 1; min-width: 0; font-size: 13.5px; color: var(--text-faint); }
+.chk-item.resuelto > span { color: var(--text-body); }
+.chk-item .seg { flex: 0 0 auto; width: 132px; }
+.seg.chico button { height: 32px; font-size: 12px; }
+.seg button.sel.ok { background: var(--status-ok-bg); color: var(--status-ok); }
+.seg button.sel.ng { background: var(--ttfa-red-16);  color: var(--ttfa-red); }
+
+/* La foto de la bahia es la prueba, asi que va grande y sola. */
+.fotos.una { grid-template-columns: 1fr; }
+.fotos.una .foto, .fotos.una .foto-add { height: 150px; }
+
+.ficha-quien { margin: 0 0 10px; font-size: 12px; color: var(--text-faint); }
+.card .obs { margin: 10px 0 0; font-size: 13px; color: var(--text-body); line-height: 1.45; }
+.mini.grande {
+  display: block;
+  width: 100%;
+  height: 150px;
+  margin-top: 12px;
+  padding: 0;
+  border: 1px solid var(--line-rule);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: none;
+  cursor: pointer;
+}
+.mini.grande img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+.aud-fila {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 9px 0;
+  border-top: 1px solid var(--line-hairline);
+  font-size: 12.5px;
+}
+.aud-fila.ok { color: var(--status-ok); }
+.aud-fila.ng { color: var(--ttfa-red); }
+.aud-fila span { color: var(--text-body); }
+.aud-fila span b { color: var(--text-strong); font-weight: var(--weight-medium); }
+.aud-fila small { display: block; color: var(--text-faint); font-size: 11.5px; }
+.aud-fila .mono { margin-left: auto; color: var(--text-faint); font-size: 11px; }
+
+/* --- checklist de bahia: fila con detalle plegable ------------------------ */
+
+.chk-item { display: block; padding: 0; }
+.chk-cab {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+}
+.chk-nom { flex: 1; min-width: 0; font-size: 13.5px; color: var(--text-faint); }
+.chk-item.resuelto .chk-nom { color: var(--text-body); }
+.chk-nom small { margin-left: 6px; font-size: 10.5px; color: var(--text-faint); }
+.chk-cab .seg { flex: 0 0 auto; width: 152px; }
+/* Abierto sin comentario todavia: el renglon avisa que le falta algo. */
+.chk-item.abierto:not(.resuelto) { box-shadow: inset 3px 0 0 var(--status-warn); }
+
+.chk-det {
+  display: grid;
+  gap: 10px;
+  padding: 4px 12px 12px;
+  border-top: 1px solid var(--line-hairline);
+  background: var(--surface-raised);
+}
+.det-fila { display: flex; align-items: center; gap: 10px; }
+.det-fila > .eq-label { flex: 0 0 74px; }
+.det-fila .seg { flex: 1; max-width: 152px; }
+.chk-det .campo input {
+  width: 100%;
+  height: 38px;
+  padding: 0 10px;
+  border: 1px solid var(--line-rule);
+  border-radius: var(--radius-md);
+  background: var(--surface-card);
+  color: var(--text-strong);
+  font-size: 13.5px;
+}
+
+.stepper { display: flex; align-items: center; gap: 8px; }
+.stepper button {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  border: 1px solid var(--line-rule);
+  border-radius: var(--radius-md);
+  background: var(--surface-card);
+  color: var(--text-strong);
+  font-size: 17px;
+  line-height: 1;
+  cursor: pointer;
+}
+.stepper b { min-width: 22px; text-align: center; font-size: 16px; color: var(--text-strong); }
+/* Distinto de la cantidad estandar: es el dato que hay que ver de un vistazo. */
+.stepper b.dif { color: var(--ttfa-red); }
+.stepper small { color: var(--text-faint); font-size: 11px; }
+
+/* --- novedades en la ficha ----------------------------------------------- */
+
+.novedades { display: grid; gap: 8px; }
+.nov {
+  display: grid;
+  gap: 2px;
+  padding: 8px 10px;
+  border-left: 2px solid var(--ttfa-red);
+  border-radius: var(--radius-sm);
+  background: var(--ttfa-red-08);
+}
+.nov b { font-size: 13px; font-weight: var(--weight-medium); color: var(--text-strong); }
+.nov .mono { font-size: 11.5px; color: var(--ttfa-red); }
+.nov small { font-size: 11.5px; color: var(--text-muted); line-height: 1.4; }

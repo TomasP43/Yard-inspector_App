@@ -559,6 +559,102 @@ deduplicación del catálogo, las trampas de los datos— está en
 
 ---
 
+### YI-011 — Control de bahías
+- **Estado:** pendiente · el front ya está armado y andando contra el mock
+- **Prioridad:** alta
+- **Tipo:** módulo nuevo — tablas, endpoints y migración
+
+- **Qué reemplaza:** el papel que hoy vive pegado en cada bahía
+  (`Control de bahías (Para impresión) - Google Sheets`). El problema del papel
+  **no es que se pierda: es que se llena en la oficina sin ir a mirar** y
+  después se deja en la bahía. Todo el diseño está puesto contra eso.
+
+- **Tablas** (migración **009**; 005–008 los quemó el módulo de unidades):
+
+  ```
+  bahia               (id, codigo, nombre, token, activo)
+  bahia_item          (id, nombre, cantidad_std, orden, activo)
+  bahia_control       (id, uuid UNIQUE, bahia_id, turno_clave, inspector_id,
+                       registrado_en, sincronizado_en, foto, observacion, estado)
+  bahia_control_item  (control_id, item_id, conforme, cantidad,
+                       ubicacion_ok, estado_ok, comentario)
+  bahia_auditoria     (id, uuid UNIQUE, control_id, usuario_id,
+                       registrado_en, coincide, observacion, foto)
+  ```
+
+  - `UNIQUE (bahia_id, turno_clave)` — una bahía se controla una vez por turno.
+    El segundo intento es **409**, no un 200 silencioso.
+  - `UNIQUE (uuid)` en control y auditoría: es la clave de idempotencia de la
+    cola, igual que en inspecciones. Reenviar devuelve **200 con lo que ya
+    existe**, nunca 409 — con un 409 el cliente no sabe si puede sacarlo de la
+    cola.
+  - `bahia.token` es lo que va impreso en el QR. **Aleatorio por bahía**, no
+    derivable del código: con `?b=3` cualquiera "escanea" escribiendo la URL.
+
+- **Los 12 ítems del papel**, con su `cantidad_std`: Distance checkers 1 ·
+  Almohadillas de puertas 1 · Soportes de carteles 1 · Arneses de seguridad 2 ·
+  Reglas de medición 1 · Escaleras burro 4 · Recapados 2 · Portallaves 1 ·
+  Stoppers bahías de carga 1 · Stoppers bahías de espera 1 · Rampas 1 ·
+  Rampines 2.
+
+  Se **cuenta**, no se tilda: tres escaleras burro de cuatro es un faltante que
+  un checkbox no ve. Y por cada ítem van las tres columnas del papel —
+  `cantidad`, `ubicacion_ok`, `estado_ok` — porque una herramienta completa en
+  cantidad puede estar rota o fuera de lugar.
+
+- **Endpoints:**
+
+  | Método | Ruta | Qué hace |
+  |---|---|---|
+  | GET | `api/bahias?turno=<clave>` | Estado de la ronda de ese turno: `{turno, items[], bahias[]}`, cada bahía con su `control` o `null` |
+  | POST | `api/bahias/control` | Alta de un control. Idempotente por `uuid` |
+  | POST | `api/bahias/auditoria` | Alta de una auditoría sobre un control |
+  | GET | `api/bahias/rondas?limite=` | Rondas de turnos cerrados |
+
+- **⚠ `turno_clave` la manda el dispositivo y el servidor NO la recalcula.** Un
+  control cargado a las 00:30 sin señal puede sincronizar a las 07:00: el turno
+  al que pertenece es el que estaba abierto cuando se hizo, no el de la hora de
+  llegada. Deducirlo del `registrado_en` en el servidor también funciona; lo que
+  no puede es deducirlo de `NOW()`.
+
+- **La foto es obligatoria en el servidor, no solo en el front.** Si la
+  exigiera solo la pantalla, alcanzaría un POST a mano para saltearla — y la
+  foto es la mitad de la prueba de que alguien fue.
+
+- **⚠ El QR prueba que se vio el código, no que la persona estuvo ahí.** Un QR
+  es una URL impresa: se fotografía una vez y se escanea desde la oficina. Lo
+  que encarece mentir es la foto fresca **y que cualquiera puede escanear el
+  mismo QR durante el turno y auditar parado en la bahía**. Si aun así siguen
+  firmando sin ir, el escalón siguiente es NFC: hay que apoyar el teléfono en el
+  tag y eso no se fotografía.
+
+- **Falta definir** (ver el papel): la fila **5S** del final, y las dos firmas
+  (**Firma TTFA** y **Firma Furlong**). El front todavía no las implementa.
+
+---
+
+### YI-012 — La jornada de patrullas no cruza la medianoche
+- **Estado:** pendiente
+- **Prioridad:** menor
+- **Tipo:** agrupación en el front
+
+- **Qué pasa:** el corte de turno ya es 16:00 y vive en `js/turnos.js`, que sabe
+  que el segundo turno termina **00:45 del día siguiente**. Pero `claveDia()` en
+  `app.js` sigue agrupando la pantalla Hoy por día de calendario, así que un
+  control entre 00:00 y 00:45 se muestra bajo "Segundo turno" pero en el día
+  nuevo, y a las 00:00 desaparece de Hoy el trabajo de las últimas horas.
+
+- **Cuánto pesa:** **8 controles de 4.268** en todo el histórico están en 00:xx.
+  Entre 01:00 y 05:00 no hay ninguno. Por eso no se cambió: mover la clave de
+  día corre esos 8 controles de jornada y toca los números que gerencia ya vio,
+  a cambio de casi nada.
+
+- **La salida cuando haga falta:** usar `Turnos.de(x).clave` en vez de
+  `claveDia(x)` para agrupar. La regla ya está escrita y probada — la usa el
+  módulo de bahías, donde el límite de las 00:45 sí es el centro de todo.
+
+---
+
 ## Nota sobre lo que el backend tiene y la app no usa
 
 No es un requerimiento, es para que nadie los tome por carga viva:

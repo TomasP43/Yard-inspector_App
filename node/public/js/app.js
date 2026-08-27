@@ -77,7 +77,16 @@ function fmtDia(iso) {
   return d.getDate() + ' ' + MESES[d.getMonth()];
 }
 
-const turno = (iso) => (new Date(iso).getHours() < 13 ? 'Turno mañana' : 'Turno tarde');
+/**
+ * El corte es 16:00 y vive en `js/turnos.js`, que lo comparte con el modulo de
+ * bahias. Antes estaba aca en 13:00, que mandaba al segundo turno 688 controles
+ * del historico (16%) que eran del primero.
+ *
+ * OJO: `claveDia` sigue agrupando Hoy por dia de calendario, asi que un control
+ * entre 00:00 y 00:45 se muestra bajo "Segundo turno" pero en el dia nuevo. Son
+ * 8 controles en todo el historico; queda anotado en YI-012.
+ */
+const turno = (iso) => Turnos.nombre(iso);
 
 /** 'Trafico Brasil' se muestra 'Brasil': el prefijo se repite en cada fila. */
 const trafico = (r) => (r && r.nombre ? r.nombre.replace(/^Tr[aá]fico\s+/i, '') : '—');
@@ -901,22 +910,56 @@ async function guardar(e) {
 
 // -------------------------------------------------------------- navegacion
 
-const PANTALLAS = {
-  tablero:   { titulo: 'Tablero',           eyebrow: 'Cómo viene la jornada',    icono: 'gauge' },
-  hoy:       { titulo: 'Patrulla de hoy',   eyebrow: 'Controles de la jornada',  icono: 'clipboard-check' },
-  historial: { titulo: 'Historial completo', eyebrow: 'Calidad · Seguridad · 5s', icono: 'file-text' },
-  cargar:    { titulo: 'Nuevo control',     eyebrow: 'Patrulla de playa',        icono: 'plus' }
+/**
+ * Los dos modulos de la app. El cajon lateral cambia de modulo; la barra de
+ * abajo se mueve dentro del que este abierto.
+ *
+ * Comparten pagina, service worker y cola de sincronizacion a proposito. Un
+ * segundo service worker con su propio scope ya fue fuente de dolor, y ademas
+ * asi el QR de una bahia abre sin señal desde el primer dia: el shell que sirve
+ * `/yard/?b=...` es el mismo que ya esta cacheado.
+ */
+const MODULOS = {
+  equipos: {
+    titulo: 'Control de equipo', icono: 'truck',
+    pantallas: {
+      tablero:   { titulo: 'Tablero',            eyebrow: 'Cómo viene la jornada',    icono: 'gauge',           corto: 'Tablero' },
+      hoy:       { titulo: 'Patrulla de hoy',    eyebrow: 'Controles de la jornada',  icono: 'clipboard-check', corto: 'Hoy' },
+      historial: { titulo: 'Historial completo', eyebrow: 'Calidad · Seguridad · 5s', icono: 'file-text',       corto: 'Historial' },
+      cargar:    { titulo: 'Nuevo control',      eyebrow: 'Patrulla de playa',        icono: 'plus',            corto: 'Cargar' }
+    }
+  },
+  bahias: {
+    titulo: 'Control de bahías', icono: 'layout-grid',
+    pantallas: {
+      ronda:  { titulo: 'Ronda de bahías',    eyebrow: 'Herramientas por bahía', icono: 'list-checks', corto: 'Ronda' },
+      rondas: { titulo: 'Rondas anteriores',  eyebrow: 'Turnos cerrados',        icono: 'file-text',   corto: 'Historial' }
+    }
+  }
 };
 
+/** Las vistas de detalle no tienen pestaña, pero pertenecen a un modulo. */
+const DETALLES = { detalle: 'equipos', control: 'equipos', bahia: 'bahias' };
+
+let modulo = 'equipos';
+
+const pantallas = () => MODULOS[modulo].pantallas;
+const moduloDe = (v) => DETALLES[v] || Object.keys(MODULOS).find((m) => MODULOS[m].pantallas[v]);
+
 function irA(nombre) {
-  if (nombre !== 'detalle' && nombre !== 'control') vistaPrevia = nombre;
+  // Entrar a una vista de otro modulo cambia de modulo sola. Es lo que hace que
+  // el QR de una bahia funcione aunque la app haya quedado abierta en patrullas.
+  const suyo = moduloDe(nombre);
+  if (suyo && suyo !== modulo) { modulo = suyo; pintarNavegacion(); }
+
+  const esDetalle = !!DETALLES[nombre];
+  if (!esDetalle) vistaPrevia = nombre;
   vista = nombre;
   cerrarDrawer();
 
   $$('.vista').forEach((v) => { v.hidden = v.id !== 'v-' + nombre; });
   $('#scroll').scrollTop = 0;
 
-  const esDetalle = nombre === 'detalle' || nombre === 'control';
   $('#menu').hidden = esDetalle;
   $('#volver').hidden = !esDetalle;
   $('#refrescar').hidden = esDetalle;
@@ -925,7 +968,7 @@ function irA(nombre) {
   $$('.tab').forEach((t) => t.classList.toggle('activo', t.dataset.v === vistaPrevia));
 
   if (!esDetalle) {
-    const p = PANTALLAS[nombre];
+    const p = pantallas()[nombre];
     $('#titulo').textContent = p.titulo;
     $('#eyebrow').textContent = p.eyebrow;
   }
@@ -936,23 +979,26 @@ function irA(nombre) {
   if (nombre === 'hoy') { cargarVentana().then(verHoy); verHoy(); }
   if (nombre === 'historial') verHistorial(true);
   if (nombre === 'cargar') pintarFormulario();
+  if (nombre === 'ronda') Bahias.verRonda();
+  if (nombre === 'rondas') Bahias.verRondas();
 }
 
 function abrirDrawer() { $('#drawer').hidden = false; $('#scrim').hidden = false; }
 function cerrarDrawer() { $('#drawer').hidden = true; $('#scrim').hidden = true; }
 
 function pintarNavegacion() {
-  $('#tabs').innerHTML = Object.entries(PANTALLAS).map(([k, p]) => `
+  $('#tabs').innerHTML = Object.entries(pantallas()).map(([k, p]) => `
     <button type="button" class="tab${vista === k ? ' activo' : ''}" data-v="${k}">
-      ${ico(p.icono, 20)}<span>${k === 'hoy' ? 'Hoy' : k === 'cargar' ? 'Cargar' : p.titulo.split(' ')[0]}</span>
+      ${ico(p.icono, 20)}<span>${esc(p.corto)}</span>
     </button>`).join('');
 
-  // Un solo item: es el unico modulo que hay. Los cuatro que estaban aca eran
-  // los mismos cuatro de la barra de abajo, asi que el cajon no llevaba a
-  // ningun lado nuevo -- solo repetia, y con el pulgar mas lejos. Moverse entre
-  // pantallas se hace abajo; el cajon queda para el tema y el usuario.
-  $('#drawer-nav').innerHTML =
-    `<span class="it activo">${ico('truck', 17)}<span>Control de equipo</span></span>`;
+  // El cajon cambia de MODULO; la barra de abajo se mueve dentro del modulo
+  // abierto. Cuando habia un solo modulo el cajon repetia las cuatro pestañas
+  // de abajo con el pulgar mas lejos, y por eso quedo con un item solo.
+  $('#drawer-nav').innerHTML = Object.entries(MODULOS).map(([k, m]) => `
+    <button type="button" class="it${modulo === k ? ' activo' : ''}" data-modulo="${k}">
+      ${ico(m.icono, 17)}<span>${esc(m.titulo)}</span>
+    </button>`).join('');
 
   $('#menu').innerHTML = ico('menu', 20);
   $('#volver').innerHTML = ico('chevron-left', 20);
@@ -985,6 +1031,11 @@ document.addEventListener('click', (e) => {
 
   const tab = t.closest('.tab');
   if (tab) { irA(tab.dataset.v); return; }
+
+  // Cambiar de modulo entra a su primera pantalla, no a la que estaba abierta
+  // en el modulo anterior: son tareas distintas y no comparten contexto.
+  const mod = t.closest('[data-modulo]');
+  if (mod) { modulo = mod.dataset.modulo; pintarNavegacion(); irA(Object.keys(pantallas())[0]); return; }
 
   const tgl = t.closest('[data-ng]');
   if (tgl) { filtroHoy = tgl.dataset.ng; verHoy(); return; }
@@ -1113,6 +1164,7 @@ async function tomarFoto(input, destino) {
 }
 $('#c-file').addEventListener('change', (e) => tomarFoto(e.target, 'foto'));
 $('#c-file-chk').addEventListener('change', (e) => tomarFoto(e.target, 'chk'));
+$('#b-file').addEventListener('change', (e) => Bahias.tomarFoto(e.target));
 
 Sync.alCambiar((s) => {
   if (s.tipo === 'sincronizando') estado('Sincronizando…', 'aviso');
@@ -1129,6 +1181,9 @@ Sync.alCambiar((s) => {
     if (s.pendientes) estado(`${s.pendientes} pendiente(s)`, 'aviso');
     else { estado('Al día', 'bueno'); setTimeout(() => estado(null), 2500); }
     if (s.enviadas) cargarVentana().then(() => { if (vista === 'hoy') verHoy(); if (vista === 'tablero') verTablero(); });
+    // La ronda tambien: al sincronizar, las bahias que estaban "sin
+    // sincronizar" pasan a mostrar hora y auditor de verdad.
+    if (s.enviadas && (vista === 'ronda' || vista === 'bahia')) Bahias.refrescar(vista);
   }
 });
 
@@ -1140,7 +1195,18 @@ pintarNavegacion();
 
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
 
+/**
+ * Entrada por QR: `/yard/?b=<token>` abre directo esa bahia.
+ *
+ * El token va en el query string y no en el path a proposito: el service worker
+ * matchea el shell ignorando la query, asi que el escaneo abre **sin señal**
+ * con lo que ya esta cacheado. Con `/yard/bahia/7` habria que enseñarle al SW a
+ * resolver rutas que no existen como archivo, que es de donde salio el 502.
+ */
+const qr = new URLSearchParams(location.search).get('b');
+
 cargarCatalogos().then(() => {
-  irA('hoy');
+  if (qr) { Bahias.abrirDesdeToken(qr); }
+  else irA('hoy');
   Sync.sincronizar();
 });

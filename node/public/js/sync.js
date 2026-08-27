@@ -23,7 +23,31 @@ const Sync = (() => {
   function avisar(estado) { oyentes.forEach((f) => f(estado)); }
   function alCambiar(f) { oyentes.push(f); }
 
+  /**
+   * A donde va cada tipo de item de la cola.
+   *
+   * Los tres comparten las reglas de la cola sin excepcion: 401 frena todo, un
+   * 4xx marca rechazada pero NO borra, un 5xx reintenta, y el `uuid` del
+   * dispositivo hace idempotente el POST. Esas reglas costaron caro; un tipo
+   * nuevo se suma aca y las hereda, no se escribe una cola aparte.
+   */
+  const RUTAS = {
+    inspeccion: 'api/inspecciones',
+    bahia:      'api/bahias/control',
+    auditoria:  'api/bahias/auditoria'
+  };
+
+  /**
+   * Sin `tipo` es una inspeccion. No es solo un default comodo: cuando se sumo
+   * bahias podia haber items encolados por la version anterior, que no lo
+   * traen. Sin esto se quedaban en la cola sin ruta, para siempre.
+   */
+  const tipoDe = (item) => item.tipo || 'inspeccion';
+
   async function armarPayload(item) {
+    if (tipoDe(item) === 'bahia') return payloadBahia(item);
+    if (tipoDe(item) === 'auditoria') return payloadAuditoria(item);
+
     const fotos = [];
     for (const f of item.fotos || []) {
       fotos.push({
@@ -54,9 +78,39 @@ const Sync = (() => {
     return payload;
   }
 
+  /**
+   * El control de una bahia. `turno_clave` viaja desde el dispositivo y no se
+   * deduce en el servidor a partir de la hora de llegada: si el control se
+   * cargo a las 00:30 sin señal y sincroniza a las 07:00, el turno al que
+   * pertenece es el que estaba abierto cuando se hizo, no el de ahora.
+   */
+  async function payloadBahia(item) {
+    return {
+      uuid: item.uuid,
+      registrado_en: item.registrado_en,
+      bahia_id: item.bahia_id,
+      turno_clave: item.turno_clave,
+      items: item.items || [],
+      observacion: item.observacion || null,
+      foto: item.foto ? await Camara.aBase64(item.foto) : null
+    };
+  }
+
+  /** La auditoria de un control de bahia hecha por un tercero. */
+  async function payloadAuditoria(item) {
+    return {
+      uuid: item.uuid,
+      registrado_en: item.registrado_en,
+      control_uuid: item.control_uuid,
+      coincide: item.coincide,
+      observacion: item.observacion || null,
+      foto: item.foto ? await Camara.aBase64(item.foto) : null
+    };
+  }
+
   /** El POST pelado. Lo comparten el envio con cola y el envio directo. */
   async function postear(item) {
-    return fetch('api/inspecciones', {
+    return fetch(RUTAS[tipoDe(item)], {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'same-origin',

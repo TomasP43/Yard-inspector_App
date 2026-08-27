@@ -201,15 +201,244 @@
     return json({ inspeccion: insp }, 201);
   }
 
+  // ------------------------------------------------------------------ bahias
+
+  /**
+   * El checklist, tal cual el papel que hay hoy en cada bahia
+   * ("Control de bahias (Para impresion) - Google Sheets").
+   *
+   * `cantidad_std` es la columna "Cantidad STD" del papel, que viene impresa.
+   * Ocho de los doce son 1, pero Escaleras burro son 4 y hay tres de a 2: por
+   * eso se cuenta y no se marca presente/ausente -- tres escaleras de cuatro es
+   * un faltante que un tilde no ve.
+   */
+  const ITEMS_BAHIA = [
+    ['Distance checkers', 1],
+    ['Almohadillas de puertas', 1],
+    ['Soportes de carteles', 1],
+    ['Arneses de seguridad', 2],
+    ['Reglas de medición', 1],
+    ['Escaleras burro', 4],
+    ['Recapados', 2],
+    ['Portallaves', 1],
+    ['Stoppers bahías de carga', 1],
+    ['Stoppers bahías de espera', 1],
+    ['Rampas', 1],
+    ['Rampines', 2]
+  ].map(([nombre, std], i) => ({ id: i + 1, nombre, cantidad_std: std, orden: i + 1 }));
+
+  /**
+   * El token del QR. En produccion lo genera el servidor y va impreso en el
+   * sticker: sirve para que la URL no sea adivinable escribiendo `?b=3`. Aca es
+   * derivado de la semilla para que el mismo link ande entre corridas.
+   */
+  const tokenDe = (codigo) => 'b' + codigo + '-' + (codigo * 7919 % 100000).toString(36);
+
+  const BAHIAS = Array.from({ length: 18 }, (_, i) => ({
+    id: i + 1,
+    codigo: i + 1,
+    nombre: 'Bahía ' + (i + 1),
+    token: tokenDe(i + 1),
+    activo: true,
+    control: null
+  }));
+
+  const CLAVE_B = 'yard-preview-bahias';
+  let claveActual = null;
+
+  const leerBahias = () => {
+    try { return JSON.parse(localStorage.getItem(CLAVE_B) || '{}'); } catch (e) { return {}; }
+  };
+
+  /**
+   * Guarda o pisa un control por uuid.
+   *
+   * Es un upsert y no un push porque las auditorias se agregan **despues** de
+   * crear el control: con push, la auditoria vivia solo en memoria y el
+   * siguiente GET la borraba. Parecia un bug del front y era del mock.
+   */
+  const persistir = (clave, ctrl) => {
+    if (!clave) return;
+    try {
+      const a = leerBahias();
+      const lista = (a[clave] = a[clave] || []);
+      const i = lista.findIndex((c) => c.uuid === ctrl.uuid);
+      if (i >= 0) lista[i] = ctrl; else lista.push(ctrl);
+      localStorage.setItem(CLAVE_B, JSON.stringify(a));
+    } catch (e) { /* modo privado o cuota llena */ }
+  };
+  if (location.search.includes('limpiar')) {
+    try { localStorage.removeItem(CLAVE_B); } catch (e) { /* modo privado */ }
+  }
+
+  /**
+   * Siembra la ronda del turno en curso: unas cuantas bahias controladas y el
+   * resto pendiente. **No las llena todas a proposito** -- una ronda completa
+   * esconde justo el estado que la pantalla existe para mostrar.
+   */
+  function sembrarRonda(clave) {
+    claveActual = clave;
+    const guardadas = leerBahias()[clave] || [];
+    BAHIAS.forEach((b) => { b.control = null; });
+
+    // Las horas salen del turno que se pidio, no de "hace n horas". Sembradas
+    // a ojo quedaban a las 06:00 colgando de la ronda de la tarde: el mock
+    // contradiciendo su propio dato, que es la clase de mentira que despues se
+    // busca en el front.
+    const m = /^(\d{4})-(\d{2})-(\d{2})-(manana|tarde)$/.exec(clave);
+    const arranque = m
+      ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), m[4] === 'tarde' ? 16 : 6, 0, 0, 0)
+      : new Date();
+    const ahora = new Date();
+
+    // 11 de 18 controladas, 3 de ellas con faltantes.
+    BAHIAS.slice(0, 11).forEach((b, i) => {
+      const conFalta = i % 4 === 1;
+      // Una cada ~12 minutos desde que abrio el turno, sin pasarse de ahora.
+      const hora = new Date(Math.min(arranque.getTime() + i * 12 * 60000, ahora.getTime()));
+      b.control = {
+        uuid: 'seed-' + clave + '-' + b.codigo,
+        // `bahia_id` tiene que estar: al persistir una auditoria se reescribe
+        // este control, y sembrarRonda lo vuelve a enganchar por bahia_id. Sin
+        // el, la auditoria se guardaba y el siguiente GET la perdia.
+        bahia_id: b.id,
+        inspector: AUDITORES[i % 2],
+        registrado_en: hora.toISOString(),
+        items: ITEMS_BAHIA.map((it) => {
+          const mal = conFalta && it.id % 5 === (i % 5);
+          return {
+            item_id: it.id,
+            // `conforme` es lo que marco el inspector y es lo que cuenta la
+            // pantalla. Sin el, cada item llegaba con conforme undefined y la
+            // ficha pintaba las doce herramientas en rojo.
+            conforme: !mal,
+            cantidad: mal ? Math.max(0, it.cantidad_std - 1) : it.cantidad_std,
+            ubicacion_ok: true,
+            estado_ok: !mal,
+            comentario: mal ? 'Falta una y la que está tiene el cincho cortado.' : null
+          };
+        }),
+        observacion: conFalta ? 'Se pidió reposición al pañol.' : null,
+        foto: `demo-${(b.codigo % 4) + 1}.svg`,
+        auditorias: i === 2
+          ? [{ uuid: 'aud-' + b.codigo, usuario: AUDITORES[1], registrado_en: hora.toISOString(),
+               coincide: true, observacion: null, propia: false }]
+          : []
+      };
+    });
+
+    // Encima, lo que se haya cargado en el preview.
+    guardadas.forEach((c) => {
+      const b = BAHIAS.find((x) => x.id === c.bahia_id);
+      if (b) b.control = c;
+    });
+  }
+
+  /** Alta de un control de bahia, con el mismo contrato que el servidor. */
+  function crearBahia(cuerpo) {
+    const b = JSON.parse(cuerpo || '{}');
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(b.uuid || '')) {
+      return json({ error: 'uuid_invalido' }, 400);
+    }
+    if (!b.bahia_id) return json({ error: 'bahia_requerida' }, 400);
+    if (!b.turno_clave) return json({ error: 'turno_requerido' }, 400);
+    // La foto es obligatoria en el servidor tambien: si solo la exigiera el
+    // front, alcanzaria con un POST a mano para saltearla.
+    if (!b.foto) return json({ error: 'foto_requerida' }, 400);
+
+    const bah = BAHIAS.find((x) => x.id === b.bahia_id);
+    if (!bah) return json({ error: 'bahia_desconocida' }, 404);
+
+    // Idempotencia por uuid: reenviar devuelve 200 con lo que ya existe.
+    if (bah.control && bah.control.uuid === b.uuid) {
+      return json({ control: bah.control, duplicada: true }, 200);
+    }
+    // Una bahia por turno. El segundo control del mismo turno es un 409 del
+    // servidor, no algo que el front decida esconder.
+    if (bah.control) return json({ error: 'bahia_ya_controlada' }, 409);
+
+    const ctrl = {
+      uuid: b.uuid,
+      bahia_id: b.bahia_id,
+      inspector: { id: 0, nombre: CATALOGOS.usuario.nombre, email: CATALOGOS.usuario.email },
+      registrado_en: b.registrado_en,
+      items: b.items || [],
+      observacion: b.observacion || null,
+      foto: `demo-${(b.bahia_id % 4) + 1}.svg`,
+      auditorias: []
+    };
+    bah.control = ctrl;
+    persistir(b.turno_clave, ctrl);
+    return json({ control: ctrl }, 201);
+  }
+
+  /** Alta de una auditoria sobre un control ya hecho. */
+  function crearAuditoria(cuerpo) {
+    const b = JSON.parse(cuerpo || '{}');
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(b.uuid || '')) {
+      return json({ error: 'uuid_invalido' }, 400);
+    }
+    const bah = BAHIAS.find((x) => x.control && x.control.uuid === b.control_uuid);
+    if (!bah) return json({ error: 'control_desconocido' }, 404);
+    if (typeof b.coincide !== 'boolean') return json({ error: 'coincide_requerido' }, 400);
+
+    const ya = bah.control.auditorias.find((a) => a.uuid === b.uuid);
+    if (ya) return json({ auditoria: ya, duplicada: true }, 200);
+
+    const aud = {
+      uuid: b.uuid,
+      usuario: { id: 0, nombre: CATALOGOS.usuario.nombre, email: CATALOGOS.usuario.email },
+      registrado_en: b.registrado_en,
+      coincide: b.coincide,
+      observacion: b.observacion || null,
+      propia: true
+    };
+    bah.control.auditorias.push(aud);
+    persistir(claveActual, bah.control);
+    return json({ auditoria: aud }, 201);
+  }
+
   const real = window.fetch.bind(window);
   window.fetch = (url, opts) => {
     const s = String(url && url.url ? url.url : url);
     if (!s.includes('api/')) return real(url, opts);
 
     const metodo = ((opts && opts.method) || 'GET').toUpperCase();
+    if (metodo === 'POST' && s.includes('api/bahias/control')) return crearBahia(opts && opts.body);
+    if (metodo === 'POST' && s.includes('api/bahias/auditoria')) return crearAuditoria(opts && opts.body);
     if (metodo === 'POST' && s.includes('api/inspecciones')) return crear(opts && opts.body);
 
+    if (s.includes('api/bahias/rondas')) {
+      // Rondas cerradas. Inventadas hacia atras, una por turno.
+      const rondas = Array.from({ length: 8 }, (_, i) => {
+        const d = new Date();
+        d.setDate(d.getDate() - Math.floor(i / 2));
+        d.setHours(i % 2 ? 16 : 6, 0, 0, 0);
+        return {
+          turno_nombre: i % 2 ? 'Segundo turno' : 'Primer turno',
+          inicio: d.toISOString(),
+          inspector: AUDITORES[i % 2],
+          total: BAHIAS.length,
+          hechas: BAHIAS.length - (i % 3),
+          faltantes: (i * 2) % 5
+        };
+      });
+      return json({ rondas });
+    }
+
+    if (s.includes('api/bahias')) {
+      const q = new URLSearchParams(s.split('?')[1] || '');
+      const clave = q.get('turno') || 'sin-turno';
+      sembrarRonda(clave);
+      return json({
+        turno: { clave },
+        items: ITEMS_BAHIA,
+        bahias: BAHIAS
+      });
+    }
+
     if (s.includes('api/catalogos')) return json(CATALOGOS);
+
 
     const m = s.match(/api\/inspecciones\/equipo\/(\d+)/);
     if (m) {

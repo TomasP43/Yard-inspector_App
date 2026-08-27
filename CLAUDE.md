@@ -82,7 +82,9 @@ yard-inspector/
 │   │   ├── js/db.js         # IndexedDB: catalogos, cola, cache
 │   │   ├── js/camera.js     # captura y compresion de fotos
 │   │   ├── js/similitud.js  # espejo cliente de desvioService
-│   │   ├── js/sync.js       # cola de sincronizacion
+│   │   ├── js/turnos.js     # los turnos de la playa, compartidos
+│   │   ├── js/sync.js       # cola de sincronizacion (patrullas y bahias)
+│   │   ├── js/bahias.js     # control de bahias: ronda, checklist, auditoria
 │   │   ├── js/app.js        # UI
 │   │   └── gerencia/        # tablero de gerencia, en /yard/gerencia/
 │   │       ├── index.html
@@ -176,6 +178,79 @@ Un control puede salir OK y que despues aparezca algo. Desde el detalle del cont
 Lo que aparezca despues vuelve por el otro camino: **la proxima vez que ese equipo se controle**, si quedo algo abierto, el paso de resolucion lo trae de vuelta. Esa es la unica via para tocar un desvio de un viaje anterior, y es a proposito.
 
 Enlazar el control que corrige con el corregido esta pedido en YI-009. Sin eso los dos cuentan como controles separados, que es defendible -- son dos revisiones del mismo camion -- pero sube el denominador y el numerador de la jornada.
+
+## Control de bahias
+
+Segundo modulo de la PWA, en el mismo `/yard/`. El cajon lateral cambia de
+modulo; la barra de abajo se mueve dentro del que este abierto.
+
+Reemplaza el papel que hay pegado en cada bahia. **El problema del papel no es
+que se pierda: es que se llena en la oficina sin ir a mirar** y despues se deja
+en la bahia. Todo el diseño esta puesto contra eso.
+
+- Se entra escaneando el **QR de la bahia**, que abre `/yard/?b=<token>`.
+- Cada bahia se controla **una vez por turno**. A las 16:00 entra el turno nuevo
+  y la ronda vuelve a estar pendiente.
+- **Cualquiera puede escanear el mismo QR durante el turno y auditar** lo que
+  reporto el inspector, parado en la bahia.
+
+**El QR no prueba presencia, y conviene tenerlo claro.** Es una URL impresa: se
+fotografia una vez y se escanea desde la oficina. Lo que encarece mentir son la
+foto fresca y la auditoria abierta — firmar de taquito pasa a ser una apuesta a
+que nadie vaya a mirar, que es algo que el papel nunca tuvo. Si igual siguen
+firmando sin ir, el escalon siguiente es **NFC**: hay que apoyar el telefono en
+el tag y eso no se fotografia.
+
+**Un solo service worker, y el token va en el query string.** Con
+`/yard/bahias/7` habria que enseñarle al SW a resolver rutas que no existen como
+archivo — de ahi salio el 502 de la otra vez. Con `?b=`, el shell cacheado
+responde y **el escaneo funciona sin señal desde el primer dia**; solo el primer
+escaneo de un telefono nuevo necesita bajar la app.
+
+**La ronda superpone la cola local sobre lo que dice el servidor.** `encolar`
+vuelve cuando el control quedo guardado en el telefono, no cuando el servidor lo
+confirmo: sin esto, el inspector guardaba la bahia 12, caminaba a la 13 y la
+ronda le seguia diciendo "sin controlar" hasta que hubiera señal. Con media
+playa sin cobertura, eso es todo el turno.
+
+### El checklist
+
+Son los 12 items del papel, cada uno con su **cantidad estandar**. Se cuenta, no
+se tilda: tres escaleras burro de cuatro es un faltante que un checkbox no ve.
+
+Por item, el papel pide **tres** cosas — cantidad, ubicacion OK/NG y estado
+OK/NG — mas comentario. Son 36 datos por bahia y 18 bahias: pedirlos todos
+siempre garantiza que se llenen de memoria. Por eso:
+
+- **Un toque por item, sin nada preseleccionado**: *Conforme* o *Novedad*. Una
+  ronda limpia son 12 toques.
+- **Solo *Novedad* despliega** cantidad, ubicacion, estado y comentario.
+- **La novedad exige comentario.** Una novedad sin decir cual no le sirve a
+  nadie, y es la columna Comentarios del papel.
+
+Nada arranca preseleccionado a proposito: con un valor por defecto, guardar sin
+mirar vuelve a ser posible, que es exactamente el problema que esto reemplaza.
+
+### Los turnos, que cruzan la medianoche
+
+Viven en `js/turnos.js`, compartidos con patrullas:
+
+| Turno | Desde | Hasta |
+|---|---|---|
+| Primero | 06:00 | 16:00 |
+| Segundo | 16:00 | **00:45 del dia siguiente** |
+| — | 00:45 | 06:00, no hay nadie |
+
+**Un control de las 00:30 pertenece a la jornada que arranco AYER a las 16:00.**
+Agrupar por fecha de calendario da la ronda por vencida a las 00:00 y obliga a
+rehacerla entera. Por eso `Turnos.de()` devuelve una **clave de jornada**
+(`2026-08-27-tarde`) y no un dia, y esa clave la manda el dispositivo en el POST:
+un control cargado sin señal a las 00:30 puede sincronizar a las 07:00, y el
+turno al que pertenece es el de cuando se hizo.
+
+El corte de las 16:00 tambien corrigio patrullas, que partia a las 13:00 y
+mandaba al segundo turno **688 controles del historico (16%)** que eran del
+primero.
 
 ## El tablero de gerencia
 
