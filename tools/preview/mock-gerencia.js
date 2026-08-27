@@ -21,7 +21,6 @@
   const entre = (a, b) => a + Math.floor(rnd() * (b - a + 1));
   const uno = (a) => a[Math.floor(rnd() * a.length)];
 
-  const TIPOS = ['5s', 'Mantenimiento', 'Seguridad', 'Calidad'];
   const TRAFICOS = ['Brasil', 'Autoport', 'Chile', 'Paraguay', 'Bolivia'];
   const DESVIOS = [
     // Dos que ya no existen: 'Óxido avanzado en batea' se fusiono con 'Óxido en
@@ -192,7 +191,7 @@
     },
     ngPct: Math.round((conControlesAnual.reduce((a, m) => a + m.ng, 0) / totalAnual) * 100),
     okPct: null,
-    rechazo: retirosAnual, demoraCarga: 75, criticoPct: 12,
+    rechazo: retirosAnual, demoraCarga: 75,
     ...(() => { const p = pareto(12); return { pareto: p.items, paretoAparte: p.aparte }; })()
   };
   statsAnual.okPct = 100 - statsAnual.ngPct;
@@ -250,7 +249,7 @@
       volumen: serieMensual.reduce((a, d) => a + d.volumen, 0)
     },
     ngPct: 44, okPct: 56,
-    rechazo: retirosMes, demoraCarga: 9, criticoPct: 14,
+    rechazo: retirosMes, demoraCarga: 9,
     ...(() => { const p = pareto(9); return { pareto: p.items, paretoAparte: p.aparte }; })()
   };
 
@@ -285,7 +284,6 @@
           time: `${String(entre(6, 21)).padStart(2, '0')}:${String(entre(0, 59)).padStart(2, '0')}`,
           eq: String(entre(120, 7999)),
           trafico: uno(TRAFICOS),
-          cat: ng ? uno(TIPOS) : null,
           ng,
           desvio: ng ? uno(DESVIOS) : ''
         };
@@ -294,24 +292,17 @@
   });
 
   // --------------------------------------------------------------- impacto
-  // El hallazgo que el diseño pone en primer plano: 5s es el de mayor volumen
-  // y casi nunca frena un camion; Calidad es chico y frena un tercio.
-  const cats = [
-    { name: '5s', Cargo: 1723, 'Demora en carga': 9, 'Se retira': 14, n: 1746, frenoPct: 1 },
-    { name: 'Mantenimiento', Cargo: 674, 'Demora en carga': 15, 'Se retira': 150, n: 839, frenoPct: 20 },
-    { name: 'Seguridad', Cargo: 312, 'Demora en carga': 23, 'Se retira': 81, n: 416, frenoPct: 25 },
-    { name: 'Calidad', Cargo: 223, 'Demora en carga': 42, 'Se retira': 58, n: 323, frenoPct: 31 }
-  ];
-  const impTotal = cats.reduce((a, c) => a + c.n, 0);
+  // Se fue el desglose por tipo de control (YI-008). Quedan los totales del
+  // desenlace y el top por desvio, que es el que dice cual frena.
+  const impTotal = 3324;
 
   const impacto = {
     total: impTotal,
     outcome: [
-      { key: 'Cargo', n: cats.reduce((a, c) => a + c.Cargo, 0) },
-      { key: 'Demora en carga', n: cats.reduce((a, c) => a + c['Demora en carga'], 0) },
-      { key: 'Se retira', n: cats.reduce((a, c) => a + c['Se retira'], 0) }
+      { key: 'Cargo', n: 2932 },
+      { key: 'Demora en carga', n: 89 },
+      { key: 'Se retira', n: 303 }
     ],
-    cats,
     topFreno: [
       { name: 'Caño de batea desoldado', freno: 25, n: 26, pct: 96 },
       { name: 'Rampa desoldada / caída', freno: 19, n: 24, pct: 79 },
@@ -388,14 +379,12 @@
     { name: 'Green Mile', volumen: 380 }
   ].map((e) => {
     const ng = Math.round((e.volumen * entre(8, 34)) / 100);
-    // Cada empresa trae su propio Pareto y su propio desglose por tipo: al
-    // tocarla, las dos tarjetas de al lado pasan a ser las de ella.
+    // Cada empresa trae su propio Pareto: al tocarla, la tarjeta de al lado
+    // pasa a ser la de ella.
     const p = pareto(entre(7, 12));
-    const cats = TIPOS.map((t) => [t, entre(20, 900)]);
     return {
       ...e, ng, pct: Math.round((ng / e.volumen) * 1000) / 10,
-      pareto: p.items, paretoAparte: p.aparte,
-      catCounts: cats.sort((a, b) => b[1] - a[1])
+      pareto: p.items, paretoAparte: p.aparte
     };
   }).sort((a, b) => b.pct - a.pct);
 
@@ -439,7 +428,6 @@
     },
     monthDetail,
     dayDetail,
-    catCounts: cats.map((c) => [c.name, c.n]),
     impacto,
     reincidencia,
     traficoTrend,

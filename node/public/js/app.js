@@ -20,13 +20,8 @@ const ico = (n, s) => Iconos.svg(n, s);
 /** Dias de historia que se traen para el tablero y la vista de hoy. */
 const DIAS_VENTANA = 14;
 
-const COLOR_TIPO = {
-  '5s': 'var(--ttfa-red)',
-  'Mantenimiento': 'var(--status-warn)',
-  'Seguridad': 'var(--status-info)',
-  'Calidad': 'var(--status-ok)'
-};
-const TIPOS = ['5s', 'Mantenimiento', 'Seguridad', 'Calidad'];
+// Se fueron COLOR_TIPO y TIPOS con el campo "tipo de control": las filas se
+// pintaban con el color del tipo y el historial se filtraba por el. Ver YI-008.
 const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
 
 let CAT = null;         // catalogos
@@ -37,7 +32,7 @@ let equipoDetalle = null;
 let soloNg = false;
 let filtro = 'Todos';
 let offsetHistorial = 0;
-let vistosHistorial = 0;   // cuantos pasaron el filtro por tipo, acumulado
+let vistosHistorial = 0;   // filas mostradas, acumulado
 
 // El formulario vive en un objeto y no en el DOM: hay estado (zona actual,
 // desvios marcados, resoluciones) que no corresponde a ningun input.
@@ -258,8 +253,7 @@ const nombresDesvio = (i) => (i.desvios || []).map((d) => d.nombre);
 
 function fila(i) {
   const ng = esNg(i);
-  const tipo = i.tipo ? i.tipo.nombre : null;
-  const tono = ng ? (tipo === 'Seguridad' ? 'risk' : 'warn') : 'ok';
+  const tono = ng ? 'warn' : 'ok';
   const dv = nombresDesvio(i);
   const foto = (i.fotos || []).find((f) => f.ruta);
   const nf = (i.fotos || []).length;
@@ -270,12 +264,12 @@ function fila(i) {
 
   return `
     <button type="button" class="fila" data-eq="${esc(i.equipo ? i.equipo.codigo : '')}"
-            style="border-left-color:${ng ? (COLOR_TIPO[tipo] || 'var(--ttfa-red)') : 'transparent'}">
+            style="border-left-color:${ng ? 'var(--ttfa-red)' : 'transparent'}">
       <span class="miniatura">${mini}</span>
       <span class="txt">
         <span class="cab">
           <span class="eq">${i.equipo ? esc(i.equipo.codigo) : 's/eq'}</span>
-          <span class="badge ${tono}">${esc(ng ? (tipo || 'NG') : 'OK')}</span>
+          <span class="badge ${tono}">${ng ? 'NG' : 'OK'}</span>
         </span>
         <span class="dv${ng ? '' : ' vacio'}">${dv.length ? esc(dv.join(' · ')) : 'Sin desvíos'}</span>
       </span>
@@ -359,21 +353,6 @@ function verTablero() {
       </div>`;
   }).join('');
 
-  // --- desglose por tipo de control
-  $('#t-cat-eyebrow').textContent = `Desvíos NG · ${dias.length} jornadas`;
-  const porTipo = {};
-  ng.forEach((i) => {
-    const t = (i.tipo && i.tipo.nombre) || 'Sin tipo';
-    porTipo[t] = (porTipo[t] || 0) + 1;
-  });
-  const maxTipo = Math.max(1, ...Object.values(porTipo));
-  $('#t-cat').innerHTML = Object.entries(porTipo).sort((a, b) => b[1] - a[1]).map(([n, c]) => `
-    <div class="f">
-      <span>${esc(n)}</span>
-      <span class="pista"><i style="width:${Math.round((c / maxTipo) * 100)}%;background:${COLOR_TIPO[n] || 'var(--gray-400)'}"></i></span>
-      <span class="n">${c}</span>
-    </div>`).join('') || '<p class="nota" style="padding:0">Sin NG en el período.</p>';
-
   // --- desvios mas frecuentes
   const cuenta = {};
   ng.forEach((i) => nombresDesvio(i).forEach((d) => { cuenta[d] = (cuenta[d] || 0) + 1; }));
@@ -429,14 +408,12 @@ function verHoy() {
 async function verHistorial(reiniciar) {
   if (reiniciar) offsetHistorial = 0;
 
-  $('#f-chips').innerHTML = ['Todos', 'Solo NG', ...TIPOS].map((n) =>
+  // Dos filtros y no seis. Los cuatro chips de tipo de control se fueron con el
+  // campo: filtraban por un dato que decia quien lo cargo. Ver YI-008.
+  $('#f-chips').innerHTML = ['Todos', 'Solo NG'].map((n) =>
     `<button type="button" class="tag${filtro === n ? ' sel' : ''}" data-f="${esc(n)}">${esc(n)}</button>`).join('');
 
-  // El backend filtra por resultado, no por tipo de control. Pedirle
-  // `resultado=NG` cuando el filtro es un tipo achica lo que viaja: solo los NG
-  // tienen tipo.
-  const porTipo = TIPOS.includes(filtro);
-  const query = (filtro === 'Solo NG' || porTipo) ? '&resultado=NG' : '';
+  const query = filtro === 'Solo NG' ? '&resultado=NG' : '';
   const url = `api/inspecciones?limite=50&offset=${offsetHistorial}${query}`;
 
   try {
@@ -444,17 +421,10 @@ async function verHistorial(reiniciar) {
     const cont = $('#f-lista');
     if (reiniciar) { cont.innerHTML = ''; vistosHistorial = 0; }
 
-    // El tipo se filtra aca, sobre lo que ya llego, porque el backend todavia
-    // no lo acepta (esta pedido en REQUERIMIENTOS.md).
-    //
-    // El problema original no era filtrar en el cliente: era el numero de
-    // arriba. Decia "376 controles registrados" al lado de una lista de 7, y se
-    // leia como que en Seguridad habia 376. Mientras el filtro sea parcial el
-    // texto tiene que decir sobre que esta contando; cuando ya se trajo todo,
-    // el numero es exacto y se dice sin vueltas.
-    const items = porTipo
-      ? d.inspecciones.filter((i) => i.tipo && i.tipo.nombre === filtro)
-      : d.inspecciones;
+    // Ya no se filtra nada aca: los dos filtros que quedan los resuelve el
+    // backend con `resultado`. Se acabo tambien el numero que mentia -- decia
+    // "376 controles registrados" al lado de una lista de 7.
+    const items = d.inspecciones;
 
     cont.insertAdjacentHTML('beforeend', grupos(items, (i) =>
       fmtDia(i.registrado_en) + ' · ' + turno(i.registrado_en).replace('Turno ', '')));
@@ -464,16 +434,12 @@ async function verHistorial(reiniciar) {
     const completo = offsetHistorial >= d.total;
     $('#mas').hidden = completo;
 
-    $('#f-meta').textContent =
-      filtro === 'Todos' ? `${d.total} controles registrados`
-      : filtro === 'Solo NG' ? `${d.total} NG`
-      : completo ? `${vistosHistorial} de ${filtro}`
-      : `${vistosHistorial} de ${filtro} en los ${offsetHistorial} NG más recientes`;
+    $('#f-meta').textContent = filtro === 'Solo NG'
+      ? `${d.total} NG`
+      : `${d.total} controles registrados`;
 
     if (!vistosHistorial) {
-      cont.innerHTML = completo
-        ? '<p class="nota centro">Sin resultados con este filtro.</p>'
-        : `<p class="nota centro">Ninguno de ${esc(filtro)} en los ${offsetHistorial} NG más recientes. Probá cargar más.</p>`;
+      cont.innerHTML = '<p class="nota centro">Sin resultados con este filtro.</p>';
     }
   } catch (e) {
     $('#f-lista').innerHTML = '<p class="nota centro">Sin conexión. El historial completo necesita señal.</p>';
@@ -523,15 +489,14 @@ async function verDetalle(eq) {
     $('#d-meta').textContent = items.length + ' registros';
     $('#d-lineas').innerHTML = items.map((i) => {
       const ng = esNg(i);
-      const tipo = i.tipo ? i.tipo.nombre : null;
       const dv = nombresDesvio(i);
       return `
         <div class="linea">
-          <span class="rail" style="background:${ng ? (COLOR_TIPO[tipo] || 'var(--ttfa-red)') : 'var(--status-ok)'}"></span>
+          <span class="rail" style="background:${ng ? 'var(--ttfa-red)' : 'var(--status-ok)'}"></span>
           <div class="cuerpo">
             <div class="cab">
               <span class="fecha">${fmtDia(i.registrado_en)} · ${hhmm(i.registrado_en)}</span>
-              <span class="badge sin-punto ${ng ? (tipo === 'Seguridad' ? 'risk' : 'warn') : 'ok'}">${esc(ng ? (tipo || 'NG') : 'OK')}</span>
+              <span class="badge sin-punto ${ng ? 'warn' : 'ok'}">${ng ? 'NG' : 'OK'}</span>
               <span class="tr">${esc(trafico(i.responsable))}</span>
             </div>
             <span class="dv">${dv.length ? esc(dv.join(' · ')) : 'Sin desvíos'}</span>

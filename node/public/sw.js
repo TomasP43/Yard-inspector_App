@@ -23,8 +23,9 @@
  *     cambio. zonas.js es del SHELL.
  * v11: se fue el datalist del numero de equipo (index.html y app.js).
  * v12: se fue el paso "Tipo de control" del formulario.
+ * v13: el tablero de gerencia sale del cache -- ver el fetch de abajo.
  */
-const VERSION = 'v12';
+const VERSION = 'v13';
 const CACHE = `yard-${VERSION}`;
 
 // El app shell tiene que alcanzar para abrir la app sin conexion. Rutas
@@ -84,6 +85,16 @@ self.addEventListener('fetch', (e) => {
     e.respondWith(fetch(req));
     return;
   }
+
+  // El tablero de gerencia queda FUERA del cache.
+  //
+  // Es una pantalla de escritorio que necesita red igual -- sin datos no
+  // muestra nada -- asi que cachearla no compra offline y si cuesta: sus
+  // archivos no estan en el SHELL, entonces subir VERSION no los renueva y
+  // cada cambio se veia una carga tarde. Paso tres veces en un mismo dia
+  // (el menu lateral, el catalogo de desvios, el layout del impacto) y cada
+  // vez costo un rato entender que el codigo estaba bien.
+  if (url.pathname.includes('/gerencia/')) return;
 
   // Fotos ya subidas: cache-first, son inmutables.
   if (url.pathname.includes('/uploads/')) {

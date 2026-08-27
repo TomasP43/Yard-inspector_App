@@ -111,7 +111,7 @@ El origen era una tabla plana de 13 columnas. Lo que cambio y por que:
 | `Fecha` | (derivada) | Duplicaba `Timestamp` |
 | `Controlador` con valores como "Controlado" | `estado_control` | Eso es un estado, no una persona |
 
-El **tipo de desvio** se sigue guardando por inspeccion, pero el catalogo trae un tipo por defecto: en el historico 53 de 77 desvios tenian mas de un tipo asignado segun quien lo cargara, lo que rompia cualquier metrica.
+**El tipo de desvio se saco** (YI-008). Se guardaba por inspeccion y era el ejemplo de manual de un campo que mide al que lo carga: 60 de 71 desvios se cargaron con mas de un tipo, sobre el 99% de los usos. La columna y la tabla quedan quietas en la base; el front no las manda ni las muestra.
 
 ## Desvios que el inspector agrega
 
@@ -134,9 +134,9 @@ Cuatro pantallas y un detalle, segun el diseño del proyecto de Claude Design **
 
 | Pantalla | Que hace |
 |---|---|
-| **Tablero** | Controles y NG de hoy, tasa NG del periodo, barras por jornada, desglose por tipo de control, desvios mas frecuentes, equipos que repiten |
+| **Tablero** | Controles y NG de hoy, tasa NG del periodo, barras por jornada, desvios mas frecuentes, equipos que repiten |
 | **Hoy** | Los controles de la jornada agrupados por turno, con filtro Todos / Solo NG |
-| **Historial** | Todo, con chips por tipo de control y paginado |
+| **Historial** | Todo, con dos filtros (Todos / Solo NG) y paginado |
 | **Cargar** | El formulario |
 | **Detalle** | Se abre tocando cualquier fila: KPIs del equipo, desvio recurrente y su historial completo |
 
@@ -148,7 +148,9 @@ Tres cosas del design system **no se portaron tal cual, a proposito**:
 
 ### El formulario
 
-El camino es: equipo y trafico → *que paso con lo que quedo abierto* → resultado → tipo de control → zona → desvio → fotos.
+El camino es: equipo y trafico → *que paso con lo que quedo abierto* → resultado → zona → desvio → fotos.
+
+**El "tipo de control" se saco** (YI-008). Medido sobre el historico, 60 de 71 desvios se habian cargado con mas de un tipo y el 99% de los usos caia sobre esos: el campo terminaba diciendo quien lo cargo, no que se encontro. Se evaluo derivarlo del desvio como poka-yoke y se descarto -- 37 de los 71 no tenian un tipo dominante claro, asi que la clasificacion seguia siendo discutible. La pregunta operativa la contesta el Pareto por desvio, que dice **cual** en vez de **de que tipo**.
 
 Dos partes que no existian en AppSheet:
 

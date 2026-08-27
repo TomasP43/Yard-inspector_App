@@ -139,20 +139,19 @@
           </section>
 
           <section class="card">
-            <header>
-              <span class="eq-label" id="tipo-eyebrow">Sobre total de observaciones</span>
-              <b>Por tipo de control</b>
-            </header>
-            <div class="barras-h" id="por-tipo"></div>
+            <!-- Acá estaba "Por tipo de control". Se fue con el campo: ver
+                 YI-008. La tarjeta queda para la tasa por transportista, que
+                 era lo que la acompañaba.
 
-            <!-- Tasa de NG por transportista. Va en barras y no en torta: una
-                 torta reparte un total entre sus partes, y estas tasas no suman
-                 100 porque cada una tiene su propio denominador. -->
-            <div class="separador">
-              <span class="eq-label">NG sobre camiones movidos · por empresa</span>
-              <div class="barras-h clicable" id="por-empresa"></div>
-              <p class="nota" id="empresa-nota"></p>
-            </div>
+                 Va en barras y no en torta: una torta reparte un total entre
+                 sus partes, y estas tasas no suman 100 porque cada una tiene su
+                 propio denominador. -->
+            <header>
+              <span class="eq-label">NG sobre camiones movidos</span>
+              <b>Por empresa</b>
+            </header>
+            <div class="barras-h clicable" id="por-empresa"></div>
+            <p class="nota" id="empresa-nota"></p>
           </section>
         </div>
 
@@ -166,17 +165,13 @@
           <div class="cinta" id="impacto-cinta"></div>
           <div class="cinta-leyenda" id="impacto-leyenda"></div>
 
-          <div class="dos-col separada">
-            <div>
-              <span class="eq-label">% que frena la carga, por tipo de control</span>
-              <div class="barras-h" id="impacto-tipos"></div>
-              <p class="nota" id="impacto-nota"></p>
-            </div>
-            <div>
-              <span class="eq-label">Desvíos que más frenan la carga</span>
-              <div class="freno-cab"><span>Desvío</span><span class="der">Frena</span><span class="der">% casos</span></div>
-              <div class="freno" id="impacto-freno"></div>
-            </div>
+          <!-- Era de dos columnas: a la izquierda "% que frena la carga, por
+               tipo de control". Se fue con el campo (YI-008) y queda el
+               desglose por desvío, que es el que dice qué hacer. -->
+          <div class="separada">
+            <span class="eq-label">Desvíos que más frenan la carga</span>
+            <div class="freno-cab"><span>Desvío</span><span class="der">Frena</span><span class="der">% casos</span></div>
+            <div class="freno" id="impacto-freno"></div>
           </div>
 
           <div class="separador">

@@ -16,13 +16,8 @@
 const $ = (s, r = document) => r.querySelector(s);
 const ico = (n, s) => Iconos.svg(n, s);
 
-const COLOR_TIPO = {
-  '5s': 'var(--ttfa-red)',
-  'Mantenimiento': 'var(--status-warn)',
-  'Seguridad': 'var(--status-info)',
-  'Calidad': 'var(--status-ok)'
-};
-
+// Se fue COLOR_TIPO con el campo "tipo de control": pintaba las barras del
+// desglose por tipo, que ya no existe. Ver YI-008.
 const MESES = { '01': 'ene', '02': 'feb', '03': 'mar', '04': 'abr', '05': 'may', '06': 'jun',
                 '07': 'jul', '08': 'ago', '09': 'sep', '10': 'oct', '11': 'nov', '12': 'dic' };
 
@@ -32,7 +27,7 @@ const UMBRAL_PARETO = 80;
 let D = null;                 // el tablero que devolvio el servidor
 let periodo = 'anual';
 let elegido = null;           // clave del mes o del dia abierto en el detalle
-let empresa = null;           // transportista que filtra el Pareto y los tipos
+let empresa = null;           // transportista que filtra el Pareto
 
 /** Los datos de la empresa filtrada, o null si estan todas. */
 const empresaSel = () => (empresa ? (D.empresas || []).find((e) => e.name === empresa) : null) || null;
@@ -561,7 +556,7 @@ function detalleDia(d) {
         <div class="f">
           <span class="hora">${esc(r.time)}</span>
           <span class="eq">${esc(r.eq)}</span>
-          <span class="badge sin-punto ${r.ng ? (r.cat === 'Seguridad' ? 'risk' : 'warn') : 'ok'}">${esc(r.ng ? (r.cat || 'NG') : 'OK')}</span>
+          <span class="badge sin-punto ${r.ng ? 'warn' : 'ok'}">${r.ng ? 'NG' : 'OK'}</span>
           <span class="dv">${esc(r.desvio || 'Sin desvíos')}</span>
           <span class="der">${esc(r.trafico || '')}</span>
         </div>`).join('') || '<p class="nota">Sin controles ese día.</p>'}
@@ -622,26 +617,6 @@ function pintarPareto() {
         <span class="acum${on ? ' dentro' : ''}">${p.cumPct}%</span>
       </div>`;
     }).join('')}`;
-}
-
-function pintarPorTipo() {
-  const sel = empresaSel();
-  const cats = (sel ? sel.catCounts : D.catCounts) || [];
-  $('#tipo-eyebrow').textContent = sel
-    ? `Sobre las observaciones de ${sel.name}`
-    : 'Sobre total de observaciones';
-
-  const total = cats.reduce((a, c) => a + c[1], 0) || 1;
-  $('#por-tipo').innerHTML = cats.map(([nombre, n]) => {
-    const pct = Math.round((n / total) * 100);
-    return `
-      <div class="f">
-        <div class="cab"><span>${esc(nombre)}</span><b>${n} · ${pct}%</b></div>
-        <span class="pista"><i style="width:${pct}%;background:${COLOR_TIPO[nombre] || 'var(--gray-400)'}"></i></span>
-      </div>`;
-  }).join('');
-
-  pintarPorEmpresa();
 }
 
 /**
@@ -714,25 +689,9 @@ function pintarImpacto() {
       <small>${o.pct}%</small>
     </span>`).join('');
 
-  // % que frena la carga, por tipo de control
-  const cats = im.cats || [];
-  const maxFreno = Math.max(1, ...cats.map((c) => c.frenoPct || 0));
-  $('#impacto-tipos').innerHTML = cats.map((c) => {
-    const color = (c.frenoPct || 0) >= 25 ? 'var(--ttfa-red)'
-      : (c.frenoPct || 0) >= 10 ? 'var(--status-warn)' : 'var(--status-ok)';
-    return `
-      <div class="f">
-        <div class="cab"><span>${esc(c.name)}</span><b style="color:${color}">${c.frenoPct}%</b></div>
-        <span class="pista" style="border-radius:2px"><i style="width:${Math.round(((c.frenoPct || 0) / maxFreno) * 100)}%;background:${color};border-radius:2px"></i></span>
-      </div>`;
-  }).join('');
-
-  // La lectura que importa, escrita: el tipo con mas volumen casi nunca frena.
-  const porVolumen = cats.slice().sort((a, b) => b.n - a.n)[0];
-  const porFreno = cats.slice().sort((a, b) => (b.frenoPct || 0) - (a.frenoPct || 0))[0];
-  $('#impacto-nota').textContent = porVolumen && porFreno && porVolumen.name !== porFreno.name
-    ? `${porVolumen.name} es el de mayor volumen (${porVolumen.n} observaciones) y frena la carga el ${porVolumen.frenoPct}% de las veces. ${porFreno.name} frena el ${porFreno.frenoPct}%.`
-    : '';
+  // Aca estaba "% que frena la carga, por tipo de control", con la nota de que
+  // el tipo de mayor volumen casi nunca frena. Se fue con el campo (YI-008):
+  // el desglose por desvio dice lo mismo y ademas dice cual.
 
   const maxPct = Math.max(1, ...(im.topFreno || []).map((f) => f.pct || 0));
   $('#impacto-freno').innerHTML = (im.topFreno || []).map((f) => {
@@ -917,7 +876,7 @@ function pintarOperativo() {
     <div class="f">
       <span class="hora">${esc(f.time)}</span>
       <span class="eq">${esc(f.eq)}</span>
-      <span class="badge sin-punto ${f.cat === 'Seguridad' ? 'risk' : 'warn'}">${esc(f.cat || 'NG')}</span>
+      <span class="badge sin-punto warn">NG</span>
       <span class="dv">${esc(f.desvio)}</span>
       <span class="der">${esc(f.trafico || '')}</span>
     </div>`).join('') || '<p class="nota">Ninguna observación hoy.</p>';
@@ -936,7 +895,7 @@ function pintar() {
   pintarEvolucion();
   pintarDetalle();
   pintarPareto();
-  pintarPorTipo();
+  pintarPorEmpresa();
   pintarImpacto();
   pintarReincidencia();
   pintarTraficos();
@@ -978,7 +937,7 @@ document.addEventListener('click', (e) => {
   if (emp) {
     // Volver a tocarla muestra todas otra vez, igual que con los meses.
     empresa = empresa === emp.dataset.emp ? null : emp.dataset.emp;
-    pintarPorTipo();   // repinta tambien la lista de empresas
+    pintarPorEmpresa();
     pintarPareto();
     return;
   }

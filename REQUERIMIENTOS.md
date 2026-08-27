@@ -30,29 +30,15 @@ deduplicación del catálogo, las trampas de los datos— está en
 ## Pendientes
 
 ### YI-001 — Filtrar el historial por tipo de control
-- **Estado:** pendiente
-- **Prioridad:** importante
-- **Tipo:** endpoint
-- **Qué necesito:** que `GET /api/inspecciones` acepte `?tipo=<id>` y filtre del
-  lado del servidor.
-- **Para qué:** los chips de la pantalla Historial (5s / Mantenimiento /
-  Seguridad / Calidad). Hoy filtra por `resultado`, por rango de fechas y por
-  `equipo`, pero no por tipo.
-- **Forma esperada:** `GET /api/inspecciones?tipo=3&limite=50&offset=0`, con el
-  id de `tipo_desvio`. Un `tipo` no numérico debería dar `400 { error:
-  "tipo_invalido" }`. Un OK no tiene tipo, así que el filtro ya deja afuera los
-  OK sin que haga falta pedir `resultado=NG` además.
-- **Mientras tanto:** el front pide `resultado=NG` —solo los NG tienen tipo, así
-  achica lo que viaja— y filtra el tipo sobre lo que llegó. El texto de arriba
-  dice sobre qué está contando: *"12 de Seguridad en los 50 NG más recientes"*
-  mientras es parcial, y *"38 de Seguridad"* cuando ya se trajo todo.
+- **Estado:** ~~pendiente~~ **sin efecto**. Se cae con YI-008: el campo "tipo de
+  control" se sacó, así que los cuatro chips del Historial ya no existen y no
+  hay nada que filtrar. Quedan dos filtros — Todos y Solo NG — y los dos los
+  resuelve el backend con `resultado`, que ya acepta.
 
-  Es una muleta honesta, no una solución: con muchas jornadas cargadas, ver el
-  total real de un tipo obliga a apretar "cargar más" varias veces.
-
-  > El problema original era peor y ya está arreglado: decía **"376 controles
-  > registrados"** al lado de una lista de 7, y se leía como que en Seguridad
-  > había 376.
+  Queda anotado por lo que enseñó, que sigue valiendo: el front filtraba sobre
+  lo que ya había llegado y el número de arriba decía **"376 controles
+  registrados"** al lado de una lista de 7. Un filtro parcial tiene que decir
+  sobre qué está contando.
 
 ---
 
@@ -131,25 +117,24 @@ deduplicación del catálogo, las trampas de los datos— está en
     monthDetail: { "2026-08": { label, volumen, n, ng, rechazo, demora,
                                 topDesvios[], topEquipos[], rechazoList[] } },
     dayDetail:   { "2026-08-26": { label, volumen, n, ng, rechazo, demora,
-                                   rows[{ time, eq, trafico, cat, ng, desvio }] } },
+                                   rows[{ time, eq, trafico, ng, desvio }] } },
 
-    catCounts:  [[tipo, n], ...],
-    empresas:   [{ name, volumen, ng, pct, pareto[], paretoAparte, catCounts[] }],
-    impacto:    { total, outcome[{key,n}], cats[], topFreno[], trend[] },
+    empresas:   [{ name, volumen, ng, pct, pareto[], paretoAparte }],
+    impacto:    { total, outcome[{key,n}], topFreno[], trend[] },
     reincidencia: { excluye, oxidoActivo{ equipos, deTotal },
                     corregido, reincidio, sinRecontrol, tasa, medianaDias,
                     watchTotal, watchlist[] },
     traficoTrend: [{ name, totalN, monthly[{label,n,pct}] }],
     auditorBench: { teamPct, list[{name,n,ng,pct}] },
     pendientes:   [{ eq, desvio, date }],
-    todayFeed:    [{ time, eq, trafico, cat, ng, desvio }],
+    todayFeed:    [{ time, eq, trafico, ng, desvio }],
     todayCount, todayNg
   }
 
   series[] = [{ label, clave, volumen, n, ng, obsPct,
                 rechazo, rechazoPct, retiroZ }]
   stats    = { volumen, observaciones, obsPct, n, mesesConControles, ngPct,
-               okPct, rechazo, demoraCarga, criticoPct, retiroProm,
+               okPct, rechazo, demoraCarga, retiroProm,
                embudo{ meses, volumen, n, ng, rechazo, demora },
                pareto[{ name, count, cumPct }] }
   ```
@@ -289,9 +274,9 @@ deduplicación del catálogo, las trampas de los datos— está en
   pregunta es cuál anda peor, no cuál mueve más. Sin dividir por el volumen
   propio, la que más mueve encabeza siempre por ser la más grande.
 
-  Cada entrada lleva además su `pareto`, su `paretoAparte` y sus `catCounts`,
-  porque al tocar una empresa las dos tarjetas de al lado pasan a mostrar lo de
-  ella. Son los mismos agregados que a nivel total, filtrados por empresa.
+  Cada entrada lleva además su `pareto` y su `paretoAparte`, porque al tocar una
+  empresa el Pareto pasa a mostrar lo de ella. Son los mismos agregados que a
+  nivel total, filtrados por empresa.
 
   **No es un gráfico de torta, y no puede serlo:** una torta reparte un total
   entre sus partes, y estas tasas tienen cada una su propio denominador — no
@@ -447,18 +432,20 @@ deduplicación del catálogo, las trampas de los datos— está en
 
 ---
 
-### YI-008 — El tipo de control sale del desvío, no del inspector
-- **Estado:** pendiente
+### YI-008 — Se saca el campo "tipo de control"
+- **Estado:** hecho en el front, pendiente en el backend
 - **Prioridad:** alta
-- **Tipo:** poka-yoke + catálogo
+- **Tipo:** campo de datos
 - **Qué necesito:**
-  1. Cargar `desvio_catalogo.tipo_desvio_id` para los 71 desvíos.
-  2. Que `POST /api/inspecciones` **derive** el tipo de los desvíos de la
-     inspección y deje de esperar `tipo_desvio_id` — el front ya no lo manda.
-  3. Que los agregados por tipo (`catCounts`, `impacto.cats`, `criticoPct`) se
-     calculen por desvío y no por inspección.
+  1. Que `POST /api/inspecciones` **deje de esperar** `tipo_desvio_id` — el
+     front ya no lo manda — y no falle si no viene.
+  2. Sacar `catCounts`, `impacto.cats`, `criticoPct` y el `cat` de las filas de
+     `dayDetail` y `todayFeed` de la respuesta de `GET api/tablero`.
+  3. Decidir qué pasa con la columna `inspeccion.tipo_desvio_id` y la tabla
+     `tipo_desvio`. **No hace falta borrarlas**: dejarlas quietas alcanza, y el
+     histórico queda como está por si alguna vez sirve.
 
-- **Por qué:** medido sobre el histórico, el campo no mide lo que dice medir.
+- **Por qué:** medido sobre el histórico, el campo no medía lo que decía medir.
 
   | | |
   |---|---|
@@ -468,41 +455,29 @@ deduplicación del catálogo, las trampas de los datos— está en
   | Aun *Óxido en batea*, con 1.183 usos | 4 tipos, el dominante 81% |
 
   El tipo terminaba diciendo **quién cargó la observación**, no qué se
-  encontró.
+  encontró. Y el 53% de todo cayó en "5s", que es el cajón donde va lo que no
+  se sabe bien dónde poner.
 
-- **Por qué derivar y no borrar:** la pregunta sirve — cuánto de lo que se
-  encuentra es seguridad y cuánto es 5s es una pregunta de gerencia. Lo que
-  fallaba era el origen del dato. El tipo es una propiedad **del desvío**:
-  *Óxido en batea* es lo que es sin importar qué patrulla lo encontró.
+- **Se evaluó derivarlo del desvío y se descartó.** La idea era cargar
+  `desvio_catalogo.tipo_desvio_id` y que el tipo saliera de ahí, como
+  poka-yoke: si el inspector no elige, no puede elegir mal. Se llegó a armar la
+  propuesta de tipo para los 71 desvíos, agrupando por naturaleza del hallazgo.
 
-- **El poka-yoke es que la pregunta desaparezca.** No un aviso ni un valor por
-  defecto editable: si el inspector no elige, no puede elegir mal. La decisión
-  se toma **una vez por desvío** — 71 veces, por alguien que conoce la
-  operación — en lugar de 3.609 veces, de pie y con guantes.
+  Se descartó porque **la clasificación seguía siendo una decisión discutible**:
+  37 de los 71 no tenían un tipo dominante claro, y sostener una dimensión que
+  hay que defender caso por caso no vale lo que aporta.
 
-- **Una inspección con dos desvíos de tipos distintos cuenta en los dos.** Es
-  más correcto que forzarla a uno solo, que es lo que se hacía.
+- **Qué se pierde, dicho de frente:** los tres bloques que colgaban del tipo —
+  el desglose "Por tipo de control" en las dos pantallas, el "% que frena la
+  carga por tipo" y el KPI "12% de los NG son de seguridad". La pregunta de
+  cuánto de lo que se encuentra es seguridad deja de poder contestarse.
 
-- **Criterio propuesto**, agrupando por naturaleza del hallazgo y no por zona
-  (una zona mezcla: en *Batea* conviven el óxido, que es 5s, y el piso
-  desoldado, que es taller):
+  A cambio, el resto del tablero deja de mezclar un dato que no era confiable
+  con los que sí lo son, y el **Pareto por desvío** contesta la misma pregunta
+  operativa sin necesidad de clasificar: dice *qué* desvío y no *de qué tipo*.
 
-  | Tipo | Criterio | Desvíos |
-  |---|---|---|
-  | Seguridad | pone en riesgo a una persona, o es un elemento de seguridad | 21 |
-  | Mantenimiento | algo roto, gastado, con pérdida o que no funciona | 26 |
-  | 5s | sucio o fuera de lugar; **nada roto** | 12 |
-  | Calidad | el equipo no está listo para cargar, o falta documentación | 11 |
-
-  Contra el tipo dominante del histórico, **cambian 21 de 71**. Los de más
-  peso: *Óxido avanzado* (337 usos) pasa a 5s, que además resuelve el conflicto
-  con la fusión — óxido normal era 5s al 81% y el avanzado Mantenimiento al
-  50%; *Cubierta / rueda en mal estado* (38) pasa a Seguridad; *Rampa
-  desoldada* (28) y *Derrame en tanque* (27) pasan a Mantenimiento.
-
-- **⚠ `Otro` (71 usos) no puede tener tipo**, porque no es un desvío: es el
-  cajón de sastre, y su tipo dominante llega al 41%. Hay que abrirlo — mirar
-  qué se cargó ahí y repartirlo — o darlo de baja.
+- **Mientras tanto:** el front ya no lo manda ni lo muestra. Si el backend sigue
+  devolviendo `catCounts` y compañía, no rompe nada — la pantalla los ignora.
 
 ---
 
