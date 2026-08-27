@@ -517,6 +517,48 @@ deduplicación del catálogo, las trampas de los datos— está en
 
 ---
 
+### YI-010 — "EPP fuera de lugar" pasa a cubrir al chofer sin EPP
+- **Estado:** pendiente
+- **Prioridad:** menor
+- **Tipo:** catálogo
+- **Qué necesito:** renombrar una fila de `desvio_catalogo`.
+
+  ```sql
+  UPDATE desvio_catalogo
+     SET nombre = 'Chofer sin EPP / EPP fuera de lugar'
+   WHERE nombre = 'EPP fuera de lugar';
+  ```
+
+- **Para qué:** de la playa llegó *"chofer sin EPP correspondiente"* y no había
+  dónde cargarlo. El catálogo tiene ~70 desvíos y **ninguno sobre una persona**:
+  son todos sobre el equipo — batea, cabina, matafuego, patente, bahía.
+  `EPP fuera de lugar` se cargó como `5s`, al lado de *Residuos en bahía* y
+  *Reposera / objetos no permitidos*: significa **el EPP tirado donde no va**,
+  no el chofer sin ponérselo. Se usó 4 veces en 4.268 controles.
+
+- **Por qué renombrar y no agregar una fila.** Se decidió que un solo renglón
+  cubra las dos cosas. El costo está anotado y es real: el Pareto deja de poder
+  distinguir un elemento mal guardado de una persona trabajando sin protección.
+  Si esa diferencia empieza a importar, la salida es partirlo en dos entradas,
+  no volver a la grafía vieja.
+
+- **Es un `UPDATE`, no una fusión.** Ninguna fila de `inspeccion_desvio` se
+  mueve: los 4 usos siguen apuntando al mismo `desvio_id`. No hay choque con el
+  `UNIQUE (inspeccion_id, desvio_id)` ni histórico que reescribir. Puede viajar
+  en la misma migración que YI-007, que también toca el catálogo.
+
+- **⚠ No tocar `003_datos_historicos.sql`.** Sus `INSERT` buscan la fila por
+  `nombre = 'EPP fuera de lugar'`, pero corren **antes** que el renombre, así
+  que sobre una base nueva resuelven bien. Cambiarles el nombre para "dejarlos
+  al día" los rompe.
+
+- **Mientras tanto:** `js/zonas.js` ya usa el nombre nuevo y mantiene el viejo
+  como alias, así que en producción el desvío sigue apareciendo en *Orden y
+  documentación* con la etiqueta vieja hasta que corra el `UPDATE`. Sin ese
+  alias se caía a "Otros", porque el catálogo manda sobre el mapa de zonas.
+
+---
+
 ## Nota sobre lo que el backend tiene y la app no usa
 
 No es un requerimiento, es para que nadie los tome por carga viva:

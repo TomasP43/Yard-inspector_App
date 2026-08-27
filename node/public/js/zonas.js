@@ -89,7 +89,7 @@ const Zonas = (() => {
       'Sin soga precinto'
     ] },
     { zona: 'Orden y documentación', icono: 'clipboard-check', items: [
-      'EPP fuera de lugar',
+      'Chofer sin EPP / EPP fuera de lugar',
       'Residuos en bahía',
       'Reposera / objetos no permitidos',
       'Patente en mal estado / ilegible',
@@ -107,8 +107,27 @@ const Zonas = (() => {
    */
   const norm = (s) => Similitud.normalizar(s);
 
+  /**
+   * Nombres que el catalogo todavia tiene con la grafia vieja. Solo rutean a la
+   * zona: la etiqueta que ve el inspector sale del catalogo, no de aca.
+   *
+   * Sin esto, un renombre en esta lista deja el nombre viejo sin mapear y el
+   * desvio se cae a "Otros" en produccion hasta que corra la migracion. Es la
+   * otra cara de "el catalogo manda": el mapa puede adelantarse, pero tiene que
+   * seguir reconociendo lo que hay en la base.
+   */
+  const ALIAS = {
+    // Se renombra en la migracion del catalogo (YI-010). Cubre el chofer sin
+    // EPP puesto, que antes no tenia donde cargarse.
+    'EPP fuera de lugar': 'Chofer sin EPP / EPP fuera de lugar'
+  };
+
   const INDICE = new Map();
   MAPA.forEach((z, i) => z.items.forEach((n) => INDICE.set(norm(n), i)));
+  Object.keys(ALIAS).forEach((viejo) => {
+    const i = INDICE.get(norm(ALIAS[viejo]));
+    if (i !== undefined) INDICE.set(norm(viejo), i);
+  });
 
   /**
    * Reparte el catalogo real en zonas.
