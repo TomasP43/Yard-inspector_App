@@ -107,9 +107,11 @@ try {
       <div class="dos" style="margin-bottom:16px">
         <label class="campo mono">
           <span>Equipo</span>
+          <!-- Sin `list`: el desplegable de equipos ofrecia cientos de codigos
+               y tapaba el teclado justo cuando se esta tipeando el numero. El
+               inspector lo tiene a la vista en el equipo, no lo busca. -->
           <input name="equipo_codigo" type="number" inputmode="numeric" placeholder="7842"
-                 list="equipos" autocomplete="off" required>
-          <datalist id="equipos"></datalist>
+                 autocomplete="off" required>
         </label>
         <label class="campo">
           <span>Tráfico</span>

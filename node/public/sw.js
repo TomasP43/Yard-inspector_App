@@ -21,8 +21,9 @@
  *     del SHELL necesita subir esto**, porque el navegador solo reinstala el
  *     service worker si el archivo cambio -- y si VERSION no se mueve, no
  *     cambio. zonas.js es del SHELL.
+ * v11: se fue el datalist del numero de equipo (index.html y app.js).
  */
-const VERSION = 'v10';
+const VERSION = 'v11';
 const CACHE = `yard-${VERSION}`;
 
 // El app shell tiene que alcanzar para abrir la app sin conexion. Rutas

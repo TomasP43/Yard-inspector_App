@@ -220,7 +220,6 @@ function pintarCatalogos() {
     (CAT.controladores || []).map((c) => `<option value="${c.id}">${esc(c.nombre)}</option>`).join('');
   $('[name=estado_control_id]').innerHTML = vacio +
     (CAT.estados_control || []).map((c) => `<option value="${c.id}">${esc(c.nombre)}</option>`).join('');
-  $('#equipos').innerHTML = (CAT.equipos || []).map((c) => `<option value="${c}">`).join('');
 
   pintarFormulario();
 }
