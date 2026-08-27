@@ -319,8 +319,40 @@ function pintarEvolucion() {
   const guias = [0, 1, 2, 3, 4].map((i) =>
     `<div class="guia" style="bottom:${Math.round(6 + (ALTO_BARRA * i) / 4)}px"></div>`).join('');
 
-  const dots = serie.map((w, i) =>
-    `<i style="left:${(((i + 0.5) / n) * 100).toFixed(2)}%;bottom:${(((w.rechazo || 0) / maxRet) * 92).toFixed(2)}%"></i>`).join('');
+  // Cada punto lleva su tasa: retiros sobre camiones movidos, el mismo
+  // denominador que la barra. La linea va en su propia escala, asi que sin el
+  // numero no hay forma de saber si un punto alto son 40 retiros o 4.
+  const dots = serie.map((w, i) => {
+    const x = (((i + 0.5) / n) * 100).toFixed(2);
+    const yPct = ((w.rechazo || 0) / maxRet) * 92;
+    const y = yPct.toFixed(2);
+
+    // Donde poner la etiqueta de la linea.
+    //
+    // Compite con el numero de la barra, que ocupa una franja fija arriba del
+    // techo. Ninguna posicion fija alcanza: el punto tanto puede caer sobre el
+    // techo como debajo, asi que arriba-siempre y abajo-siempre chocan cada una
+    // en la mitad de los meses. Se elige el lado que quede libre.
+    const altoPunto = (yPct / 100) * ALTO_BARRA;
+    const altoBarra = ((w.volumen || 0) / tope) * ALTO_BARRA;
+
+    const pisa = (a, b) => a[0] < b[1] && b[0] < a[1];
+    const franjaBarra = [altoBarra, altoBarra + 16];
+
+    // Abajo si entra, arriba si no. Cuando el punto queda justo sobre el techo
+    // los dos lados chocan -- ahi se salta por encima del numero de la barra,
+    // que es el unico lugar que siempre queda libre.
+    const donde =
+      altoPunto >= 24 && !pisa([altoPunto - 22, altoPunto - 8], franjaBarra) ? ''
+      : !pisa([altoPunto + 4, altoPunto + 16], franjaBarra) ? 'arriba'
+      : 'arriba lejos';
+
+    // Sin retiros no hay etiqueta. En la vista diaria los retiros son 0 a 3, y
+    // rotular veinte dias con "0%" tapa los cuatro que si tienen algo.
+    const pct = !w.rechazo || w.rechazoPct == null ? '' :
+      `<b class="${donde}" style="left:${x}%;bottom:${y}%">${w.rechazoPct}%</b>`;
+    return `<i style="left:${x}%;bottom:${y}%"></i>${pct}`;
+  }).join('');
 
   const cols = serie.map((w, i) => {
     const k = claves[i];
@@ -358,7 +390,11 @@ function pintarEvolucion() {
     const k = claves[i];
     const sel = k && k === elegido;
     const color = sel ? 'var(--ttfa-red)' : (i === serie.length - 1 ? 'var(--text-strong)' : 'var(--text-faint)');
-    const cRet = (w.rechazoPct || 0) >= 8 ? 'var(--status-warn)' : 'var(--text-faint)';
+    // Sin semaforo. El umbral era `>= 8`, pensado para retiros sobre controles;
+    // ahora la tasa es sobre camiones movidos y ronda el 1%, asi que nunca se
+    // encendia. Un corte que no dispara nunca es peor que no tenerlo: hay que
+    // fijarlo con un numero de negocio, no inventarlo desde el codigo.
+    const cRet = 'var(--text-faint)';
     return `
       <button type="button" data-k="${esc(k || '')}">
         <span style="color:${color}">${esc(w.label)}</span>

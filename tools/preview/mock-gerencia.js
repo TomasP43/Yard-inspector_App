@@ -123,6 +123,7 @@
     const ngPct = n ? entre(38, 60) : null;
     const volumen = sin ? 0 : entre(60, 130);
     const ng = n ? Math.round((n * ngPct) / 100) : null;
+    const rechazo = n ? entre(0, 3) : 0;
     return {
       label: String(dia).padStart(2, '0'),
       clave: `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(dia).padStart(2, '0')}`,
@@ -130,8 +131,11 @@
       n,
       ng,
       obsPct: volumen ? Math.round((ng / volumen) * 1000) / 10 : null,
-      rechazo: n ? entre(0, 3) : 0,
-      rechazoPct: n ? entre(0, 12) : 0
+      rechazo,
+      // Mismo denominador que la barra y que la serie anual. Estaba inventado
+      // aparte con `entre(0, 12)`, asi que el punto de la linea y su porcentaje
+      // no tenian nada que ver entre si.
+      rechazoPct: volumen ? Math.round((rechazo / volumen) * 1000) / 10 : null
     };
   });
 

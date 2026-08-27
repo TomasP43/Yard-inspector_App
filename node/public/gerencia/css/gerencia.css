@@ -337,6 +337,20 @@
   background: var(--status-warn);
   border: 1px solid var(--surface-card);
 }
+/* La tasa de retiros, arriba de su punto. Mismo color que la linea para que se
+   lea como parte de esa serie y no de la barra, que tiene su propio numero. */
+.evo-plot .puntos b {
+  position: absolute;
+  transform: translate(-50%, 20px);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: var(--weight-regular);
+  color: var(--status-warn);
+  white-space: nowrap;
+}
+.evo-plot .puntos b.arriba { transform: translate(-50%, -8px); }
+.evo-plot .puntos b.arriba.lejos { transform: translate(-50%, -24px); }
+
 .evo-plot .cols { position: absolute; left: 0; right: 0; bottom: 6px; top: 0; display: flex; align-items: flex-end; gap: 8px; }
 .evo-plot .col {
   flex: 1;
