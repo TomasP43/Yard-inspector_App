@@ -24,7 +24,8 @@
   const TIPOS = ['5s', 'Mantenimiento', 'Seguridad', 'Calidad'];
   const TRAFICOS = ['Brasil', 'Autoport', 'Chile', 'Paraguay', 'Bolivia'];
   const DESVIOS = [
-    'Óxido en batea', 'Suciedad en batea', 'Óxido avanzado en batea',
+    // 'Óxido avanzado en batea' ya no existe: se fusiono con 'Óxido en batea'.
+    'Óxido en batea', 'Suciedad en batea',
     'Fisura en parabrisa', 'Lona en mal estado', 'Óxido y suciedad en batea',
     'Parabrisa polarizado / acrílico', 'Matafuego vencido', 'Sunchos sin acomodar',
     'Caño de batea desoldado', 'Rampa desoldada / caída', 'Neumático gastado',
@@ -119,16 +120,42 @@
   // OK de los meses que los tienen. No es `totalAnual`, que son controles.
   const filasAnual = obsAnual + conControlesAnual.reduce((a, m) => a + (m.n - m.ng), 0);
 
+  /**
+   * Pareto **sin el oxido**.
+   *
+   * El oxido solo es el 55% de los desvios: con el adentro, el Pareto contesta
+   * siempre lo mismo -- "el problema es el oxido" -- y tapa los otros diez, que
+   * son sobre los que se puede hacer algo distinto. Sale de la lista y su peso
+   * se dice aparte, que es el unico dato que ese renglon aportaba.
+   *
+   * `cumPct` se acumula sobre el total SIN oxido: es el porcentaje de lo que la
+   * tabla muestra. Acumular sobre el total con oxido dejaria la curva sin poder
+   * llegar nunca al 100%.
+   */
+  const APARTE = 'Óxido en batea';
+
   function pareto(cuantos) {
     const base = DESVIOS.slice(0, cuantos).map((name, i) => ({
       name, count: Math.round(900 / Math.pow(1.55, i)) + entre(-8, 8)
     })).filter((p) => p.count > 0);
-    const total = base.reduce((a, p) => a + p.count, 0) || 1;
+
+    const todo = base.reduce((a, p) => a + p.count, 0) || 1;
+    const oxido = base.find((p) => p.name === APARTE);
+    const resto = base.filter((p) => p.name !== APARTE);
+
+    const total = resto.reduce((a, p) => a + p.count, 0) || 1;
     let acum = 0;
-    return base.map((p) => {
+    const items = resto.map((p) => {
       acum += p.count;
       return { ...p, cumPct: Math.round((acum / total) * 100) };
     });
+
+    return {
+      items,
+      aparte: oxido
+        ? { name: oxido.name, count: oxido.count, pct: Math.round((oxido.count / todo) * 100) }
+        : null
+    };
   }
 
   const statsAnual = {
@@ -159,7 +186,7 @@
     ngPct: Math.round((conControlesAnual.reduce((a, m) => a + m.ng, 0) / totalAnual) * 100),
     okPct: null,
     rechazo: retirosAnual, demoraCarga: 75, criticoPct: 12,
-    pareto: pareto(12)
+    ...(() => { const p = pareto(12); return { pareto: p.items, paretoAparte: p.aparte }; })()
   };
   statsAnual.okPct = 100 - statsAnual.ngPct;
 
@@ -217,7 +244,7 @@
     },
     ngPct: 44, okPct: 56,
     rechazo: retirosMes, demoraCarga: 9, criticoPct: 14,
-    pareto: pareto(9)
+    ...(() => { const p = pareto(9); return { pareto: p.items, paretoAparte: p.aparte }; })()
   };
 
   // -------------------------------------------------------------- detalles

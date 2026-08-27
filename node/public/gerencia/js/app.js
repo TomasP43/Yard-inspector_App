@@ -502,7 +502,13 @@ function pintarDetalle() {
 }
 
 function detalleMes(d) {
-  const lista = (arr, mono) => (arr || []).map((x) => `
+  // Ordenar de mayor a menor aca y no confiar en que venga ordenado: las dos
+  // columnas se llaman "Top desvios" y "Equipos con mas NG", asi que si el
+  // orden no lo garantiza la pantalla, el titulo puede quedar mintiendo. Son
+  // cinco filas ya agregadas por el servidor; ordenarlas es presentacion.
+  const lista = (arr, mono) => [...(arr || [])]
+    .sort((a, b) => b.count - a.count)
+    .map((x) => `
     <div class="f">
       <span${mono ? ' class="mono-eq"' : ''}>${esc(x.name)}</span>
       <b>${esc(x.count)}</b>
@@ -556,8 +562,21 @@ function pintarPareto() {
   const filas = st.pareto || [];
 
   const dentro = filas.filter((p) => p.cumPct <= UMBRAL_PARETO).length || filas.length;
-  $('#pareto-eyebrow').textContent = `${dentro} desvíos explican el ${UMBRAL_PARETO}% de las observaciones`;
+  $('#pareto-eyebrow').textContent = `${dentro} desvíos explican el ${UMBRAL_PARETO}% del resto`;
   $('#pareto-titulo').textContent = 'Desvíos que concentran el problema';
+
+  // Lo que quedo afuera de la tabla. El oxido solo es la mitad de los desvios:
+  // adentro contesta siempre lo mismo y tapa a los otros diez. Su peso se dice
+  // aca, que es lo unico que ese renglon aportaba.
+  const ap = st.paretoAparte;
+  $('#pareto-aparte').hidden = !ap;
+  if (ap) {
+    $('#pareto-aparte').innerHTML = `
+      <b>${esc(ap.name)}</b>
+      <span class="cifra">${esc(ap.count)}</span>
+      <span class="pct">${esc(ap.pct)}% de los desvíos</span>
+      <span class="nota">queda fuera de la tabla: adentro tapa a todo lo demás</span>`;
+  }
   $('#pareto-ll-1').textContent = `Dentro del ${UMBRAL_PARETO}%`;
   $('#pareto-ll-2').textContent = `Curva acumulada · línea punteada = ${UMBRAL_PARETO}%`;
 

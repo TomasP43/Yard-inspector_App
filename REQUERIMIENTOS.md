@@ -255,6 +255,21 @@ deduplicación del catálogo, las trampas de los datos— está en
   hoy en una tabla dinámica de Excel abierta por transportista y destino. El
   mapeo a los flujos de patrullas está resuelto y documentado en YI-006.
 
+- **`pareto` va SIN el óxido, y lo que se saca viaja en `paretoAparte`.**
+
+  ```
+  paretoAparte = { name, count, pct }   // pct = sobre el total CON óxido
+  ```
+
+  El óxido solo es más de la mitad de los desvíos: dentro de la tabla, el Pareto
+  contesta siempre lo mismo y tapa a los otros diez, que son sobre los que se
+  puede hacer algo distinto. La pantalla lo muestra como una llamada arriba a la
+  izquierda con su peso, que es lo único que ese renglón aportaba.
+
+  **`cumPct` se acumula sobre el total sin óxido**, porque es el porcentaje de
+  lo que la tabla muestra. Acumulando sobre el total con óxido, la curva no
+  podría llegar nunca al 100%.
+
 - **`rechazoList` tiene que traer un ítem por cada retiro del mes**, o sea
   `rechazoList.length === rechazo`. El KPI de arriba muestra el total y la lista
   de abajo los detalla: si no coinciden, la misma pantalla se contradice. El
@@ -325,6 +340,38 @@ deduplicación del catálogo, las trampas de los datos— está en
     pero `Trafico Puerto / Cruce` es el **66% de todo el volumen** y tiene 11
     controles en tres meses. Cualquier tasa global sobre volumen queda dominada
     por tráfico que casi no se inspecciona.
+
+---
+
+### YI-007 — "Óxido avanzado en batea" se fusiona con "Óxido en batea"
+- **Estado:** pendiente
+- **Prioridad:** media
+- **Tipo:** catálogo + migración de histórico
+- **Qué necesito:** dos cosas, en la misma transacción.
+  1. Reasignar el histórico: `inspeccion_desvio.desvio_id` de *Óxido avanzado en
+     batea* pasa a *Óxido en batea*. En el histórico son **337 y 1.183 usos**
+     respectivamente.
+  2. Desactivar *Óxido avanzado en batea* en `desvio_catalogo` (`activo = 0`),
+     no borrarlo — si alguna fila quedara apuntando, borrarlo la rompe.
+- **Para qué:** es el mismo desvío. La severidad no la distinguía nadie de forma
+  consistente, así que separarlos sólo repartía el mismo concepto en dos
+  renglones y ninguno de los dos servía para decidir.
+
+- **⚠ Esto no es una fusión por parecido.** La regla del proyecto es que
+  **nunca** se fusiona por similitud automática — `Matafuego vencido` y
+  `Matafuego descargado` se parecen y son cosas distintas. Acá la fusión la
+  decidió una persona que conoce la operación, que es exactamente el caso que la
+  regla reserva. No habilita a que el sistema empiece a fusionar solo.
+
+- **Mientras tanto:** el preview ya lo muestra fusionado. `js/zonas.js` dejó de
+  mapearlo y `tools/preview/mock-gerencia.js` no lo genera, así que en la demo
+  no aparece entre las opciones. **En producción sigue apareciendo hasta que se
+  toque el catálogo**, porque el catálogo manda sobre el mapa de zonas.
+
+- **Queda una pregunta abierta:** `Óxido y suciedad en batea` (239 usos) sigue
+  en la lista y es una combinación que incluye óxido. El campo ya es multivalor,
+  así que esa fila es redundante — pero partirla en dos es otra decisión y no se
+  tomó.
 
 ---
 

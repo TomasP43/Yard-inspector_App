@@ -21,8 +21,11 @@
 const Zonas = (() => {
   const MAPA = [
     { zona: 'Batea', icono: 'container', items: [
+      // 'Óxido avanzado en batea' se fusiono con 'Óxido en batea': es el mismo
+      // desvio y la severidad no la distinguia nadie de forma consistente. La
+      // baja de verdad es del catalogo en la base (YI-007); sacarlo de aca solo
+      // lo saca del preview, porque el catalogo manda sobre este mapa.
       'Óxido en batea',
-      'Óxido avanzado en batea',
       'Óxido y suciedad en batea',
       'Suciedad en batea',
       'Suciedad avanzada en batea',
