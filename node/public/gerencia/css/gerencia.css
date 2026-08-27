@@ -36,6 +36,53 @@
   padding: 20px 16px;
   background: var(--surface-panel);
   border-right: 1px solid var(--line-hairline);
+  transition: margin-left .18s ease;
+}
+
+/* Cerrarla se hace con margen negativo y no con `display: none` para que el
+   ancho se lo lleve `.principal` sin saltos: el flex la calcula en cero y el
+   dibujo se va a la izquierda, donde el `overflow: hidden` de .capa lo corta.
+   `display: none` haria lo mismo pero de golpe y sin poder animarlo.
+
+   El estado cuelga de <html> y no de .capa por lo mismo que el tema: asi lo
+   puede poner el script del <head>, antes de que exista .capa, y la barra no
+   se dibuja abierta para cerrarse un instante despues. */
+[data-lateral="cerrada"] .lateral { margin-left: -232px; }
+
+.velo {
+  position: fixed;
+  inset: 0;
+  z-index: 9;
+  border: 0;
+  background: rgba(0, 0, 0, .66);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lateral { transition: none; }
+}
+
+/* Debajo de este ancho la barra y el tablero no entran juntos: pasa a
+   comportarse como el cajon del telefono -- se corre por encima del contenido
+   y se cierra tocando el velo. Es la misma idea que en la PWA, no el mismo
+   CSS: alla es `position: fixed` siempre, aca solo cuando no entra. */
+@media (max-width: 1099px) {
+  .lateral {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 10;
+    margin-left: 0;
+    box-shadow: var(--shadow-3);
+    transition: transform .18s ease;
+  }
+  [data-lateral="cerrada"] .lateral { margin-left: 0; transform: translateX(-100%); }
+}
+
+/* Anclada no tapa nada, asi que el velo sobra. Se apaga desde el CSS y no
+   desde el JS: el ancho de la pantalla es cosa del CSS. */
+@media (min-width: 1100px) {
+  .velo { display: none; }
 }
 
 .marca { display: flex; align-items: center; gap: 11px; }
@@ -345,6 +392,22 @@
 .leyenda i.punto.verde { background: var(--status-ok); }
 .leyenda .pista { font-size: 11px; color: var(--text-faint); }
 
+/* La cifra de cada serie. Mono para que las tres se lean como numeros y no se
+   confundan con el nombre de la serie, y mas clara que la etiqueta porque es
+   el dato -- el nombre ya se sabe de memoria a la segunda vez que se mira. */
+.leyenda .ll b {
+  font-family: var(--font-mono);
+  font-weight: var(--weight-semibold);
+  color: var(--text-body);
+}
+/* Aclaracion al lado de la cifra ("3 de 12 meses con tracking"). Vuelve a la
+   tipografia del texto: en mono se leia como si fuera parte del numero. */
+.leyenda .ll b span {
+  font-family: var(--font-core);
+  font-weight: var(--weight-regular);
+  color: var(--text-faint);
+}
+
 /* ------------------------------------------------------------------ pareto */
 
 .pareto-cab, .pareto .f {
@@ -565,8 +628,11 @@
   .rejilla-kpi { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
+/* Aca vivia `.lateral { display: none }`. Lo saco el cajon: abajo de 1099 la
+   barra ya no ocupa lugar en el layout -- se corre por encima y se abre con el
+   boton de la cabecera. Con el display en none el boton seguia estando y no
+   abria nada, que es peor que no tenerlo. */
 @media (max-width: 900px) {
-  .lateral { display: none; }
   .cabecera { padding: 0 16px; }
   .tablero { padding: 16px; }
   .dos-col, .dos-col.reinc, .tres-col, .detalle-3 { grid-template-columns: minmax(0, 1fr); }

@@ -14,11 +14,22 @@
 <link rel="stylesheet" href="../css/tokens.css">
 <link rel="stylesheet" href="./css/gerencia.css">
 <script>
-try {
-  if (localStorage.getItem('yard-tema') === 'claro') {
-    document.documentElement.setAttribute('data-tema', 'claro');
+/* Va inline y en el <head> a proposito: los dos estados se dibujan antes del
+   primer pintado. Si esperaran a app.js, que esta al final del body, la
+   pantalla saldria oscura y con la barra abierta y saltaria a lo elegido. */
+(function () {
+  var raiz = document.documentElement;
+  var pref = function (k) { try { return localStorage.getItem(k); } catch (e) { return null; } };
+
+  if (pref('yard-tema') === 'claro') raiz.setAttribute('data-tema', 'claro');
+
+  /* Angosta arranca cerrada siempre, elija lo que elija: ahi la barra se corre
+     por encima del tablero y abrirla sola taparia lo que se vino a mirar.
+     El 1099 es el mismo quiebre que gerencia.css; si cambia, cambian los dos. */
+  if (pref('yard-lateral') === 'cerrada' || window.matchMedia('(max-width: 1099px)').matches) {
+    raiz.setAttribute('data-lateral', 'cerrada');
   }
-} catch (e) {}
+})();
 </script>
 </head>
 <body>
@@ -26,7 +37,7 @@ try {
 <div class="capa">
 
   <!-- ------------------------------------------------------------- lateral -->
-  <nav class="lateral">
+  <nav class="lateral" id="lateral">
     <div class="marca">
       <span class="cuadro" aria-hidden="true"></span>
       <div>
@@ -51,6 +62,7 @@ try {
   <div class="principal">
 
     <header class="cabecera">
+      <button id="abrir" class="ib" type="button" aria-controls="lateral" aria-expanded="true"></button>
       <div class="titulos">
         <b>Patrulla de calidad — tablero de gerencia</b>
         <span class="eyebrow" id="subtitulo"></span>
@@ -81,10 +93,12 @@ try {
               <div class="evo-pie" id="evo-pie"></div>
             </div>
           </div>
+          <!-- Las cifras las pone pintarEvolucion. El numero va en <b> y no en
+               <i>: `.leyenda i` es el cuadradito de color de la serie. -->
           <div class="leyenda">
-            <span class="ll"><i class="c-ctrl"></i>Controles</span>
-            <span class="ll"><i class="c-ng"></i>Con observación (NG)</span>
-            <span class="ll"><i class="linea"></i>Retiros (unidades)</span>
+            <span class="ll"><i class="c-ctrl"></i>Controles<b id="ll-ctrl">—</b></span>
+            <span class="ll"><i class="c-ng"></i>Con observación (NG)<b id="ll-ng">—</b></span>
+            <span class="ll"><i class="linea"></i>Retiros (unidades)<b id="ll-ret">—</b></span>
             <span class="empuje"></span>
             <span class="pista" id="evo-pista"></span>
           </div>
@@ -234,6 +248,10 @@ try {
     </div>
   </div>
 </div>
+
+<!-- Solo se ve cuando la barra se corre POR ENCIMA del tablero, o sea en
+     pantalla angosta. Anclada no tapa nada y un velo ahi seria un estorbo. -->
+<button id="velo" class="velo" type="button" aria-label="Cerrar el menú" hidden></button>
 
 <script src="../js/iconos.js"></script>
 <script src="./js/datos.js"></script>

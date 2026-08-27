@@ -79,6 +79,63 @@ function aplicarTema(claro) {
   try { localStorage.setItem('yard-tema', claro ? 'claro' : 'oscuro'); } catch (e) { /* modo privado */ }
 }
 
+// -------------------------------------------------------------- barra lateral
+
+/**
+ * La barra se cierra, igual que el cajon de la PWA.
+ *
+ * Con un solo item de menu, 232px fijos para la marca y el usuario es mucho
+ * para una pantalla que lo que quiere es ancho. El que la cierra se la queda
+ * cerrada: la eleccion se guarda al lado del tema.
+ *
+ * Debajo de 1100px deja de estar anclada y se corre POR ENCIMA del tablero,
+ * que es exactamente el cajon del telefono -- ahi el estado no se guarda y
+ * arranca siempre cerrada, porque abierta taparia lo que se vino a mirar. El
+ * quiebre lo decide el CSS; aca solo se consulta para saber cual de las dos
+ * cosas esta pasando.
+ */
+const ANGOSTA = window.matchMedia('(max-width: 1099px)');
+const CLAVE_LATERAL = 'yard-lateral';
+
+function lateralGuardada() {
+  if (ANGOSTA.matches) return false;
+  try { return localStorage.getItem(CLAVE_LATERAL) !== 'cerrada'; } catch (e) { return true; }
+}
+
+let lateralAbierta = lateralGuardada();
+
+function aplicarLateral() {
+  const raiz = document.documentElement;
+  if (lateralAbierta) raiz.removeAttribute('data-lateral');
+  else raiz.setAttribute('data-lateral', 'cerrada');
+
+  // El velo solo importa cuando la barra tapa el tablero. En pantalla ancha
+  // el CSS lo apaga, asi que alcanza con seguir el estado.
+  $('#velo').hidden = !lateralAbierta;
+
+  const b = $('#abrir');
+  b.innerHTML = ico('menu', 18);
+  b.setAttribute('aria-expanded', String(lateralAbierta));
+  b.setAttribute('aria-label', lateralAbierta ? 'Cerrar el menú' : 'Abrir el menú');
+}
+
+function alternarLateral() {
+  lateralAbierta = !lateralAbierta;
+  aplicarLateral();
+  if (ANGOSTA.matches) return;   // el modo cajon no deja preferencia
+  try {
+    localStorage.setItem(CLAVE_LATERAL, lateralAbierta ? 'abierta' : 'cerrada');
+  } catch (e) { /* modo privado */ }
+}
+
+// Al cruzar el quiebre se vuelve a decidir desde cero: viniendo de ancha la
+// barra quedaria abierta encima del tablero, y volviendo a ancha hay que
+// recuperar lo que el usuario habia elegido.
+ANGOSTA.addEventListener('change', () => {
+  lateralAbierta = lateralGuardada();
+  aplicarLateral();
+});
+
 // --------------------------------------------------------------- estructura
 
 function pintarLateral() {
@@ -169,6 +226,46 @@ function pintarKpis() {
 
 const ALTO_BARRA = 176;
 
+/**
+ * Las cifras de la leyenda.
+ *
+ * Controles y retiros salen de `stats`, que es de donde salen tambien los KPIs
+ * de arriba. Si se sumaran las barras aca, dos numeros de la misma pantalla
+ * podrian discrepar y no habria forma de saber cual de los dos miente.
+ *
+ * El conteo de NG es la excepcion y si se suma: `stats` trae la tasa, no la
+ * cantidad. Es sumar lo que el grafico ya dibuja para poder rotularlo, no una
+ * metrica nueva sobre el historico -- que es lo que este tablero no hace.
+ *
+ * Y se suma **solo lo que tiene tracking**. Antes de junio de 2026 no se
+ * distinguia OK de NG y esos meses vienen con `ng: null`. Contarlos como cero
+ * diria que salieron todos perfectos; lo que pasa es que no se sabe.
+ */
+function pintarLeyenda(st, serie, anual) {
+  $('#ll-ctrl').textContent = st.n;
+
+  // Retiros contra controles. La linea naranja se dibuja en su propia escala y
+  // no en el eje de la izquierda, asi que a ojo parece del orden de los
+  // controles; el cociente dice de que tamaño es en realidad.
+  $('#ll-ret').textContent = `${st.rechazo} / ${st.n}`;
+
+  // El denominador son los que TIENEN controles, no todas las barras. En la
+  // vista mensual los sabados y domingos vienen con n=0 y ng=null: no son dias
+  // sin tracking, son dias sin trabajo. Contarlos inventaba media docena de
+  // jornadas sin medir que nunca ocurrieron.
+  const conControles = serie.filter((w) => w.n > 0);
+  const conNg = conControles.filter((w) => w.ng != null);
+  const ng = conNg.reduce((a, w) => a + w.ng, 0);
+  const unidad = anual ? 'meses' : 'días';
+
+  // La aclaracion va aparte del numero: en mono parecia parte de la cifra.
+  const nota = (t) => `<span>${t}</span>`;
+  $('#ll-ng').innerHTML =
+    conNg.length === 0 ? nota('sin tracking')
+    : conNg.length === conControles.length ? String(ng)
+    : ng + nota(` · ${conNg.length} de ${conControles.length} ${unidad} con tracking`);
+}
+
 function pintarEvolucion() {
   const anual = periodo === 'anual';
   const src = anual ? D.annual : D.monthly;
@@ -180,6 +277,8 @@ function pintarEvolucion() {
     : `Controles por día · ${D.meta.curMonthLabel}`;
   $('#evo-titulo').textContent = anual ? 'Evolución del año' : 'Evolución del mes';
   $('#evo-pista').textContent = anual ? 'Tocá un mes para abrir el detalle' : 'Tocá un día para abrir el detalle';
+
+  pintarLeyenda(src.stats, serie, anual);
 
   // Escala redondeada a multiplos de 50: un eje con "437" arriba no se lee.
   const crudo = Math.max(1, ...serie.map((w) => w.n));
@@ -650,6 +749,15 @@ $('#cerrar-detalle').addEventListener('click', () => {
   pintarDetalle();
 });
 
+$('#abrir').addEventListener('click', alternarLateral);
+$('#velo').addEventListener('click', alternarLateral);
+
+// Escape solo cierra cuando la barra esta tapando algo. Anclada no molesta, y
+// cerrarla desde el teclado sin querer seria un cambio que ademas se guarda.
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && lateralAbierta && ANGOSTA.matches) alternarLateral();
+});
+
 $('#tema').addEventListener('click', () =>
   aplicarTema(document.documentElement.getAttribute('data-tema') !== 'claro'));
 
@@ -666,5 +774,6 @@ $('#exportar').addEventListener('click', () => {
 // ------------------------------------------------------------------- arranque
 
 aplicarTema(document.documentElement.getAttribute('data-tema') === 'claro');
+aplicarLateral();
 pintarLateral();
 cargar();
