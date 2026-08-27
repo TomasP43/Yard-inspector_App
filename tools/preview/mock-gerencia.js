@@ -321,11 +321,18 @@
   };
 
   // ---------------------------------------------------------- reincidencia
+  // La reincidencia tambien va sin oxido, por lo mismo que el Pareto: es la
+  // mitad de los desvios y se repite en casi todos los equipos, asi que con el
+  // adentro la watchlist es una lista de oxido y no se ve nada mas. La tasa y
+  // la cinta de la izquierda se calculan sobre el mismo universo -- si la lista
+  // excluyera y el porcentaje no, serian dos cosas distintas en una tarjeta.
+  const SIN_OXIDO = DESVIOS.filter((d) => d !== APARTE);
+
   const watchlist = Array.from({ length: 6 }, () => {
     const abierto = rnd() < 0.4;
     return {
       eq: String(entre(120, 7999)),
-      dv: uno(DESVIOS),
+      dv: uno(SIN_OXIDO),
       repeats: entre(3, 25),
       ctrlCount: entre(6, 25),
       lastDate: `2026-08-${String(entre(1, 25)).padStart(2, '0')}`,
@@ -334,10 +341,13 @@
     };
   });
 
+  // Numeros mas chicos que antes a proposito: sin el oxido, el universo de
+  // desvios con desenlace registrado se reduce a poco mas de la mitad.
   const reincidencia = {
-    corregido: 1414, reincidio: 236, sinRecontrol: 206,
-    tasa: 14, medianaDias: 13,
-    watchTotal: 38,
+    excluye: APARTE,
+    corregido: 786, reincidio: 121, sinRecontrol: 98,
+    tasa: 12, medianaDias: 15,
+    watchTotal: 21,
     watchlist
   };
 

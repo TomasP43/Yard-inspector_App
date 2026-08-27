@@ -759,6 +759,12 @@ function pintarReincidencia() {
   const rc = D.reincidencia || {};
   const total = (rc.corregido || 0) + (rc.reincidio || 0) + (rc.sinRecontrol || 0) || 1;
 
+  // Que el oxido esta afuera se dice. Un filtro que no se ve es peor que no
+  // filtrar: el desvio mas grande falta de la lista y nadie sabe por que.
+  $('#reinc-eyebrow').textContent =
+    `Qué pasó después de cada observación · histórico completo${
+      rc.excluye ? ` · sin ${rc.excluye.toLowerCase()}` : ''}`;
+
   $('#reinc-tasa').textContent = rc.tasa != null ? rc.tasa : '—';
   $('#reinc-mediana').textContent = rc.medianaDias != null
     ? `mediana de ${rc.medianaDias} días hasta la reaparición`
