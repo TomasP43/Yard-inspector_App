@@ -42,7 +42,12 @@
   //
   // Tres cantidades distintas, y el chiste esta en cual falta cuando:
   //
-  //   volumen  camiones movidos. Se sabe siempre, sale de operaciones.
+  //   volumen  camiones movidos POR LA PLAYA. Se sabe siempre, sale de
+  //            operaciones. **No es el total de la tabla**: el flujo
+  //            Puerto/Cruce queda afuera porque no entra a la playa y no se
+  //            patrulla -- es el 66% del volumen con 11 controles en tres
+  //            meses. Sacandolo, jul-2026 da 99% de cobertura; con el adentro,
+  //            32%. Ver YI-004.
   //   ng       observaciones. Se sabe siempre.
   //   n        controles hechos (OK + NG). **Solo desde jun-2026.**
   //

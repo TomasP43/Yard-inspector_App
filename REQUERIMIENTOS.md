@@ -160,9 +160,26 @@ deduplicación del catálogo, las trampas de los datos— está en
 
   | Campo | Qué es | Cuándo se conoce |
   |---|---|---|
-  | `volumen` | camiones movidos ese mes | siempre — sale de operaciones, no de la patrulla |
+  | `volumen` | camiones movidos **por la playa** ese mes | siempre — sale de operaciones, no de la patrulla |
   | `ng` | observaciones cargadas | siempre |
   | `n` | controles hechos, OK + NG | **solo desde jul-2026** |
+
+  **⚠ `volumen` NO es el total de la tabla de operaciones: hay que sacarle el
+  flujo `Puerto / Cruce`** (`Furlong·Puerto` + `Furlong·Cruce`). Son movimientos
+  que **no entran a la playa** y por lo tanto no se patrullan nunca: son el 66%
+  del volumen total con 11 controles en tres meses.
+
+  Con ellos adentro, cualquier tasa queda diluida por tráfico que nadie
+  inspecciona. La prueba está en jul-2026, el único mes limpio que hay — con OK
+  ya cargado y sin cortes de fecha:
+
+  ```
+  con Puerto/Cruce:   684 controles / 2120 movidos =  32%
+  sin Puerto/Cruce:   684 controles /  691 movidos =  99%   ← este
+  ```
+
+  `CAT·Puerto` **sí queda adentro**: pese al nombre, ese tráfico se controla
+  (37% de cobertura en jun–ago 2026).
 
   **Desde jul-2026 se controla todo lo que se mueve, así que `n === volumen`.**
   Los dos campos siguen existiendo por separado a propósito: el histórico
@@ -351,7 +368,7 @@ deduplicación del catálogo, las trampas de los datos— está en
   | Trafico Chile | TTFA·CHI |
   | Trafico Green Mile | Green Mile·CHI |
   | Trafico CAT | CAT·Puerto |
-  | Trafico Puerto / Cruce | Furlong·Puerto + Furlong·Cruce |
+  | Trafico Puerto / Cruce | Furlong·Puerto + Furlong·Cruce — **fuera de `volumen`** |
   | Trafico Paraguay | Furlong·Paraguay |
   | Trafico Bolivia | TTFA·Bolivia |
   | Trafico Uruguay | Furlong·Uruguay |
@@ -360,11 +377,13 @@ deduplicación del catálogo, las trampas de los datos— está en
 
 - **⚠ Dos cosas del dato que conviene no olvidar:**
   - Los valores traen decimales (`108,12`, `40,5`). Se redondean a la unidad.
-  - **La cobertura es muy despareja entre flujos.** Medido sobre jun–ago 2026,
-    que es donde se conocen los controles: siete flujos caen entre 76% y 101%,
-    pero `Trafico Puerto / Cruce` es el **66% de todo el volumen** y tiene 11
-    controles en tres meses. Cualquier tasa global sobre volumen queda dominada
-    por tráfico que casi no se inspecciona.
+  - **`Trafico Puerto / Cruce` queda fuera de `volumen`** — ver YI-004. No entra
+    a la playa, así que no se patrulla: es el 66% del volumen total con 11
+    controles en tres meses. Sacándolo, jul-2026 da 99% de cobertura.
+  - **Agosto 2026 no sirve para medir cobertura.** Da 325 controles sobre 193
+    movidos, o sea 168%, que es imposible: las patrullas llegan hasta el 13-ago
+    y el volumen se exportó con otro corte. Los dos lados están cortados en
+    fechas distintas.
 
 ---
 
