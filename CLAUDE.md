@@ -169,6 +169,8 @@ Por eso hay un solo pedido, `GET api/tablero?periodo=`, con el contrato en `REQU
 
 Eso obliga a tres cantidades y no dos: `volumen` (camiones movidos, siempre se sabe), `ng` (observaciones, siempre se sabe) y `n` (controles, **solo desde jul-2026**). Los meses viejos van con `n: null` — ni cero, que diria que no se controlo nada, ni `n = ng`, que diria que todo control termino mal. Lo que falta es el denominador.
 
+**Desde jul-2026 se controla todo lo que se mueve: `n === volumen`.** Los dos campos siguen separados igual, porque el historico los necesita distintos y porque hacia adelante la cobertura pasa de salvedad a **metrica de vigilancia** — un mes que baje de 100% es que se dejo de controlar algo.
+
 Por eso el grafico mide **siempre sobre camiones movidos**: la barra es el total movido y el rojo es la parte observada, dos colores y un solo significado, con la fraccion roja siendo la tasa. Es la unica serie comparable los doce meses. La tasa sobre controles existe —49% en julio— pero solo desde jul-2026, y vive en los KPIs, nunca en la serie: una linea que cambiara de denominador en el medio saltaria de 12% a 49% por cambio de metodo y no de calidad. Ver YI-004 y YI-006 en `REQUERIMIENTOS.md`.
 
 Los dos frentes comparten `css/tokens.css` — la paleta — y `js/iconos.js`. **No comparten layout**: uno es un telefono con barra fija abajo y el otro una pantalla de 1440 con barra lateral. Mezclarlos daba colisiones tontas, como el `main { position: fixed }` de la PWA comiendose el scroll del tablero.

@@ -162,6 +162,12 @@ deduplicación del catálogo, las trampas de los datos— está en
   | `ng` | observaciones cargadas | siempre |
   | `n` | controles hechos, OK + NG | **solo desde jul-2026** |
 
+  **Desde jul-2026 se controla todo lo que se mueve, así que `n === volumen`.**
+  Los dos campos siguen existiendo por separado a propósito: el histórico
+  necesita distinguirlos, y hacia adelante la cobertura (`n / volumen`) deja de
+  ser una salvedad del dato viejo y pasa a ser **algo que hay que vigilar** — si
+  un mes baja de 100%, se dejó de controlar algo y conviene que se note.
+
   **Hasta jun-2026 el OK no se cargaba.** El formulario se llenaba únicamente
   cuando había algo para reportar, así que esas 2.809 filas son 100% NG y no se
   sabe sobre cuántos controles salieron. Verificado contra

@@ -56,8 +56,13 @@
   const serieAnual = MESES.map((m, i) => {
     const volumen = entre(700, 2600);
     const conControles = i >= CORTE;
-    const ng = entre(80, 340);
-    const n = conControles ? ng + entre(150, 380) : null;
+    // Desde el corte se controla TODO lo que se mueve: `n === volumen`. Antes
+    // la patrulla tomaba una parte, y en los meses viejos ni siquiera se sabe
+    // cual. Los dos campos siguen existiendo por separado a proposito: la
+    // cobertura deja de ser una salvedad del dato historico y pasa a ser algo
+    // que hay que vigilar -- si un mes baja de 100%, se dejo de controlar algo.
+    const n = conControles ? volumen : null;
+    const ng = conControles ? Math.round((volumen * entre(38, 60)) / 100) : entre(80, 340);
     const rechazo = entre(4, 42);
     // Retiros y demoras son subconjuntos del NG: solo un equipo observado se
     // retira o demora la carga. Por eso nunca pueden superar a `ng`.
@@ -160,12 +165,12 @@
     const dia = i + 1;
     // Un par de dias sin patrulla: los fines de semana existen.
     const sin = dia % 7 === 0 || dia % 7 === 6;
-    // El mes en curso es posterior a jun-2026, asi que aca los controles se
-    // saben todos: `n` nunca es null. Un dia sin patrulla es n=0, que es otra
-    // cosa -- se controlo nada, no es que no se sepa cuanto se controlo.
-    const n = sin ? 0 : entre(14, 42);
-    const ngPct = n ? entre(38, 60) : null;
+    // El mes en curso es posterior al corte: se controla todo lo que se mueve,
+    // asi que `n === volumen` y nunca es null. Un dia sin patrulla es n=0, que
+    // es otra cosa -- no se controlo nada, no es que no se sepa cuanto.
     const volumen = sin ? 0 : entre(60, 130);
+    const n = volumen;
+    const ngPct = n ? entre(38, 60) : null;
     const ng = n ? Math.round((n * ngPct) / 100) : null;
     const rechazo = n ? entre(0, 3) : 0;
     const demora = n ? Math.min(Math.max(0, ng - rechazo), entre(0, 2)) : 0;
