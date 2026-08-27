@@ -822,6 +822,39 @@ main {
 
 /* --------------------------------------------- detalle de un control puntual */
 
+/* Ficha del control: desvios y datos en una sola caja. Cuando hay observacion
+   escrita a mano, la caja es un <details> y el texto se despliega al tocarla --
+   casi siempre esta vacia, y cuando no, es un parrafo que empujaba los datos
+   fuera de pantalla. */
+.ficha .datos { margin-top: 12px; }
+.ficha .tags + .datos { border-top: 1px solid var(--line-hairline); padding-top: 4px; }
+
+details.ficha > summary { list-style: none; cursor: pointer; }
+details.ficha > summary::-webkit-details-marker { display: none; }
+
+.ver-obs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line-hairline);
+  font-size: 12.5px;
+  color: var(--ttfa-red);
+}
+/* El chevron apunta hacia abajo cerrado y hacia arriba abierto: es el unico
+   glifo de flecha que hay en iconos.js, asi que se rota. */
+.ver-obs .ico { transform: rotate(-90deg); transition: transform .15s ease; }
+details.ficha[open] .ver-obs .ico { transform: rotate(90deg); }
+
+.ficha .obs {
+  margin: 10px 0 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-body);
+}
+
+
 /* Ficha de datos secundarios: resolucion, auditor, controlador, estado. Etiqueta
    a la izquierda y valor a la derecha, que es como se leen de un vistazo. */
 .d-fila {

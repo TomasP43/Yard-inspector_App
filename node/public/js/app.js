@@ -492,26 +492,36 @@ function verControl(uuid) {
   const fotos = (i.fotos || []).filter((f) => f.ruta);
   const dato = (k, v) => (v ? `<div class="d-fila"><span class="eq-label">${k}</span><span>${esc(v)}</span></div>` : '');
 
-  $('#ctrl-cuerpo').innerHTML = `
-    <section class="card${ng ? ' acento' : ''}">
-      <header><span class="eq-label">${ng ? 'Observaciones' : 'Resultado'}</span></header>
+  // Todo en una caja. La observacion escrita a mano queda plegada detras de un
+  // toque: casi siempre esta vacia, y cuando no, es un parrafo que empujaba los
+  // datos del control fuera de pantalla. Va con <details> y no con JS, asi
+  // funciona igual si algo mas falla.
+  const ficha = `
       ${ng && dv.length
         ? `<div class="tags">${dv.map((d) => `<span class="tag sel">${esc(d)}</span>`).join('')}</div>`
-        : '<p class="nota" style="padding:0">Pasó sin observaciones.</p>'}
-      ${i.detalle ? `<p style="margin:12px 0 0;font-size:14px;color:var(--text-body)">${esc(i.detalle)}</p>` : ''}
-    </section>
+        : '<p class="nota" style="padding:0 0 4px">Pasó sin observaciones.</p>'}
+      <div class="datos">
+        ${dato('Resolución', i.demora && i.demora.nombre)}
+        ${dato('Auditor', nombreCorto(i.auditor))}
+        ${dato('Controlador', i.controlador && i.controlador.nombre)}
+        ${dato('Estado', i.estadoControl && i.estadoControl.nombre)}
+      </div>`;
+
+  $('#ctrl-cuerpo').innerHTML = `
+    ${i.detalle ? `
+      <details class="card ficha${ng ? ' acento' : ''}">
+        <summary>
+          ${ficha}
+          <span class="ver-obs">${ico('chevron-left', 14)}Ver la observación</span>
+        </summary>
+        <p class="obs">${esc(i.detalle)}</p>
+      </details>`
+    : `<section class="card ficha${ng ? ' acento' : ''}">${ficha}</section>`}
 
     ${fotos.length ? `
       <div class="fotos" style="margin-top:14px">
         ${fotos.map((f) => `<div class="foto"><img src="uploads/${esc(f.ruta)}" alt="" loading="lazy"></div>`).join('')}
       </div>` : ''}
-
-    <section class="card" style="margin-top:14px">
-      ${dato('Resolución', i.demora && i.demora.nombre)}
-      ${dato('Auditor', nombreCorto(i.auditor))}
-      ${dato('Controlador', i.controlador && i.controlador.nombre)}
-      ${dato('Estado', i.estadoControl && i.estadoControl.nombre)}
-    </section>
 
     <!-- Un control puede salir OK y que despues aparezca algo. No se edita este
          -- a esta hora estaba OK y eso fue cierto -- se carga uno nuevo. -->

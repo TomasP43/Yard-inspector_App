@@ -23,6 +23,13 @@
 
   const TRAFICOS = ['Brasil', 'Autoport', 'Chile', 'Paraguay', 'Bolivia', 'CAT', 'Uruguay', 'Green Mile'];
   const DEMORAS = ['Cargo', 'Se retira', 'Demora en carga'];
+  const OBSERVACIONES = [
+    'Se detectó en bahía 4, al costado del acceso. Se avisó al transportista.',
+    'Ya se le había marcado la semana pasada y no se corrigió.',
+    'El equipo entró directo a carga, se controló sobre la marcha.',
+    'Reincidente. Va tercera vez este mes con lo mismo.',
+    'Se pidió control en TASA antes de despachar.'
+  ];
   // Nombres inventados a proposito. El preview se publica en una web abierta
   // y no corresponde poner nombres de gente real al lado de sus metricas.
   const AUDITORES = [
@@ -77,7 +84,10 @@
         uuid: 'preview-' + id,
         registrado_en: cuando.toISOString(),
         resultado: ng ? 'NG' : 'OK',
-        detalle: null,
+        // Poco mas de un tercio de los NG traen texto. Estaba fijo en null y el
+        // preview nunca mostraba la caja con la observacion plegada -- o sea,
+        // escondia justo la parte que habia que mirar.
+        detalle: ng && rnd() < 0.35 ? uno(OBSERVACIONES) : null,
         auditor: uno(AUDITORES),
         responsable: uno(responsables),
         equipo: { id: 0, codigo: uno(equipos) },
