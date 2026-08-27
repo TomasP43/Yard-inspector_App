@@ -572,10 +572,12 @@ function pintarPareto() {
   $('#pareto-aparte').hidden = !ap;
   if (ap) {
     $('#pareto-aparte').innerHTML = `
-      <b>${esc(ap.name)}</b>
-      <span class="cifra">${esc(ap.count)}</span>
-      <span class="pct">${esc(ap.pct)}% de los desvíos</span>
-      <span class="nota">queda fuera de la tabla: adentro tapa a todo lo demás</span>`;
+      <span class="eq-label">Fuera de la tabla</span>
+      <span class="fila">
+        <b>${esc(ap.name)}</b>
+        <span class="cifra">${esc(ap.count)}</span>
+        <span class="pct">${esc(ap.pct)}%</span>
+      </span>`;
   }
   $('#pareto-ll-1').textContent = `Dentro del ${UMBRAL_PARETO}%`;
   $('#pareto-ll-2').textContent = `Curva acumulada · línea punteada = ${UMBRAL_PARETO}%`;

@@ -436,24 +436,31 @@
 
 /* ------------------------------------------------------------------ pareto */
 
-/* Lo que quedo afuera del Pareto. Va arriba a la izquierda de la tabla, con
-   borde de un solo lado -- por eso sin radio, que redondear un borde suelto
-   queda mal. */
-.aparte {
+/* Lo que quedo afuera del Pareto. Va arriba a la derecha, en la cabecera de la
+   tarjeta, que por eso pasa a ser una fila de dos. */
+.card > header.con-aparte {
   display: flex;
-  align-items: baseline;
-  flex-wrap: wrap;
-  gap: 4px 10px;
-  margin: 2px 0 4px;
-  padding: 8px 12px;
-  border-left: 2px solid var(--ttfa-red);
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+.card > header.con-aparte > div:first-child { display: grid; gap: 4px; min-width: 0; }
+
+.aparte {
+  flex: 0 0 auto;
+  display: grid;
+  gap: 3px;
+  justify-items: end;
+  text-align: right;
+  padding: 7px 11px;
+  border-right: 2px solid var(--ttfa-red);
   border-radius: 0;
   background: var(--ttfa-red-08);
 }
+.aparte .fila { display: flex; align-items: baseline; gap: 8px; }
 .aparte b { font-size: 13px; color: var(--text-strong); font-weight: var(--weight-semibold); }
 .aparte .cifra { font-family: var(--font-mono); font-size: 13px; color: var(--text-strong); }
-.aparte .pct { font-size: 12px; color: var(--ttfa-red); font-weight: var(--weight-semibold); }
-.aparte .nota { flex: 1 0 100%; font-size: 11px; color: var(--text-faint); }
+.aparte .pct { font-family: var(--font-mono); font-size: 13px; color: var(--ttfa-red); font-weight: var(--weight-semibold); }
 
 .pareto-cab, .pareto .f {
   display: grid;
