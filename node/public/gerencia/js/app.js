@@ -55,6 +55,28 @@ const colorPct = (v) =>
 
 const signo = (n) => (n >= 0 ? '+' : '') + n;
 
+/**
+ * Semaforo de retiros, sobre `z` -- a cuantos errores estandar del promedio
+ * esta la tasa del mes. Lo calcula el servidor con el volumen de cada mes
+ * (p-chart), asi que aca no hay ningun umbral en porcentaje escrito a mano: si
+ * el volumen o la tasa cambian de nivel, los cortes se mueven solos.
+ *
+ * El umbral anterior era `>= 8%` y estaba pensado para retiros sobre controles.
+ * Con la tasa sobre camiones movidos, que ronda el 1%, no se encendia nunca.
+ *
+ * AMARILLO y ROJO son las dos unicas constantes del semaforo. 1 y 2 sigma es lo
+ * estandar: con un proceso estable serian ~27% de meses en amarillo y ~5% en
+ * rojo. Subir AMARILLO a 1.5 apaga los amarillos de borde.
+ */
+const AMARILLO = 1;
+const ROJO = 2;
+
+const colorZ = (z) =>
+  z == null ? 'var(--text-faint)'
+  : z >= ROJO ? 'var(--ttfa-red)'
+  : z >= AMARILLO ? 'var(--status-warn)'
+  : 'var(--status-ok)';
+
 /** Iniciales para el avatar, mismo criterio que la PWA ("TP"). */
 function iniciales(u) {
   if (!u) return '';
@@ -283,9 +305,11 @@ function pintarLeyenda(st, serie, anual) {
   // izquierda, asi que a ojo parece del orden de las barras. El porcentaje dice
   // de que tamaño es. Va como tasa y no como cociente para no repetir el total
   // movido, que ya esta dos etiquetas mas a la izquierda.
-  $('#ll-ret').innerHTML = st.volumen
-    ? st.rechazo + nota(` · ${Math.round((st.rechazo / st.volumen) * 1000) / 10}% de los movidos`)
-    : String(st.rechazo);
+  // El promedio se dice porque es contra el que se pinta cada mes: sin el, los
+  // verdes y amarillos de abajo salen de la nada.
+  $('#ll-ret').innerHTML = st.retiroProm == null
+    ? String(st.rechazo)
+    : st.rechazo + nota(` · ${st.retiroProm}% promedio de los movidos`);
 }
 
 function pintarEvolucion() {
@@ -390,11 +414,7 @@ function pintarEvolucion() {
     const k = claves[i];
     const sel = k && k === elegido;
     const color = sel ? 'var(--ttfa-red)' : (i === serie.length - 1 ? 'var(--text-strong)' : 'var(--text-faint)');
-    // Sin semaforo. El umbral era `>= 8`, pensado para retiros sobre controles;
-    // ahora la tasa es sobre camiones movidos y ronda el 1%, asi que nunca se
-    // encendia. Un corte que no dispara nunca es peor que no tenerlo: hay que
-    // fijarlo con un numero de negocio, no inventarlo desde el codigo.
-    const cRet = 'var(--text-faint)';
+    const cRet = colorZ(w.retiroZ);
     return `
       <button type="button" data-k="${esc(k || '')}">
         <span style="color:${color}">${esc(w.label)}</span>

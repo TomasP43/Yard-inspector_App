@@ -144,9 +144,10 @@ deduplicación del catálogo, las trampas de los datos— está en
     todayCount, todayNg
   }
 
-  series[] = [{ label, clave, volumen, n, ng, obsPct, rechazo, rechazoPct }]
+  series[] = [{ label, clave, volumen, n, ng, obsPct,
+                rechazo, rechazoPct, retiroZ }]
   stats    = { volumen, observaciones, obsPct, n, mesesConControles, ngPct,
-               okPct, rechazo, demoraCarga, criticoPct,
+               okPct, rechazo, demoraCarga, criticoPct, retiroProm,
                pareto[{ name, count, cumPct }] }
   ```
 
@@ -183,6 +184,39 @@ deduplicación del catálogo, las trampas de los datos— está en
 
   La barra tiene dos colores y un solo significado: el alto es `volumen` y el
   rojo es `ng` dentro de ese total. La fracción roja **es** `obsPct`.
+
+- **`retiroZ` es el semáforo de retiros, y no lleva ningún umbral fijo.** Es un
+  gráfico de control por proporciones (p-chart): cuántos errores estándar separa
+  la tasa del mes del promedio del período.
+
+  ```
+  p̄  = Σ rechazo / Σ volumen          ← ponderado, NO el promedio de los %
+  σᵢ = sqrt( p̄ (1 - p̄) / volumenᵢ )   ← distinto para cada mes
+  zᵢ = (rechazoᵢ / volumenᵢ - p̄) / σᵢ
+  ```
+
+  `retiroProm` es `p̄` en porcentaje, y la pantalla lo muestra al lado de los
+  retiros: sin él, los colores de abajo salen de la nada.
+
+  **Las dos cosas que hay que respetar:**
+
+  - **σ depende del volumen del mes.** Un mes de 750 camiones rebota mucho más
+    que uno de 2.600 sin que nada haya cambiado. Con datos reales: ene-2026
+    tiene 12 retiros sobre 746 (1,61%) y jun-2026 tiene 41 sobre 2.407 (1,70%).
+    Casi la misma tasa, pero z = +2,0 contra +4,1. Un umbral fijo los pintaría
+    igual y no lo son.
+  - **`p̄` va ponderado.** Promediar los doce porcentajes le da el mismo peso a
+    un mes de 750 camiones que a uno de 2.600.
+
+  Los cortes en el cliente son 1σ amarillo y 2σ rojo (`AMARILLO` y `ROJO` en
+  `gerencia/js/app.js`), que es lo estándar: con un proceso estable serían ~27%
+  de meses en amarillo y ~5% en rojo.
+
+  **La limitación, para que nadie se sorprenda:** con promedio móvil de 12
+  meses, un deterioro lento y sostenido se vuelve el promedio nuevo y deja de
+  marcarse. Lo de manual es congelar los límites sobre un período estable de
+  referencia; hoy no hay uno porque el proceso cambió en jun-2026. Conviene
+  revisarlo cuando haya doce meses parejos.
 
 - **`volumen` no sale de la base de patrullas.** Es el volumen operativo por mes,
   hoy en una tabla dinámica de Excel abierta por transportista y destino. El

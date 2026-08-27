@@ -75,6 +75,32 @@
     };
   });
 
+  /**
+   * Semaforo de retiros: grafico de control por proporciones (p-chart).
+   *
+   * `z` es a cuantos errores estandar esta la tasa del mes del promedio. El
+   * error estandar es binomial y **depende del volumen del mes**: uno de 750
+   * camiones rebota mucho mas que uno de 2.600 sin que nada haya cambiado. Con
+   * un umbral fijo, ene con 12 retiros se veria tan grave como jun con 41.
+   *
+   * El promedio va ponderado -- retiros totales sobre movidos totales -- y no
+   * como promedio de los doce porcentajes, que le daria el mismo peso a un mes
+   * de 750 camiones que a uno de 2.600.
+   *
+   * Nada de esto tiene un numero escrito a mano: si el volumen o la tasa
+   * cambian de nivel, los cortes se recalculan solos.
+   */
+  function marcarZ(serie) {
+    const ret = serie.reduce((a, m) => a + (m.rechazo || 0), 0);
+    const vol = serie.reduce((a, m) => a + (m.volumen || 0), 0);
+    const p = vol ? ret / vol : 0;
+    serie.forEach((m) => {
+      const s = m.volumen ? Math.sqrt((p * (1 - p)) / m.volumen) : 0;
+      m.retiroZ = s ? Math.round(((m.rechazo / m.volumen - p) / s) * 10) / 10 : null;
+    });
+    return Math.round(p * 1000) / 10;
+  }
+
   const conControlesAnual = serieAnual.filter((m) => m.n != null);
   const totalAnual = conControlesAnual.reduce((a, m) => a + m.n, 0);
   const obsAnual = serieAnual.reduce((a, m) => a + m.ng, 0);
@@ -102,6 +128,7 @@
     observaciones: obsAnual,
     volumen: volumenAnual,
     obsPct: Math.round((obsAnual / volumenAnual) * 1000) / 10,
+    retiroProm: marcarZ(serieAnual),
     ngPct: Math.round((conControlesAnual.reduce((a, m) => a + m.ng, 0) / totalAnual) * 100),
     okPct: null,
     rechazo: retirosAnual, demoraCarga: 75, criticoPct: 12,
@@ -147,6 +174,7 @@
     observaciones: serieMensual.reduce((a, d) => a + (d.ng || 0), 0),
     volumen: serieMensual.reduce((a, d) => a + d.volumen, 0),
     obsPct: 12.4,
+    retiroProm: marcarZ(serieMensual),
     ngPct: 44, okPct: 56,
     rechazo: retirosMes, demoraCarga: 9, criticoPct: 14,
     pareto: pareto(9)
