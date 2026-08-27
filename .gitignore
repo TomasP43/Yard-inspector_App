@@ -5,7 +5,11 @@ preview-screenshot.png
 *.screenshot.png
 .env
 *.log
+# Las fotos que sube la app en tiempo de ejecucion.
 uploads/
+# ...pero las de muestra del preview SI van al repo: sin ellas el build de
+# Pages falla, porque armar.sh las copia a la demo. Ya paso una vez.
+!tools/preview/uploads/
 .DS_Store
 Thumbs.db
 
