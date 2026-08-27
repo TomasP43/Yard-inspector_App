@@ -255,6 +255,15 @@ deduplicación del catálogo, las trampas de los datos— está en
   hoy en una tabla dinámica de Excel abierta por transportista y destino. El
   mapeo a los flujos de patrullas está resuelto y documentado en YI-006.
 
+- **`rechazoList` tiene que traer un ítem por cada retiro del mes**, o sea
+  `rechazoList.length === rechazo`. El KPI de arriba muestra el total y la lista
+  de abajo los detalla: si no coinciden, la misma pantalla se contradice. El
+  mock llegó a decir "37 retiros" arriba y "Ningún retiro este mes" abajo.
+
+  Si algún día hace falta recortarla por tamaño, **no la recortes en silencio**:
+  la pantalla ya muestra "3 de 37" cuando difieren, pero eso es una red de
+  seguridad, no el comportamiento buscado.
+
 - **`clave` en `series[]`** es lo que ata cada barra con su entrada en
   `monthDetail` / `dayDetail`. Sin eso el drill-down no puede resolver qué
   abrió el usuario.

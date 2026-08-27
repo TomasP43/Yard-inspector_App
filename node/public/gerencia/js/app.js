@@ -452,6 +452,21 @@ function pintarEvolucion() {
 
 // ---------------------------------------------------------------- detalle
 
+/**
+ * "3 de 37" cuando la lista no trae todos los retiros del mes.
+ *
+ * El KPI de arriba dice cuantos hubo y la lista de abajo muestra los que
+ * llegaron. Si el servidor recorta y la pantalla no lo dice, las dos cifras se
+ * contradicen y no hay forma de saber cual es la buena -- el mock llego a decir
+ * "37 retiros" arriba y "Ningun retiro este mes" abajo.
+ *
+ * Cuando coinciden no se dice nada: un "37 de 37" es ruido.
+ */
+function etiquetaLista(lista, total) {
+  const hay = (lista || []).length;
+  return total == null || hay === total ? '' : ` · ${hay} de ${total}`;
+}
+
 function pintarDetalle() {
   const caja = $('#detalle');
   const anual = periodo === 'anual';
@@ -504,14 +519,16 @@ function detalleMes(d) {
         <div class="lista">${lista(d.topEquipos, true)}</div>
       </div>
       <div>
-        <span class="eq-label">Retiros del mes</span>
+        <span class="eq-label">Retiros del mes${etiquetaLista(d.rechazoList, d.rechazo)}</span>
         <div class="lista detalle-scroll">
           ${(d.rechazoList || []).map((r) => `
             <div class="f" style="border-bottom:1px solid var(--line-hairline);padding:7px 0">
               <span class="mono" style="width:44px;flex:0 0 44px;font-size:11px;color:var(--text-faint)">${esc(r.dayLabel || fmtFecha(r.date))}</span>
               <span class="mono-eq" style="width:48px;flex:0 0 48px">${esc(r.eq)}</span>
               <span style="flex:1;min-width:0;font-size:12px;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.desvio)}</span>
-            </div>`).join('') || '<p class="nota">Ningún retiro este mes.</p>'}
+            </div>`).join('') || `<p class="nota">${d.rechazo
+              ? 'Los retiros de este mes no vinieron en el detalle.'
+              : 'Ningún retiro este mes.'}</p>`}
         </div>
       </div>
     </div>`;

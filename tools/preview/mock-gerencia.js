@@ -228,7 +228,10 @@
       demora: m.demora,
       topDesvios: DESVIOS.slice(0, 5).map((name, i) => ({ name, count: entre(6, 90 - i * 12) })),
       topEquipos: Array.from({ length: 5 }, () => ({ name: String(entre(120, 7999)), count: entre(2, 9) })),
-      rechazoList: Array.from({ length: entre(0, 6) }, () => ({
+      // Uno por retiro, no un largo al azar. Estaba con `entre(0, 6)` contra un
+      // `rechazo` de 4 a 42, asi que el KPI decia "37 retiros" y la lista de
+      // abajo "Ningun retiro este mes" en la misma pantalla.
+      rechazoList: Array.from({ length: m.rechazo }, () => ({
         dayLabel: `${String(entre(1, 28)).padStart(2, '0')} ${m.label.slice(0, 3)}`,
         eq: String(entre(120, 7999)),
         desvio: uno(DESVIOS)
