@@ -59,12 +59,16 @@
     const ng = entre(80, 340);
     const n = conControles ? ng + entre(150, 380) : null;
     const rechazo = entre(4, 42);
+    // Retiros y demoras son subconjuntos del NG: solo un equipo observado se
+    // retira o demora la carga. Por eso nunca pueden superar a `ng`.
+    const demora = Math.min(ng - rechazo, entre(2, 14));
     return {
       label: `${m} '${ANIOS[i]}`,
       clave: `20${ANIOS[i]}-${NUM[i]}`,
       volumen,
       n,
       ng,
+      demora,
       // La tasa del grafico es SIEMPRE sobre camiones movidos. Es la unica que
       // se puede calcular los doce meses, asi que es la unica comparable de
       // punta a punta. La tasa sobre controles existe tambien, pero solo desde
@@ -129,6 +133,19 @@
     volumen: volumenAnual,
     obsPct: Math.round((obsAnual / volumenAnual) * 1000) / 10,
     retiroProm: marcarZ(serieAnual),
+
+    // El embudo de los KPIs: controles -> NG -> retiros y demoras. Las cuatro
+    // cifras salen de los MISMOS meses, que son los que tienen control cargado.
+    // Mezclar retiros de doce meses con controles de dos daria un porcentaje
+    // que no es de nada.
+    embudo: {
+      meses: conControlesAnual.length,
+      n: totalAnual,
+      ng: conControlesAnual.reduce((a, m) => a + m.ng, 0),
+      rechazo: conControlesAnual.reduce((a, m) => a + m.rechazo, 0),
+      demora: conControlesAnual.reduce((a, m) => a + m.demora, 0),
+      volumen: conControlesAnual.reduce((a, m) => a + m.volumen, 0)
+    },
     ngPct: Math.round((conControlesAnual.reduce((a, m) => a + m.ng, 0) / totalAnual) * 100),
     okPct: null,
     rechazo: retirosAnual, demoraCarga: 75, criticoPct: 12,
@@ -151,12 +168,14 @@
     const volumen = sin ? 0 : entre(60, 130);
     const ng = n ? Math.round((n * ngPct) / 100) : null;
     const rechazo = n ? entre(0, 3) : 0;
+    const demora = n ? Math.min(Math.max(0, ng - rechazo), entre(0, 2)) : 0;
     return {
       label: String(dia).padStart(2, '0'),
       clave: `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(dia).padStart(2, '0')}`,
       volumen,
       n,
       ng,
+      demora,
       obsPct: volumen ? Math.round((ng / volumen) * 1000) / 10 : null,
       rechazo,
       // Mismo denominador que la barra y que la serie anual. Estaba inventado
@@ -175,6 +194,16 @@
     volumen: serieMensual.reduce((a, d) => a + d.volumen, 0),
     obsPct: 12.4,
     retiroProm: marcarZ(serieMensual),
+    // El mes en curso es posterior al corte: todos los dias tienen control
+    // cargado, asi que el embudo es el mes entero.
+    embudo: {
+      meses: null,
+      n: totalMes,
+      ng: serieMensual.reduce((a, d) => a + (d.ng || 0), 0),
+      rechazo: retirosMes,
+      demora: serieMensual.reduce((a, d) => a + d.demora, 0),
+      volumen: serieMensual.reduce((a, d) => a + d.volumen, 0)
+    },
     ngPct: 44, okPct: 56,
     rechazo: retirosMes, demoraCarga: 9, criticoPct: 14,
     pareto: pareto(9)
@@ -185,6 +214,7 @@
   serieAnual.forEach((m) => {
     monthDetail[m.clave] = {
       label: m.label, volumen: m.volumen, n: m.n, ng: m.ng, rechazo: m.rechazo,
+      demora: m.demora,
       topDesvios: DESVIOS.slice(0, 5).map((name, i) => ({ name, count: entre(6, 90 - i * 12) })),
       topEquipos: Array.from({ length: 5 }, () => ({ name: String(entre(120, 7999)), count: entre(2, 9) })),
       rechazoList: Array.from({ length: entre(0, 6) }, () => ({
@@ -199,7 +229,8 @@
   serieMensual.forEach((d) => {
     if (!d.n) return;
     dayDetail[d.clave] = {
-      label: `${d.label} ${MESES[11]}`, n: d.n, ng: d.ng, rechazo: d.rechazo,
+      label: `${d.label} ${MESES[11]}`, volumen: d.volumen, n: d.n, ng: d.ng,
+      rechazo: d.rechazo, demora: d.demora,
       rows: Array.from({ length: d.n }, () => {
         const ng = rnd() < 0.45;
         return {

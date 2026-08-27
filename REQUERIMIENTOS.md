@@ -128,9 +128,9 @@ deduplicación del catálogo, las trampas de los datos— está en
     annual: { series[], total, rechazo, stats },
     monthly:{ series[], stats, priorStats, priorTotal },
 
-    monthDetail: { "2026-08": { label, n, ng, rechazo, ngTracked,
+    monthDetail: { "2026-08": { label, volumen, n, ng, rechazo, demora,
                                 topDesvios[], topEquipos[], rechazoList[] } },
-    dayDetail:   { "2026-08-26": { label, n, ng, rechazo,
+    dayDetail:   { "2026-08-26": { label, volumen, n, ng, rechazo, demora,
                                    rows[{ time, eq, trafico, cat, ng, desvio }] } },
 
     catCounts:  [[tipo, n], ...],
@@ -148,6 +148,7 @@ deduplicación del catálogo, las trampas de los datos— está en
                 rechazo, rechazoPct, retiroZ }]
   stats    = { volumen, observaciones, obsPct, n, mesesConControles, ngPct,
                okPct, rechazo, demoraCarga, criticoPct, retiroProm,
+               embudo{ meses, volumen, n, ng, rechazo, demora },
                pareto[{ name, count, cumPct }] }
   ```
 
@@ -184,6 +185,32 @@ deduplicación del catálogo, las trampas de los datos— está en
 
   La barra tiene dos colores y un solo significado: el alto es `volumen` y el
   rojo es `ng` dentro de ese total. La fracción roja **es** `obsPct`.
+
+- **`embudo` son los cuatro KPIs de arriba, y es un embudo de verdad:**
+
+  ```
+  controles → con observación → de esos, cuántos se retiraron
+                                y cuántos demoraron la carga
+  ```
+
+  Los cuatro van en números absolutos y los tres últimos se dividen por
+  `embudo.n` (controles). Retiros y demoras son subconjuntos del NG, así que las
+  tres tasas se comparan entre sí sin trampa.
+
+  **⚠ Las cuatro cifras tienen que salir de los mismos meses.** Los controles
+  existen solo desde que se cargan los OK: mezclar retiros de doce meses con
+  controles de dos da un porcentaje que no es de nada. Por eso `embudo` cubre
+  **el tramo con control cargado**, no la ventana entera, y `embudo.meses` dice
+  cuántos son para que la pantalla lo pueda decir.
+
+  Es el único bloque del tablero con un período distinto al del gráfico, y es a
+  propósito: el gráfico puede medir los doce meses porque usa `volumen` de
+  denominador, y este no.
+
+  **El bloque sigue al mes elegido.** Al tocar una barra, los cuatro KPIs pasan
+  a ser los de ese mes y salen de `monthDetail` / `dayDetail` — que por eso
+  necesitan `demora` y `volumen`. En un mes sin controles, `n` viene `null`, los
+  absolutos se siguen mostrando y los porcentajes van como `—`.
 
 - **`retiroZ` es el semáforo de retiros, y no lleva ningún umbral fijo.** Es un
   gráfico de control por proporciones (p-chart): cuántos errores estándar separa

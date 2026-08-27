@@ -189,62 +189,59 @@ function pintarPeriodo() {
 
 // ------------------------------------------------------------------- KPIs
 
+/**
+ * Los cuatro KPIs son un embudo, en numeros absolutos y todos sobre el mismo
+ * denominador: **controles**.
+ *
+ *   controles -> con observacion -> de esos, cuantos se retiraron y cuantos
+ *                                   demoraron la carga
+ *
+ * Retiros y demoras son subconjuntos del NG, asi que las tres tasas se comparan
+ * entre si sin trampa.
+ *
+ * **Las cuatro cifras tienen que salir de los mismos meses.** Los controles
+ * existen solo desde que se cargan los OK; mezclar retiros de doce meses con
+ * controles de dos daria un porcentaje que no es de nada. Por eso el bloque
+ * cubre el tramo con control cargado, no la ventana entera, y lo dice.
+ *
+ * Y sigue al mes que se toque en el grafico: elegido un mes, los cuatro pasan a
+ * ser los de ese mes.
+ */
 function pintarKpis() {
   const anual = periodo === 'anual';
   const st = (anual ? D.annual : D.monthly).stats;
-  const prev = (D.monthly && D.monthly.priorStats) || {};
-  const mesPrev = D.meta.priorMonthLabel;
+  const fuente = (anual ? D.monthDetail : D.dayDetail) || {};
+  const sel = elegido ? fuente[elegido] : null;
+  const d = sel || st.embudo;
 
-  // Los retiros se miden contra los camiones movidos, no contra los controles:
-  // "6.8% del total auditado" salia de dividir por un denominador que existe
-  // solo en dos meses de doce.
-  const retiroPct = st.volumen ? Math.round((st.rechazo / st.volumen) * 1000) / 10 : 0;
-  const dRetiro = anual ? null : st.rechazo - (prev.rechazo || 0);
-  const dNg = anual || st.ngPct == null || prev.ngPct == null ? null : st.ngPct - prev.ngPct;
-  const dDemora = anual ? null : st.demoraCarga - (prev.demoraCarga || 0);
+  const cuando = sel ? sel.label
+    : anual ? `en ${st.embudo.meses} de 12 meses`
+    : 'mes en curso';
+
+  const pct = (v) => (d.n ? Math.round((v / d.n) * 1000) / 10 + '%' : '—');
+  const deControles = d.n ? 'de los controles' : 'sin controles cargados';
 
   const kpis = [
     {
-      // Observaciones y no controles. Los controles solo existen desde que se
-      // cargan los OK; sumarlos con los meses en que solo se cargaba el NG daba
-      // un total que no era cantidad de nada.
-      label: 'Observaciones', valor: st.observaciones, unidad: '', tono: '',
-      // El delta compara observaciones con observaciones. Salia de restar
-      // controles contra el total del mes anterior, que es otra cosa.
-      delta: anual
-        ? 'últimos 12 meses'
-        : `${signo(st.observaciones - (prev.observaciones || 0))} vs. ${mesPrev}`,
+      // El unico que no se divide por controles, porque seria 100%. Va la
+      // cobertura, que es la pregunta que si tiene sentido hacerle: de todo lo
+      // que se movio, cuanto se controlo.
+      label: 'Controles', valor: d.n == null ? '—' : d.n, unidad: '',
+      delta: d.n && d.volumen ? `${Math.round((d.n / d.volumen) * 100)}% de los camiones movidos` : '',
       deltaColor: 'var(--text-muted)',
-      pie: anual ? `sobre ${st.volumen} camiones movidos` : 'mes en curso'
+      pie: cuando
     },
     {
-      // La tasa sobre controles solo se puede calcular donde hay OK cargados.
-      // El pie dice sobre cuantos meses sale, que si no se lee como si fuera
-      // del año entero.
-      // El titular es la misma tasa que dibuja el grafico -- observados sobre
-      // movidos -- para que la pantalla cuente una sola historia. La tasa sobre
-      // controles es otra cosa y va abajo, dicho sobre cuantos meses sale.
-      // Entero: el numero grande lleva letter-spacing y el punto decimal salia
-      // separado, "9 . 6". El decimal si sirve arriba de cada barra, donde el
-      // rango es de 3% a 20% y hace falta distinguir 9,3 de 9,8.
-      label: 'Con observación', valor: st.obsPct == null ? '—' : Math.round(st.obsPct), unidad: '%',
-      delta: 'de los camiones movidos',
-      deltaColor: 'var(--text-muted)',
-      pie: anual
-        ? `${st.ngPct}% de los controles, en ${st.mesesConControles} de 12 meses`
-        : `${st.ngPct}% de los controles`
+      label: 'Con observación', valor: d.ng == null ? '—' : d.ng, unidad: '', tono: 'ambar',
+      delta: pct(d.ng), deltaColor: 'var(--text-muted)', pie: deControles
     },
     {
-      label: 'Unidades retiradas', valor: st.rechazo, unidad: '', tono: 'rojo',
-      delta: `${retiroPct}% de los camiones movidos`,
-      deltaColor: dRetiro != null && dRetiro > 0 ? 'var(--ttfa-red)' : 'var(--text-muted)',
-      pie: dRetiro == null ? 'últimos 12 meses' : `${signo(dRetiro)} vs. ${mesPrev}`
+      label: 'Retiros', valor: d.rechazo == null ? '—' : d.rechazo, unidad: '', tono: 'rojo',
+      delta: pct(d.rechazo), deltaColor: 'var(--text-muted)', pie: deControles
     },
     {
-      label: 'Demora de carga', valor: st.demoraCarga, unidad: 'casos', tono: 'ambar',
-      delta: anual ? 'últimos 12 meses' : `${signo(dDemora)} vs. ${mesPrev}`,
-      deltaColor: 'var(--text-muted)',
-      pie: `${st.criticoPct}% de los NG son de seguridad`
+      label: 'Demora de carga', valor: d.demora == null ? '—' : d.demora, unidad: '', tono: 'ambar',
+      delta: pct(d.demora), deltaColor: 'var(--text-muted)', pie: deControles
     }
   ];
 
@@ -831,6 +828,7 @@ document.addEventListener('click', (e) => {
     const clave = k.dataset.k;
     if (!clave) return;
     elegido = elegido === clave ? null : clave;   // volver a tocar lo cierra
+    pintarKpis();                                 // los KPIs siguen al elegido
     pintarEvolucion();
     pintarDetalle();
     if (elegido) $('#detalle').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -839,6 +837,7 @@ document.addEventListener('click', (e) => {
 
 $('#cerrar-detalle').addEventListener('click', () => {
   elegido = null;
+  pintarKpis();
   pintarEvolucion();
   pintarDetalle();
 });
