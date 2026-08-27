@@ -38,8 +38,10 @@ let equipoDetalle = null;
  * sentido de esta app.
  */
 const VISTOS = new Map();
-let soloNg = false;
+let filtroHoy = 'Todos';   // Todos | Solo NG | Solo OK
 let filtro = 'Todos';
+let buscaHoy = '';    // codigo de equipo buscado en Hoy, filtra local
+let buscaHist = '';   // idem en Historial, pero lo filtra el servidor
 let offsetHistorial = 0;
 let vistosHistorial = 0;   // filas mostradas, acumulado
 
@@ -399,18 +401,41 @@ function verTablero() {
 
 function verHoy() {
   const hoyK = claveDia(new Date());
-  const hoy = filasVentana().filter((i) => claveDia(i.registrado_en) === hoyK);
+  const todos = filasVentana().filter((i) => claveDia(i.registrado_en) === hoyK);
+
+  // La busqueda filtra sobre lo que ya esta en el telefono, asi que anda sin
+  // senal. Por codigo exacto y no "contiene": el inspector tiene el numero a la
+  // vista en el equipo, y con "contiene" un 74 devuelve media playa.
+  const hoy = buscaHoy ? todos.filter((i) => i.equipo && String(i.equipo.codigo) === buscaHoy) : todos;
   const ng = hoy.filter(esNg);
   const pct = hoy.length ? Math.round((ng.length / hoy.length) * 100) : 0;
 
-  $('#h-meta').textContent = `${hoy.length} · ${ng.length} NG · ${pct} %`;
-  $('#h-toggle').innerHTML = [['Todos', false], ['Solo NG', true]].map(([l, v]) =>
-    `<button type="button" class="tag${soloNg === v ? ' sel' : ''}" data-ng="${v}">${l}</button>`).join('');
+  // Con la busqueda puesta, el contador cuenta lo filtrado y lo dice. Si dijera
+  // el total de la jornada al lado de una lista de dos, se leeria como que ese
+  // equipo tuvo trece controles.
+  $('#h-meta').textContent = buscaHoy
+    ? `Equipo ${buscaHoy} · ${hoy.length} de ${todos.length} de hoy`
+    : `${hoy.length} · ${ng.length} NG · ${pct} %`;
 
-  const fuente = (soloNg ? ng : hoy).slice().sort((a, b) => new Date(a.registrado_en) - new Date(b.registrado_en));
+  $('#h-toggle').innerHTML = ['Todos', 'Solo NG', 'Solo OK'].map((n) =>
+    `<button type="button" class="tag${filtroHoy === n ? ' sel' : ''}" data-ng="${esc(n)}">${n}</button>`).join('');
+
+  const visto = filtroHoy === 'Solo NG' ? ng
+    : filtroHoy === 'Solo OK' ? hoy.filter((i) => !esNg(i))
+    : hoy;
+  const fuente = visto.slice().sort((a, b) => new Date(a.registrado_en) - new Date(b.registrado_en));
+
+  // El vacio dice cual de las dos cosas dejo la lista sin nada. "No hay
+  // controles hoy" con el filtro OK puesto y nueve NG en pantalla detras seria
+  // mentira, y manda al inspector a cargar algo que ya cargo.
   $('#h-lista').innerHTML = fuente.length
     ? grupos(fuente, (i) => turno(i.registrado_en))
-    : `<p class="nota centro">${VENTANA ? 'Todavía no hay controles hoy.' : 'Sin conexión y nada guardado.'}</p>`;
+    : `<p class="nota centro">${
+        buscaHoy && !hoy.length ? `El equipo ${esc(buscaHoy)} no tiene controles hoy.`
+        : filtroHoy !== 'Todos'
+          ? `Ningún control ${filtroHoy === 'Solo NG' ? 'NG' : 'OK'}${buscaHoy ? ` del equipo ${esc(buscaHoy)}` : ''} hoy.`
+        : VENTANA ? 'Todavía no hay controles hoy.'
+        : 'Sin conexión y nada guardado.'}</p>`;
 }
 
 // --------------------------------------------------------------- historial
@@ -418,12 +443,19 @@ function verHoy() {
 async function verHistorial(reiniciar) {
   if (reiniciar) offsetHistorial = 0;
 
-  // Dos filtros y no seis. Los cuatro chips de tipo de control se fueron con el
-  // campo: filtraban por un dato que decia quien lo cargo. Ver YI-008.
-  $('#f-chips').innerHTML = ['Todos', 'Solo NG'].map((n) =>
+  // Tres filtros y no seis. Los cuatro chips de tipo de control se fueron con
+  // el campo: filtraban por un dato que decia quien lo cargo. Ver YI-008.
+  $('#f-chips').innerHTML = ['Todos', 'Solo NG', 'Solo OK'].map((n) =>
     `<button type="button" class="tag${filtro === n ? ' sel' : ''}" data-f="${esc(n)}">${esc(n)}</button>`).join('');
 
-  const query = filtro === 'Solo NG' ? '&resultado=NG' : '';
+  // Los dos filtros de resultado los resuelve el backend, que ya acepta
+  // `resultado=OK|NG`. No se filtra aca: con paginado, filtrar la pagina
+  // traida da una lista corta al lado de un total que es de otra cosa.
+  const res = filtro === 'Solo NG' ? 'NG' : filtro === 'Solo OK' ? 'OK' : '';
+
+  // La busqueda tambien va al SERVIDOR, por lo mismo.
+  const query = (res ? `&resultado=${res}` : '')
+    + (buscaHist ? `&equipo=${encodeURIComponent(buscaHist)}` : '');
   const url = `api/inspecciones?limite=50&offset=${offsetHistorial}${query}`;
 
   try {
@@ -431,9 +463,8 @@ async function verHistorial(reiniciar) {
     const cont = $('#f-lista');
     if (reiniciar) { cont.innerHTML = ''; vistosHistorial = 0; }
 
-    // Ya no se filtra nada aca: los dos filtros que quedan los resuelve el
-    // backend con `resultado`. Se acabo tambien el numero que mentia -- decia
-    // "376 controles registrados" al lado de una lista de 7.
+    // Se acabo el numero que mentia: decia "376 controles registrados" al lado
+    // de una lista de 7, porque contaba antes de filtrar.
     const items = d.inspecciones;
 
     cont.insertAdjacentHTML('beforeend', grupos(items, (i) =>
@@ -444,12 +475,17 @@ async function verHistorial(reiniciar) {
     const completo = offsetHistorial >= d.total;
     $('#mas').hidden = completo;
 
-    $('#f-meta').textContent = filtro === 'Solo NG'
-      ? `${d.total} NG`
-      : `${d.total} controles registrados`;
+    // `d.total` viene del servidor y ya tiene aplicados los dos filtros, asi
+    // que el numero es el del equipo buscado y no el de todo el historial.
+    const que = res || 'controles';
+    $('#f-meta').textContent = buscaHist
+      ? `Equipo ${buscaHist} · ${d.total} ${que}`
+      : `${d.total} ${res ? res : 'controles registrados'}`;
 
     if (!vistosHistorial) {
-      cont.innerHTML = '<p class="nota centro">Sin resultados con este filtro.</p>';
+      cont.innerHTML = `<p class="nota centro">${
+        buscaHist ? `El equipo ${esc(buscaHist)} no tiene ${que} registrados.`
+        : 'Sin resultados con este filtro.'}</p>`;
     }
   } catch (e) {
     $('#f-lista').innerHTML = '<p class="nota centro">Sin conexión. El historial completo necesita señal.</p>';
@@ -951,7 +987,7 @@ document.addEventListener('click', (e) => {
   if (tab) { irA(tab.dataset.v); return; }
 
   const tgl = t.closest('[data-ng]');
-  if (tgl) { soloNg = tgl.dataset.ng === 'true'; verHoy(); return; }
+  if (tgl) { filtroHoy = tgl.dataset.ng; verHoy(); return; }
 
   const chip = t.closest('[data-f]');
   if (chip) { filtro = chip.dataset.f; verHistorial(true); return; }
@@ -1024,6 +1060,37 @@ $('#refrescar').addEventListener('click', () => {
   if (vista === 'historial') verHistorial(true);
   else cargarVentana().then(() => (vista === 'tablero' ? verTablero() : verHoy()));
 });
+
+/**
+ * Cablea un buscador de equipo.
+ *
+ * Solo digitos: el codigo de equipo es un numero, y dejar escribir letras solo
+ * sirve para no encontrar nada. La `x` aparece cuando hay algo escrito.
+ *
+ * `espera` es para el Historial, que pega contra el servidor en cada tecla si
+ * no se lo frena. En Hoy es 0 porque filtra un array que ya esta en memoria.
+ */
+function cablearBuscador(id, espera, alCambiar) {
+  const caja = $('#' + id + '-buscar');
+  const limpiar = $('#' + id + '-limpiar');
+  $('#' + id + '-lupa').innerHTML = ico('search', 15);
+  limpiar.innerHTML = ico('x', 14);
+
+  let t;
+  const aplicar = () => {
+    const v = caja.value.replace(/\D/g, '');
+    if (caja.value !== v) caja.value = v;
+    limpiar.hidden = !v;
+    clearTimeout(t);
+    t = setTimeout(() => alCambiar(v), espera);
+  };
+
+  caja.addEventListener('input', aplicar);
+  limpiar.addEventListener('click', () => { caja.value = ''; aplicar(); caja.focus(); });
+}
+
+cablearBuscador('h', 0, (v) => { buscaHoy = v; verHoy(); });
+cablearBuscador('f', 350, (v) => { buscaHist = v; verHistorial(true); });
 
 $('#mas').addEventListener('click', () => verHistorial(false));
 $('#form').addEventListener('submit', guardar);

@@ -77,17 +77,38 @@ try {
 
   <!-- ---------------------------------------------------------------- HOY -->
   <section id="v-hoy" class="vista plana" hidden>
+    <!-- Busca por número de equipo. Acá filtra sobre lo que ya está cargado en
+         el teléfono, así que anda sin señal. Va en el mismo renglón que los
+         filtros: las dos cosas acotan la misma lista, separarlas en dos
+         renglones empujaba los controles medio dedo más abajo. -->
+    <div class="filtros">
+      <div class="buscador">
+        <span class="lupa" id="h-lupa"></span>
+        <input id="h-buscar" type="search" inputmode="numeric" autocomplete="off"
+               placeholder="Equipo" aria-label="Buscar por número de equipo">
+        <button type="button" class="limpiar" id="h-limpiar" aria-label="Limpiar la búsqueda" hidden></button>
+      </div>
+      <div class="tags" id="h-toggle"></div>
+    </div>
     <div class="barra-meta">
       <span class="mono" id="h-meta"></span>
-      <div style="flex:1"></div>
-      <div class="tags" id="h-toggle"></div>
     </div>
     <div id="h-lista"></div>
   </section>
 
   <!-- ---------------------------------------------------------- HISTORIAL -->
   <section id="v-historial" class="vista plana" hidden>
-    <div class="tags fila" id="f-chips" style="padding:10px 16px"></div>
+    <!-- Acá la búsqueda va al servidor: el historial está paginado y filtrar
+         sobre las 50 filas traídas daría un total que no es el del equipo. -->
+    <div class="filtros">
+      <div class="buscador">
+        <span class="lupa" id="f-lupa"></span>
+        <input id="f-buscar" type="search" inputmode="numeric" autocomplete="off"
+               placeholder="Equipo" aria-label="Buscar por número de equipo">
+        <button type="button" class="limpiar" id="f-limpiar" aria-label="Limpiar la búsqueda" hidden></button>
+      </div>
+      <div class="tags" id="f-chips"></div>
+    </div>
     <div class="mono" id="f-meta" style="padding:0 16px 8px;font-size:11.5px;color:var(--text-faint)"></div>
     <div id="f-lista"></div>
     <button id="mas" class="btn sec chico" type="button" hidden>Cargar más</button>

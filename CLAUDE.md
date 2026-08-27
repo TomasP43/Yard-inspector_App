@@ -132,11 +132,21 @@ Cuatro pantallas y un detalle, segun el diseño del proyecto de Claude Design **
 | Pantalla | Que hace |
 |---|---|
 | **Tablero** | Controles y NG de hoy, tasa NG del periodo, barras por jornada, desvios mas frecuentes, equipos que repiten |
-| **Hoy** | Los controles de la jornada agrupados por turno, con filtro Todos / Solo NG |
-| **Historial** | Todo, con dos filtros (Todos / Solo NG) y paginado |
+| **Hoy** | Los controles de la jornada agrupados por turno, con buscador de equipo y filtro Todos / Solo NG / Solo OK |
+| **Historial** | Todo, con el mismo buscador y filtros, y paginado |
 | **Cargar** | El formulario |
 | **Detalle del control** | Se abre tocando cualquier fila de Hoy o del Historial: que se cargo en ese control puntual, con sus fotos y su resolucion. Desde aca se salta al historial del equipo, y se agrega una observacion sobre el mismo equipo |
 | **Detalle del equipo** | KPIs del equipo, desvio recurrente y su historial completo |
+
+**El mismo buscador se resuelve en dos lados distintos, y no es casual.** En Hoy
+filtra el cliente, sobre lo que ya esta en IndexedDB: la jornada son decenas de
+filas y tiene que andar sin señal. En el Historial va al servidor
+(`&equipo=<codigo>`), porque esta paginado: filtrar las 50 filas traidas daria
+una lista corta al lado de un total que es de otra cosa — el mismo error que ya
+se cometio una vez y quedo anotado en YI-001.
+
+Busca por **codigo exacto**, no por "contiene": el inspector tiene el numero a
+la vista en el equipo, y con "contiene" un `74` devuelve media playa.
 
 Tres cosas del design system **no se portaron tal cual, a proposito**:
 

@@ -32,8 +32,13 @@ deduplicación del catálogo, las trampas de los datos— está en
 ### YI-001 — Filtrar el historial por tipo de control
 - **Estado:** ~~pendiente~~ **sin efecto**. Se cae con YI-008: el campo "tipo de
   control" se sacó, así que los cuatro chips del Historial ya no existen y no
-  hay nada que filtrar. Quedan dos filtros — Todos y Solo NG — y los dos los
-  resuelve el backend con `resultado`, que ya acepta.
+  hay nada que filtrar. Quedan tres filtros — Todos, Solo NG y Solo OK — y los
+  resuelve el backend con `resultado`, que ya acepta `OK` y `NG`.
+
+  El buscador de equipo del Historial también va al servidor: `&equipo=<codigo>`
+  sobre `GET /api/inspecciones`, que ya está en el contrato. En **Hoy** filtra
+  el cliente, sobre lo que ya está en IndexedDB, porque tiene que andar sin
+  señal.
 
   Queda anotado por lo que enseñó, que sigue valiendo: el front filtraba sobre
   lo que ya había llegado y el número de arriba decía **"376 controles

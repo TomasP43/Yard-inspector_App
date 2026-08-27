@@ -369,16 +369,15 @@ main {
 .fila .der small { font-size: 11px; color: var(--text-faint); }
 .fila .der .mono { font-size: 11px; }
 
+/* Solo el contador. Los chips que compartian este renglon se subieron al de la
+   busqueda. */
 .barra-meta {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 12px 16px 10px;
+  padding: 8px 16px 10px;
 }
-/* El renglon no puede partirse: con el meta en dos lineas los chips se caen
-   abajo y la pantalla arranca torcida en un telefono de 375px. */
 .barra-meta .mono { font-size: 12.5px; color: var(--text-muted); white-space: nowrap; }
-.barra-meta .tags { flex-wrap: nowrap; }
 
 #mas { display: block; width: calc(100% - 32px); margin: 14px 16px 0; }
 
@@ -920,3 +919,64 @@ details.ficha[open] .ver-obs .ico { transform: rotate(90deg); }
   line-height: 1.45;
 }
 .nota.cerrado .ico { flex: 0 0 auto; margin-top: 1px; }
+
+/* ------------------------------------------------------- buscador y filtros */
+
+/* Un solo renglon arriba de Hoy y del Historial. Los tres chips ocupan ~215px
+   de los 343 utiles de un telefono de 375, asi que el campo es el que cede:
+   cuatro digitos en mono entran en 86px, y "Solo NG" cortado no se lee. */
+.filtros {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px 2px;
+}
+.filtros .tags { flex: 0 0 auto; flex-wrap: nowrap; }
+
+/* La lupa va DENTRO del campo. Suelta al costado se comia 22px de ancho, que
+   es justo lo que falta para que el renglon entre. */
+.buscador {
+  flex: 1 1 auto;
+  min-width: 86px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 38px;
+  padding: 0 4px 0 9px;
+  border: 1px solid var(--line-rule);
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+}
+/* Se marca la caja entera, no el input: el borde visible es el de la caja. */
+.buscador:focus-within { border-color: var(--ttfa-red-40); box-shadow: 0 0 0 2px var(--ttfa-red-16); }
+.buscador .lupa { display: flex; color: var(--text-faint); flex: 0 0 auto; }
+.buscador input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text-strong);
+  font-family: var(--font-mono);
+  font-size: 15px;
+}
+.buscador input:focus { outline: none; }
+.buscador input::placeholder { font-family: var(--font-core); font-size: 13px; color: var(--text-faint); }
+/* La `x` nativa de `type=search` se saca: ya hay un boton propio, y en el
+   telefono las dos juntas quedan una encima de la otra. */
+.buscador input::-webkit-search-cancel-button { display: none; }
+.buscador .limpiar {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.buscador .limpiar:hover { background: var(--surface-hover); color: var(--text-strong); }
