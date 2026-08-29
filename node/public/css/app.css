@@ -318,7 +318,9 @@ main {
   display: flex;
   align-items: baseline;
   gap: 8px;
-  padding: 10px 16px 6px;
+  /* padding-right igual al de .fila para que el contador caiga en la misma
+     columna que la hora y el trafico de las filas de abajo. */
+  padding: 10px 14px 6px 16px;
   border-top: 1px solid var(--line-hairline);
   background: var(--surface-page);
 }
@@ -1436,3 +1438,8 @@ details.ficha[open] .ver-obs .ico { transform: rotate(90deg); }
    derecha quedaban a media pantalla de distancia del dato que explican. */
 .cmp-tags { justify-content: flex-start; }
 .cmp-cab > :last-child { text-align: left; }
+
+/* El contador del encabezado va al margen derecho, no pegado a la etiqueta.
+   Pegado, su X depende del largo del titulo -- "Hoy · mañana" contra
+   "14 ago · tarde" lo corrian 33px -- y entre grupos quedaba escalonado. */
+.grupo-cab small { margin-left: auto; }
