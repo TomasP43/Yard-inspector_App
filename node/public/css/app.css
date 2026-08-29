@@ -1323,9 +1323,15 @@ details.ficha[open] .ver-obs .ico { transform: rotate(90deg); }
 
 /* ---------------------------------------------- historial: la comparacion */
 
+/* Columnas FIJAS, no 1fr con un auto al final: cada fila es su propia grilla,
+   asi que un auto que cambia de ancho segun cuantas etiquetas tenga la fila
+   reparte distinto en cada renglon y las columnas dejan de alinearse.
+
+   Y los dos valores van pegados. Separados por medio ancho de pantalla no se
+   comparan: el ojo tiene que saltar y perder la referencia. */
 .cmp-cab, .cmp-fila {
   display: grid;
-  grid-template-columns: 34px 1fr 1fr auto;
+  grid-template-columns: 26px 60px 60px 1fr;
   gap: 8px;
   align-items: center;
 }
@@ -1417,3 +1423,16 @@ details.ficha[open] .ver-obs .ico { transform: rotate(90deg); }
 .dia .turnos i.medio { background: currentColor; opacity: .45; }
 .dia .turnos i.no    { background: var(--line-rule); }
 .dia b { position: relative; top: -3px; }
+
+/* Ajustes de alineacion de la comparacion. */
+.cmp-cab > :last-child { text-align: right; }
+.cmp-fila .cod { text-align: center; }
+/* Los dos valores en la misma pinta y con cifras de ancho fijo: es lo que
+   permite leer "1 -> 0" de un vistazo sin que las columnas se corran. */
+.cmp-cel { font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* Las etiquetas van pegadas a los valores, no contra el borde derecho: la fila
+   se lee como una frase -- "bahia 3: de 1 a 0, corregido 1". Alineadas a la
+   derecha quedaban a media pantalla de distancia del dato que explican. */
+.cmp-tags { justify-content: flex-start; }
+.cmp-cab > :last-child { text-align: left; }

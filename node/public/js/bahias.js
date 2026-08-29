@@ -623,6 +623,12 @@ const Bahias = (() => {
     return d.getDate() + ' de ' + MES_LARGO[d.getMonth()].toLowerCase();
   }
 
+  /** '12 ago'. Para encabezados de columna, donde no hay lugar para el largo. */
+  function fechaCorta(iso) {
+    const d = new Date(iso + 'T12:00:00');
+    return d.getDate() + ' ' + MES_LARGO[d.getMonth()].toLowerCase().slice(0, 3);
+  }
+
   // ------------------------------------------------------------- calendario
 
   async function verRondas(reiniciar) {
@@ -930,10 +936,10 @@ const Bahias = (() => {
         <span style="width:34px"></span>
       </div>
       <div class="cmp-cab">
-        <span class="cod"></span>
-        <span>${esc(fechaLarga(A.fecha))}</span>
-        <span>${esc(fechaLarga(B.fecha))}</span>
         <span></span>
+        <span>${esc(fechaCorta(A.fecha))}</span>
+        <span>${esc(fechaCorta(B.fecha))}</span>
+        <span>cambios</span>
       </div>
       <div class="cmp">${filas}</div>
       <p class="nota">Se compara por bahía sumando los dos turnos de cada día.
