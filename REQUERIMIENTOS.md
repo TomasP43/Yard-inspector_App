@@ -610,11 +610,20 @@ deduplicación del catálogo, las trampas de los datos— está en
 
   Se imprimen **6 QR**, uno por bahía activa.
 
-- **Falta la hoja para imprimir.** Cada bahía lleva un cartel fijo con el número
-  grande y su QR. No se hizo todavía porque los tokens los genera el backend:
-  sin tokens reales, la hoja sería de mentira. Cuando existan, es una página
-  A4 por bahía con `@media print` — el QR se genera del `token`, sin servicio
-  externo (la intranet no sale a internet).
+- **La hoja para imprimir ya está**, en `/yard/carteles/`. Una A4 por bahía con
+  el número grande, el QR y la instrucción. Pide `GET api/bahias` para los
+  tokens, así que lo único que falta del lado del backend es que existan.
+
+  El QR se genera **en el navegador** (`carteles/qr.js`, escrito a mano): la
+  intranet no sale a internet, así que no hay CDN ni servicio al que pedirle la
+  imagen. Modo byte, versiones 1 a 4, corrección **nivel H (30%)** — el sticker
+  vive en una playa y se ensucia.
+
+  **La página no deja imprimir si el generador no pasa sus vectores de prueba**,
+  y eso no es ceremonia: la primera versión salía perfectamente dibujada y
+  **ningún lector la abría**, porque los bits de formato iban en orden inverso.
+  Un QR roto se ve idéntico a uno bueno; el error habría aparecido con el
+  sticker ya pegado y el inspector sin poder trabajar.
 
 - **Los 12 ítems del papel**, con su `cantidad_std`: Distance checkers 1 ·
   Almohadillas de puertas 1 · Soportes de carteles 1 · Arneses de seguridad 2 ·
@@ -653,8 +662,14 @@ deduplicación del catálogo, las trampas de los datos— está en
   firmando sin ir, el escalón siguiente es NFC: hay que apoyar el teléfono en el
   tag y eso no se fotografía.
 
-- **Falta definir** (ver el papel): la fila **5S** del final, y las dos firmas
-  (**Firma TTFA** y **Firma Furlong**). El front todavía no las implementa.
+- **Dos cosas del papel que NO se portan, decidido con la operación:**
+  - La fila **5S** del final: **no se usa más**. Quedó en el formulario impreso
+    pero nadie la completa. No se implementa.
+  - Las firmas **TTFA** y **Furlong**: **no van**. La app ya registra quién
+    cargó con la sesión de ttfa, más la hora y la foto — es una prueba más
+    fuerte que una firma dibujada con el dedo, que cualquiera puede garabatear.
+    Si alguna vez auditoría las exige, es un pad en canvas y se guardan como
+    imagen junto al control.
 
 ---
 

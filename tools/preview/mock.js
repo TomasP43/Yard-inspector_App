@@ -428,7 +428,13 @@
   // con `const`, que vive en el ambito lexico global pero **no** cuelga de
   // `window`. Con `window.Escaner` el override se salteaba en silencio y el
   // preview quedaba con el lector real, o sea sin lector.
-  if (typeof Escaner !== 'undefined') {
+  //
+  // **Solo se simula si el navegador NO puede leer QR.** En un telefono Android
+  // `BarcodeDetector` existe, y ahi hay que usar la camara de verdad: es el
+  // unico modo de probar la funcion como es -- imprimir el cartel, caminar
+  // hasta la bahia y escanearlo. Simular ahi convertiria la prueba en una
+  // demostracion de botones.
+  if (typeof Escaner !== 'undefined' && !('BarcodeDetector' in window)) {
     Escaner.soportado = () => true;
     Escaner.abrir = (titulo, validar) => new Promise((resolver, rechazar) => {
       const caja = document.createElement('div');

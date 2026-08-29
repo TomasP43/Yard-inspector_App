@@ -87,6 +87,7 @@ yard-inspector/
 │   │   ├── js/sync.js       # cola de sincronizacion (patrullas y bahias)
 │   │   ├── js/bahias.js     # control de bahias: ronda, checklist, auditoria
 │   │   ├── js/app.js        # UI
+│   │   ├── carteles/       # los carteles con el QR, para imprimir
 │   │   └── gerencia/        # tablero de gerencia, en /yard/gerencia/
 │   │       ├── index.html
 │   │       ├── css/gerencia.css
@@ -253,6 +254,29 @@ siempre garantiza que se llenen de memoria. Por eso:
 
 Nada arranca preseleccionado a proposito: con un valor por defecto, guardar sin
 mirar vuelve a ser posible, que es exactamente el problema que esto reemplaza.
+
+### El cartel que se pega en la bahia
+
+Se imprime desde `/yard/carteles/`: una A4 por bahia con el numero grande, el QR
+y la instruccion. El numero va enorme a proposito — es como el inspector
+confirma que esta parado en la bahia que toco en la app antes de escanear.
+
+**El QR se genera en el navegador** (`carteles/qr.js`, escrito a mano). La
+intranet no sale a internet: no hay CDN ni servicio al que pedirle la imagen.
+Modo byte, versiones 1 a 4, correccion **nivel H (30%)** porque el sticker vive
+en una playa y se ensucia. Medido: aguanta una mancha de hasta 32% de lado sobre
+la zona de datos.
+
+**La pagina no deja imprimir si el generador no pasa sus vectores de prueba, y
+eso no es ceremonia.** La primera version salia perfectamente dibujada —
+patrones, temporizacion, datos, todo bien — y **ningun lector la abria**: los
+bits de formato iban en orden inverso. Un QR roto se ve identico a uno bueno, y
+el error habria aparecido con el sticker ya pegado y el inspector sin poder
+trabajar. Las huellas de los vectores se calcularon despues de validar el
+codificador contra un decodificador real.
+
+Los tres patrones de las esquinas importan mas que el resto: si se arruina uno,
+no hay correccion de errores que valga — el lector ni encuentra el codigo.
 
 ### Los turnos, que cruzan la medianoche
 

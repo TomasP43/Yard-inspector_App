@@ -30,7 +30,7 @@
  *     lo usa para normalizar y enganchar el catalogo con el mapa de zonas.
  *     Sacarlo tiraba zonas.js entero y con el la app -- probado a los golpes.
  */
-const VERSION = 'v28';
+const VERSION = 'v29';
 const CACHE = `yard-${VERSION}`;
 
 // El app shell tiene que alcanzar para abrir la app sin conexion. Rutas
@@ -103,6 +103,11 @@ self.addEventListener('fetch', (e) => {
   // (el menu lateral, el catalogo de desvios, el layout del impacto) y cada
   // vez costo un rato entender que el codigo estaba bien.
   if (url.pathname.includes('/gerencia/')) return;
+
+  // Los carteles de bahia, por lo mismo: es una pagina de escritorio que se
+  // abre para imprimir y necesita red para traer los tokens. Cachearla no
+  // compra nada y la deja una carga tarde en cada cambio.
+  if (url.pathname.includes('/carteles/')) return;
 
   // Fotos ya subidas: cache-first, son inmutables.
   if (url.pathname.includes('/uploads/')) {

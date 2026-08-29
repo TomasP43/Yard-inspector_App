@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Carteles de bahía · Yard Inspector</title>
+<style>
+/* Esta pagina se imprime. No comparte la paleta de la app a proposito: los
+   carteles van en blanco y negro, que es lo que sale bien de cualquier
+   impresora y lo que mejor lee una camara sobre papel sucio. */
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 24px;
+  background: #f4f4f5;
+  color: #111;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+.barra {
+  max-width: 820px;
+  margin: 0 auto 20px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.barra h1 { font-size: 19px; margin: 0; flex: 1; }
+.barra button {
+  padding: 10px 18px;
+  border: 1px solid #111;
+  border-radius: 8px;
+  background: #111;
+  color: #fff;
+  font-size: 14px;
+  cursor: pointer;
+}
+.barra button[disabled] { opacity: .4; cursor: not-allowed; }
+
+.aviso {
+  max-width: 820px;
+  margin: 0 auto 20px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  border: 1px solid #d4d4d8;
+  background: #fff;
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+.aviso.mal { border-color: #b91c1c; background: #fef2f2; color: #7f1d1d; }
+.aviso.bien { border-color: #15803d; background: #f0fdf4; color: #14532d; }
+
+.hojas { max-width: 820px; margin: 0 auto; display: grid; gap: 20px; }
+
+/* Un cartel = una hoja A4 vertical. */
+.cartel {
+  background: #fff;
+  border: 1px solid #d4d4d8;
+  aspect-ratio: 210 / 297;
+  padding: 34px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+.cartel .rotulo {
+  font-size: 13px;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: #52525b;
+}
+/* El numero se lee desde lejos: es como el inspector confirma que esta parado
+   en la bahia que toco en la app antes de escanear. */
+.cartel .numero { font-size: 150px; font-weight: 800; line-height: .95; margin: 4px 0 0; }
+.cartel .nombre { font-size: 20px; font-weight: 600; margin: 6px 0 0; }
+.cartel .qr { margin: 26px 0 0; }
+.cartel .qr svg { display: block; }
+.cartel .instruccion {
+  margin: 22px 0 0;
+  font-size: 15px;
+  line-height: 1.5;
+  max-width: 30ch;
+  color: #27272a;
+}
+.cartel .pie {
+  margin-top: auto;
+  font-size: 11px;
+  color: #71717a;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+@media print {
+  body { background: #fff; padding: 0; }
+  .barra, .aviso { display: none; }
+  .hojas { max-width: none; gap: 0; }
+  .cartel { border: 0; aspect-ratio: auto; height: 100vh; break-after: page; }
+  .cartel:last-child { break-after: auto; }
+}
+</style>
+</head>
+<body>
+
+<div class="barra">
+  <h1>Carteles de bahía</h1>
+  <button id="imprimir" disabled>Imprimir</button>
+</div>
+
+<div class="aviso" id="estado">Cargando bahías…</div>
+
+<div class="hojas" id="hojas"></div>
+
+<script src="./qr.js"></script>
+<script src="./cartel.js"></script>
+</body>
+</html>

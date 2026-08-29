@@ -34,6 +34,12 @@ cp -r "$AQUI/uploads/." "$DST/uploads/"
 perl -0pi -e 's{<script src="\./js/app\.js"></script>}{<script src="./js/mock.js"></script>\n<script src="./js/app.js"></script>}' "$DST/index.html"
 perl -0pi -e 's{</body>}{<script src="./js/demo.js"></script>\n</body>}' "$DST/index.html"
 
+# --- Carteles de bahia: la pagina pide `../api/bahias` para los tokens, asi que
+#     necesita el mock. Y el mock arma el catalogo desde Zonas, que necesita
+#     Similitud: van los tres antes de cartel.js, que corre al cargar.
+cp "$AQUI/mock.js" "$DST/carteles/mock.js"
+perl -0pi -e 's{<script src="\./cartel\.js"></script>}{<script src="../js/similitud.js"></script>\n<script src="../js/zonas.js"></script>\n<script src="./mock.js"></script>\n<script src="./cartel.js"></script>}' "$DST/carteles/index.html"
+
 # --- Tablero: mira window.TABLERO antes de pedir nada, asi que alcanza con
 #     definirlo antes de su app.js.
 perl -0pi -e 's{<script src="\./js/datos\.js"></script>}{<script src="./js/mock-gerencia.js"></script>\n<script src="./js/datos.js"></script>}' "$DST/gerencia/index.html"
