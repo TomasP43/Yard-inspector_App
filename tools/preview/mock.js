@@ -430,16 +430,52 @@
   const isoFecha = (d) => d.getFullYear() + '-' +
     String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 
-  /** Que turnos tuvieron ronda ese dia. Un dia completo son los dos. */
+  /**
+   * Que turnos tuvieron ronda ese dia. Un dia completo son los dos.
+   *
+   * ⚠ SUPUESTOS, no datos. Bahias no tiene historico -- viene a reemplazar un
+   * papel del que no hay registro confiable, que es justamente el problema.
+   * Estos numeros hacen que la demo se parezca a una playa y no a un dato
+   * perfecto, pero **hay que reemplazarlos por la realidad** cuando se sepa:
+   *
+   *   - el domingo casi nunca hay ronda;
+   *   - cuando se hace una sola, suele ser la de la mañana: el turno que se
+   *     saltea es el de la tarde, que termina 00:45 y anda con menos gente.
+   *     Sin esta asimetria las barritas de turno del calendario no muestran
+   *     nada -- se saltea uno u otro al azar y no hay patron que mirar.
+   */
   function turnosDe(fecha) {
     const d = new Date(fecha + 'T12:00:00');
     const hoy = new Date(); hoy.setHours(23, 59, 59, 999);
     if (d > hoy) return [];                       // el futuro no tiene rondas
-    if (d.getDay() === 0) return az(fecha, 'dom') < 0.7 ? [] : ['manana'];
+    if (d.getDay() === 0) return az(fecha, 'dom') < 0.8 ? [] : ['manana'];
     const r = az(fecha, 'cuantas');
-    if (r < 0.10) return [];
-    if (r < 0.34) return [az(fecha, 'cual') < 0.5 ? ['manana'] : ['tarde']].flat();
+    if (r < 0.08) return [];
+    if (r < 0.38) return az(fecha, 'cual') < 0.75 ? ['manana'] : ['tarde'];
     return ['manana', 'tarde'];
+  }
+
+  /**
+   * Peso de cada item para fallar. **No es uniforme a proposito.**
+   *
+   * Un item de cuatro unidades tiene cuatro chances de que falte una, asi que
+   * las Escaleras burro (std 4) fallan mucho mas que un Portallaves (std 1).
+   * Con todos los items equiprobables la matriz del historial queda con rojos
+   * salpicados al azar y **no muestra lo unico que existe para mostrar**: que
+   * la misma herramienta falta en varias bahias.
+   */
+  const PESO_ITEM = ITEMS_BAHIA.map((it) => it.cantidad_std >= 4 ? 6
+    : it.cantidad_std === 2 ? 3 : 1);
+  const PESO_TOTAL = PESO_ITEM.reduce((a, b) => a + b, 0);
+
+  /** Elige un item segun su peso. `x` es un numero entre 0 y 1. */
+  function itemPesado(x) {
+    let acum = x * PESO_TOTAL;
+    for (let i = 0; i < PESO_ITEM.length; i++) {
+      acum -= PESO_ITEM[i];
+      if (acum <= 0) return ITEMS_BAHIA[i].id;
+    }
+    return ITEMS_BAHIA[ITEMS_BAHIA.length - 1].id;
   }
 
   const NOMBRE_TURNO = { manana: 'Primer turno', tarde: 'Segundo turno' };
@@ -453,9 +489,7 @@
 
       const cuantas = az(semilla, 'nov') < 0.72 ? 0 : (az(semilla, 'cuantas') < 0.75 ? 1 : 2);
       const marcados = new Set();
-      for (let k = 0; k < cuantas; k++) {
-        marcados.add(1 + Math.floor(az(semilla, 'item' + k) * ITEMS_BAHIA.length));
-      }
+      for (let k = 0; k < cuantas; k++) marcados.add(itemPesado(az(semilla, 'item' + k)));
 
       const hora = new Date(fecha + 'T00:00:00');
       hora.setMinutes((turno === 'manana' ? 6 * 60 : 16 * 60) + 20 + i * 11);
