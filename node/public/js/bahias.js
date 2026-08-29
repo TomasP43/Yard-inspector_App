@@ -605,24 +605,340 @@ const Bahias = (() => {
 
   // -------------------------------------------------------- rondas anteriores
 
-  async function verRondas() {
-    const cont = $('#rr-lista');
+  /**
+   * Estado del historial: el mes que se esta mirando, el dia abierto, y el dia
+   * contra el que se compara.
+   */
+  const hist = { mes: null, dias: null, a: null, b: null, eligiendoB: false };
+
+  const isoF = (d) => d.getFullYear() + '-' +
+    String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+
+  const MES_LARGO = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+
+  /** '12 de agosto'. En el detalle el dia se nombra entero, no en clave ISO. */
+  function fechaLarga(iso) {
+    const d = new Date(iso + 'T12:00:00');
+    return d.getDate() + ' de ' + MES_LARGO[d.getMonth()].toLowerCase();
+  }
+
+  // ------------------------------------------------------------- calendario
+
+  async function verRondas(reiniciar) {
+    if (reiniciar !== false) { hist.a = null; hist.b = null; hist.eligiendoB = false; }
+    if (!hist.mes) { const h = new Date(); hist.mes = new Date(h.getFullYear(), h.getMonth(), 1); }
+    await cargarMes();
+    pintarCalendario();
+  }
+
+  async function cargarMes() {
+    const m = hist.mes;
+    const desde = isoF(new Date(m.getFullYear(), m.getMonth(), 1));
+    const hasta = isoF(new Date(m.getFullYear(), m.getMonth() + 1, 0));
     try {
-      const d = await pedir('api/bahias/rondas?limite=20');
-      cont.innerHTML = (d.rondas || []).map((r) => `
-        <div class="fila">
-          <div class="izq">
-            <b>${esc(r.turno_nombre)}</b>
-            <small>${esc(fmtDia(r.inicio))} · ${esc(nombreCorto(r.inspector))}</small>
-          </div>
-          <div class="der">
-            <span class="mono">${r.hechas}/${r.total}</span>
-            <small>${r.faltantes ? r.faltantes + ' faltantes' : 'sin faltantes'}</small>
-          </div>
-        </div>`).join('') || '<p class="nota centro">Todavía no hay rondas cerradas.</p>';
+      const d = await pedir(`api/bahias/rondas?desde=${desde}&hasta=${hasta}`);
+      hist.dias = {};
+      (d.dias || []).forEach((x) => { hist.dias[x.fecha] = x.turnos || []; });
     } catch (e) {
-      cont.innerHTML = '<p class="nota centro">Sin conexión. Las rondas anteriores necesitan señal.</p>';
+      hist.dias = null;
     }
+  }
+
+  function pintarCalendario() {
+    const cont = $('#rr-cuerpo');
+    // Puede llegar aca con la vista todavia fuera del DOM: `verRondas` es
+    // async y el usuario pudo cambiar de pantalla mientras se pedia el mes.
+    if (!cont) return;
+    if (!hist.dias) {
+      cont.innerHTML = '<p class="nota centro">Sin conexión. El historial necesita señal.</p>';
+      return;
+    }
+
+    const m = hist.mes;
+    const primero = new Date(m.getFullYear(), m.getMonth(), 1);
+    const cuantos = new Date(m.getFullYear(), m.getMonth() + 1, 0).getDate();
+    // La semana arranca el lunes: getDay() da 0 para domingo.
+    const hueco = (primero.getDay() + 6) % 7;
+    const hoyIso = isoF(new Date());
+
+    const celdas = [];
+    for (let i = 0; i < hueco; i++) celdas.push('<span class="dia vacio"></span>');
+
+    for (let n = 1; n <= cuantos; n++) {
+      const f = isoF(new Date(m.getFullYear(), m.getMonth(), n));
+      const turnos = hist.dias[f] || [];
+      // Amarillo = se hizo una sola ronda de las dos del dia, o sea faltó un
+      // turno. Verde = los dos turnos rondaron.
+      const clase = turnos.length >= 2 ? 'lleno' : turnos.length === 1 ? 'parcial' : 'sin';
+      const nov = turnos.reduce((a, t) => a + (t.novedades || 0), 0);
+      const sel = f === hist.a ? ' sel-a' : f === hist.b ? ' sel-b' : '';
+      const clic = turnos.length ? ` data-dia="${f}"` : '';
+      // Dos barritas, una por turno. El color del dia dice *cuantos* turnos
+      // rondaron; esto dice **cual** faltó, que es lo que se necesita para ir a
+      // preguntar. Con un solo tinte, un dia amarillo no distingue si el que se
+      // salteo fue el de la mañana o el de la tarde.
+      const seg = ['manana', 'tarde'].map((id) => {
+        const t = turnos.find((x) => x.turno === id);
+        return `<i class="${t ? (t.hechas < t.total ? 'medio' : 'si') : 'no'}"></i>`;
+      }).join('');
+      celdas.push(`
+        <button type="button" class="dia ${clase}${sel}${f === hoyIso ? ' hoy' : ''}"
+                ${clic}${turnos.length ? '' : ' disabled'}
+                aria-label="${n} · ${turnos.length} de 2 turnos${nov ? ', ' + nov + (nov === 1 ? ' novedad' : ' novedades') : ''}">
+          <b>${n}</b>
+          ${nov ? `<span class="pip">${nov}</span>` : ''}
+          <span class="turnos">${seg}</span>
+        </button>`);
+    }
+
+    const conRonda = Object.values(hist.dias).filter((t) => t.length).length;
+    const completos = Object.values(hist.dias).filter((t) => t.length >= 2).length;
+
+    cont.innerHTML = `
+      ${hist.eligiendoB ? `
+        <p class="nota alerta">${ico('alert-triangle', 14)}
+          <span>Elegí el día contra el que querés comparar ${esc(fechaLarga(hist.a))}.</span></p>` : ''}
+
+      <div class="cal-cab">
+        <button type="button" class="ib" id="cal-antes" aria-label="Mes anterior">${ico('chevron-left', 18)}</button>
+        <b>${MES_LARGO[m.getMonth()]} ${m.getFullYear()}</b>
+        <button type="button" class="ib" id="cal-despues" aria-label="Mes siguiente">${ico('chevron-left', 18)}</button>
+      </div>
+
+      <div class="cal-sem">${['L', 'M', 'M', 'J', 'V', 'S', 'D'].map((d) => `<span>${d}</span>`).join('')}</div>
+      <div class="cal">${celdas.join('')}</div>
+
+      <div class="cal-ref">
+        <span><i class="p lleno"></i>Los dos turnos</span>
+        <span><i class="p parcial"></i>Faltó un turno</span>
+        <span><i class="p sin"></i>Sin ronda</span>
+      </div>
+      <p class="nota centro">${completos} días completos · ${conRonda - completos} con un solo turno
+        · ${cuantos - conRonda} sin ronda</p>`;
+  }
+
+  // ---------------------------------------------------------- detalle de dia
+
+  async function verDia(fecha) {
+    try {
+      const d = await pedir('api/bahias/dia?fecha=' + encodeURIComponent(fecha));
+      hist.a = fecha;
+      hist.detalleA = d;
+      pintarDia();
+    } catch (e) {
+      toast('No se pudo abrir el día', 'Sin conexión', true);
+    }
+  }
+
+  function pintarDia() {
+    const d = hist.detalleA;
+    const cont = $('#rr-cuerpo');
+    if (!cont) return;
+    cont.innerHTML = `
+      <div class="cal-cab">
+        <button type="button" class="ib" id="dia-volver" aria-label="Volver al calendario">${ico('chevron-left', 18)}</button>
+        <b>${esc(fechaLarga(d.fecha))}</b>
+        <span style="width:34px"></span>
+      </div>
+      ${resumenDia(d)}
+      ${bloquesTurno(d)}
+      <button type="button" class="btn sec" id="dia-comparar">${ico('file-text', 16)} Comparar con otro día</button>`;
+  }
+
+  /** Los cuatro numeros del dia, antes de cualquier detalle. */
+  function resumenDia(d) {
+    const bs = d.turnos.flatMap((t) => t.bahias);
+    const hechas = bs.filter((b) => b.control).length;
+    const nov = bs.reduce((a, b) => a + (b.control ? faltan(b.control) : 0), 0);
+    const conNov = bs.filter((b) => b.control && faltan(b.control)).length;
+    const cob = bs.length ? Math.round((hechas / bs.length) * 100) : 0;
+
+    const kpi = (val, sub, clase) => `
+      <div class="kpi${clase ? ' ' + clase : ''}">
+        <div class="k-val"><b>${val}</b></div>
+        <div class="k-pie">${esc(sub)}</div>
+      </div>`;
+
+    return `<div class="rejilla">
+      ${kpi(d.turnos.length + ' de 2', 'turnos con ronda', d.turnos.length < 2 ? 'warn' : 'positive')}
+      ${kpi(cob + ' %', hechas + ' de ' + bs.length + ' controles', cob === 100 ? 'positive' : 'warn')}
+      ${kpi(nov, nov === 1 ? 'novedad' : 'novedades', nov ? 'negative' : 'positive')}
+      ${kpi(conNov, conNov === 1 ? 'bahía afectada' : 'bahías afectadas', conNov ? 'negative' : 'positive')}
+    </div>`;
+  }
+
+  function bloquesTurno(d) {
+    if (!d.turnos.length) return '<p class="nota centro">Ese día no tuvo ninguna ronda.</p>';
+    return d.turnos.map((t) => {
+      const nov = t.bahias.reduce((a, b) => a + (b.control ? faltan(b.control) : 0), 0);
+      const horas = t.bahias.filter((b) => b.control)
+        .map((b) => new Date(b.control.registrado_en)).sort((a, b) => a - b);
+      const quien = (t.bahias.find((b) => b.control) || {}).control;
+
+      return `
+        <section class="card${nov ? ' acento' : ''}">
+          <header>
+            <span class="eq-label">${esc(t.nombre)}</span>
+            <b>${t.hechas} de ${t.total} bahías${nov ? ` · ${nov} ${nov === 1 ? 'novedad' : 'novedades'}` : ''}</b>
+          </header>
+          ${horas.length ? `<p class="mono ficha-quien">
+            ${esc(nombreCorto(quien.inspector))} · ${hhmm(horas[0])} a ${hhmm(horas[horas.length - 1])}
+            ${horas.length > 1 ? `· ${Math.round((horas[horas.length - 1] - horas[0]) / 60000)} min de ronda` : ''}
+          </p>` : ''}
+          ${matriz(t, d.items)}
+          ${listaNovedades(t, d.items)}
+        </section>`;
+    }).join('');
+  }
+
+  /**
+   * Matriz bahias x items.
+   *
+   * Es la vista que la lista de renglones no daba: **una columna en rojo
+   * significa que la misma herramienta falta en varias bahias**, y eso es un
+   * problema de reposicion, no de una bahia puntual. Con seis renglones
+   * diciendo "Completa" eso no se ve.
+   */
+  function matriz(t, items) {
+    const cols = (items || []).slice().sort((a, b) => a.orden - b.orden);
+    if (!cols.length) return '';
+
+    const cab = `<span class="mz-esq"></span>` +
+      cols.map((it) => `<span class="mz-num">${it.orden}</span>`).join('');
+
+    const filas = t.bahias.map((b) => {
+      const porItem = new Map((b.control ? b.control.items : []).map((i) => [i.item_id, i]));
+      const celdas = cols.map((it) => {
+        const r = porItem.get(it.id);
+        const clase = !b.control ? 'nd' : (!r ? 'nd' : (r.conforme ? 'ok' : 'ng'));
+        const tit = `${b.codigo} · ${it.nombre}` + (r && !r.conforme
+          ? ` · ${r.cantidad} de ${it.cantidad_std}` : '');
+        return `<span class="mz-c ${clase}" title="${esc(tit)}"></span>`;
+      }).join('');
+      return `<span class="mz-cod mono">${esc(b.codigo)}</span>${celdas}`;
+    }).join('');
+
+    return `
+      <div class="matriz" style="--cols:${cols.length}">
+        ${cab}${filas}
+      </div>
+      <details class="mz-ref">
+        <summary>Qué es cada columna</summary>
+        <ol>${cols.map((it) => `<li>${esc(it.nombre)} <i>· std ${it.cantidad_std}</i></li>`).join('')}</ol>
+      </details>`;
+  }
+
+  /** Las novedades con todo el detalle: cantidad, ubicacion, estado, comentario. */
+  function listaNovedades(t, items) {
+    const filas = [];
+    t.bahias.forEach((b) => {
+      if (!b.control) return;
+      (b.control.items || []).filter((i) => !i.conforme).forEach((i) => {
+        const it = (items || []).find((x) => x.id === i.item_id) || {};
+        const partes = [];
+        if (it.cantidad_std != null && i.cantidad !== it.cantidad_std) {
+          partes.push(`${i.cantidad} de ${it.cantidad_std}`);
+        }
+        if (i.ubicacion_ok === false) partes.push('ubicación NG');
+        if (i.estado_ok === false) partes.push('estado NG');
+        filas.push(`
+          <div class="nov">
+            <b>Bahía ${esc(b.codigo)} · ${esc(it.nombre || 'Ítem')}</b>
+            ${partes.length ? `<span class="mono">${esc(partes.join(' · '))}</span>` : ''}
+            ${i.comentario ? `<small>${esc(i.comentario)}</small>` : ''}
+          </div>`);
+      });
+    });
+
+    const sinControlar = t.bahias.filter((b) => !b.control).map((b) => b.codigo);
+    const aviso = sinControlar.length
+      ? `<p class="nota alerta">${ico('alert-triangle', 14)}
+           <span>Sin controlar: ${sinControlar.map((c) => 'bahía ' + c).join(', ')}.</span></p>`
+      : '';
+
+    if (!filas.length) return aviso + '<p class="nota">Sin novedades en este turno.</p>';
+    return aviso + `<div class="paso"><span class="eq-label">Novedades</span>
+      <div class="novedades">${filas.join('')}</div></div>`;
+  }
+
+  // ------------------------------------------------------------ comparacion
+
+  async function compararCon(fecha) {
+    try {
+      const d = await pedir('api/bahias/dia?fecha=' + encodeURIComponent(fecha));
+      hist.b = fecha;
+      hist.detalleB = d;
+      hist.eligiendoB = false;
+      pintarComparacion();
+    } catch (e) {
+      toast('No se pudo abrir el día', 'Sin conexión', true);
+    }
+  }
+
+  /** Novedades de una bahia en un dia, sumando los dos turnos. */
+  function novedadesPorBahia(d) {
+    const mapa = new Map();
+    (d.turnos || []).forEach((t) => {
+      t.bahias.forEach((b) => {
+        const previo = mapa.get(b.codigo) || { rondas: 0, items: new Set() };
+        if (b.control) {
+          previo.rondas++;
+          (b.control.items || []).filter((i) => !i.conforme)
+            .forEach((i) => previo.items.add(i.item_id));
+        }
+        mapa.set(b.codigo, previo);
+      });
+    });
+    return mapa;
+  }
+
+  function pintarComparacion() {
+    const A = hist.detalleA;
+    const B = hist.detalleB;
+    const ma = novedadesPorBahia(A);
+    const mb = novedadesPorBahia(B);
+    const codigos = [...new Set([...ma.keys(), ...mb.keys()])].sort((x, y) => x - y);
+
+    const filas = codigos.map((cod) => {
+      const a = ma.get(cod) || { rondas: 0, items: new Set() };
+      const b = mb.get(cod) || { rondas: 0, items: new Set() };
+      // Lo que importa de comparar dos dias: que se arreglo, que sigue, y que
+      // apareció. Un conteo suelto no dice ninguna de las tres.
+      const sigue = [...a.items].filter((i) => b.items.has(i));
+      const corregido = [...a.items].filter((i) => !b.items.has(i));
+      const nuevo = [...b.items].filter((i) => !a.items.has(i));
+      const etiqueta = (arr, clase, txt) => arr.length
+        ? `<span class="cmp-tag ${clase}">${txt} ${arr.length}</span>` : '';
+      return `
+        <div class="cmp-fila">
+          <span class="cod mono">${cod}</span>
+          <span class="cmp-cel">${a.rondas ? a.items.size + ' nov.' : '<i>sin ronda</i>'}</span>
+          <span class="cmp-cel">${b.rondas ? b.items.size + ' nov.' : '<i>sin ronda</i>'}</span>
+          <span class="cmp-tags">
+            ${etiqueta(sigue, 'sigue', 'sigue')}
+            ${etiqueta(corregido, 'ok', 'corregido')}
+            ${etiqueta(nuevo, 'nuevo', 'nuevo')}
+          </span>
+        </div>`;
+    }).join('');
+
+    $('#rr-cuerpo').innerHTML = `
+      <div class="cal-cab">
+        <button type="button" class="ib" id="dia-volver" aria-label="Volver al calendario">${ico('chevron-left', 18)}</button>
+        <b>Comparación</b>
+        <span style="width:34px"></span>
+      </div>
+      <div class="cmp-cab">
+        <span class="cod"></span>
+        <span>${esc(fechaLarga(A.fecha))}</span>
+        <span>${esc(fechaLarga(B.fecha))}</span>
+        <span></span>
+      </div>
+      <div class="cmp">${filas}</div>
+      <p class="nota">Se compara por bahía sumando los dos turnos de cada día.
+        <b>Sigue</b> es lo que estaba mal en ${esc(fechaLarga(A.fecha))} y seguía mal
+        en ${esc(fechaLarga(B.fecha))}.</p>`;
   }
 
   // ---------------------------------------------------------------- eventos
@@ -632,6 +948,26 @@ const Bahias = (() => {
 
     const bah = t.closest('[data-bahia]');
     if (bah) { verBahia(bah.dataset.bahia); return; }
+
+    // --- historial
+    const dia = t.closest('[data-dia]');
+    if (dia) {
+      if (hist.eligiendoB) compararCon(dia.dataset.dia);
+      else verDia(dia.dataset.dia);
+      return;
+    }
+    if (t.closest('#cal-antes')) {
+      hist.mes = new Date(hist.mes.getFullYear(), hist.mes.getMonth() - 1, 1);
+      verRondas(false);
+      return;
+    }
+    if (t.closest('#cal-despues')) {
+      hist.mes = new Date(hist.mes.getFullYear(), hist.mes.getMonth() + 1, 1);
+      verRondas(false);
+      return;
+    }
+    if (t.closest('#dia-volver')) { hist.eligiendoB = false; verRondas(false); return; }
+    if (t.closest('#dia-comparar')) { hist.eligiendoB = true; verRondas(false); return; }
 
     const chk = t.closest('[data-chk]');
     if (chk) {

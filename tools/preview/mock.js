@@ -412,6 +412,125 @@
     return json({ auditoria: aud }, 201);
   }
 
+  // ---------------------------------------------------- historial de rondas
+
+  /**
+   * Historial inventado pero **estable**: todo sale de un hash de la fecha, asi
+   * que el mismo dia se ve igual en cada recarga. Sin eso, el calendario
+   * cambiaba de colores al navegar entre meses y era imposible saber si un
+   * cambio en pantalla era del codigo o del azar.
+   */
+  const hashTxt = (s) => {
+    let h = 2166136261;
+    for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
+    return h >>> 0;
+  };
+  const az = (...partes) => (hashTxt(partes.join('|')) % 1000) / 1000;
+
+  const isoFecha = (d) => d.getFullYear() + '-' +
+    String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+
+  /** Que turnos tuvieron ronda ese dia. Un dia completo son los dos. */
+  function turnosDe(fecha) {
+    const d = new Date(fecha + 'T12:00:00');
+    const hoy = new Date(); hoy.setHours(23, 59, 59, 999);
+    if (d > hoy) return [];                       // el futuro no tiene rondas
+    if (d.getDay() === 0) return az(fecha, 'dom') < 0.7 ? [] : ['manana'];
+    const r = az(fecha, 'cuantas');
+    if (r < 0.10) return [];
+    if (r < 0.34) return [az(fecha, 'cual') < 0.5 ? ['manana'] : ['tarde']].flat();
+    return ['manana', 'tarde'];
+  }
+
+  const NOMBRE_TURNO = { manana: 'Primer turno', tarde: 'Segundo turno' };
+
+  /** Las bahias de una ronda, con su control o `null` si quedo sin hacer. */
+  function bahiasDe(fecha, turno) {
+    return BAHIAS.map((b, i) => {
+      const semilla = fecha + turno + b.codigo;
+      const base = { id: b.id, codigo: b.codigo, nombre: b.nombre, activo: true };
+      if (az(semilla, 'hecha') < 0.08) return { ...base, control: null };
+
+      const cuantas = az(semilla, 'nov') < 0.72 ? 0 : (az(semilla, 'cuantas') < 0.75 ? 1 : 2);
+      const marcados = new Set();
+      for (let k = 0; k < cuantas; k++) {
+        marcados.add(1 + Math.floor(az(semilla, 'item' + k) * ITEMS_BAHIA.length));
+      }
+
+      const hora = new Date(fecha + 'T00:00:00');
+      hora.setMinutes((turno === 'manana' ? 6 * 60 : 16 * 60) + 20 + i * 11);
+
+      return {
+        ...base,
+        control: {
+          uuid: 'hist-' + semilla,
+          bahia_id: b.id,
+          inspector: AUDITORES[Math.floor(az(fecha, turno, 'insp') * AUDITORES.length)],
+          registrado_en: hora.toISOString(),
+          items: ITEMS_BAHIA.map((it) => {
+            const mal = marcados.has(it.id);
+            return {
+              item_id: it.id,
+              conforme: !mal,
+              cantidad: mal ? Math.max(0, it.cantidad_std - 1) : it.cantidad_std,
+              ubicacion_ok: true,
+              estado_ok: !mal,
+              comentario: mal ? 'Falta una. Se pidió reposición al pañol.' : null
+            };
+          }),
+          observacion: null,
+          foto: `demo-${(b.codigo % 4) + 1}.svg`,
+          auditorias: []
+        }
+      };
+    });
+  }
+
+  /** Resumen por dia, que es lo que pinta el calendario. */
+  function resumenRango(desde, hasta) {
+    const dias = [];
+    const d = new Date((desde || isoFecha(new Date())) + 'T12:00:00');
+    const fin = new Date((hasta || desde) + 'T12:00:00');
+    let guarda = 0;
+    while (d <= fin && guarda++ < 400) {
+      const f = isoFecha(d);
+      dias.push({
+        fecha: f,
+        turnos: turnosDe(f).map((t) => {
+          const bs = bahiasDe(f, t);
+          return {
+            turno: t,
+            nombre: NOMBRE_TURNO[t],
+            hechas: bs.filter((b) => b.control).length,
+            total: bs.length,
+            novedades: bs.reduce((a, b) => a + (b.control
+              ? b.control.items.filter((i) => !i.conforme).length : 0), 0)
+          };
+        })
+      });
+      d.setDate(d.getDate() + 1);
+    }
+    return dias;
+  }
+
+  function detalleDia(fecha) {
+    const f = fecha || isoFecha(new Date());
+    return {
+      fecha: f,
+      items: ITEMS_BAHIA,
+      turnos: turnosDe(f).map((t) => {
+        const bahias = bahiasDe(f, t);
+        return {
+          turno: t,
+          nombre: NOMBRE_TURNO[t],
+          total: bahias.length,
+          hechas: bahias.filter((b) => b.control).length,
+          bahias
+        };
+      })
+    };
+  }
+
   /**
    * Lector de QR simulado.
    *
@@ -476,22 +595,14 @@
     if (metodo === 'POST' && s.includes('api/bahias/auditoria')) return crearAuditoria(opts && opts.body);
     if (metodo === 'POST' && s.includes('api/inspecciones')) return crear(opts && opts.body);
 
+    if (s.includes('api/bahias/dia')) {
+      const q = new URLSearchParams(s.split('?')[1] || '');
+      return json(detalleDia(q.get('fecha')));
+    }
+
     if (s.includes('api/bahias/rondas')) {
-      // Rondas cerradas. Inventadas hacia atras, una por turno.
-      const rondas = Array.from({ length: 8 }, (_, i) => {
-        const d = new Date();
-        d.setDate(d.getDate() - Math.floor(i / 2));
-        d.setHours(i % 2 ? 16 : 6, 0, 0, 0);
-        return {
-          turno_nombre: i % 2 ? 'Segundo turno' : 'Primer turno',
-          inicio: d.toISOString(),
-          inspector: AUDITORES[i % 2],
-          total: BAHIAS.length,
-          hechas: BAHIAS.length - (i % 3),
-          faltantes: (i * 2) % 5
-        };
-      });
-      return json({ rondas });
+      const q = new URLSearchParams(s.split('?')[1] || '');
+      return json({ dias: resumenRango(q.get('desde'), q.get('hasta')) });
     }
 
     if (s.includes('api/bahias')) {

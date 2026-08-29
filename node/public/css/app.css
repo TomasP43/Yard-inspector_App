@@ -1233,3 +1233,187 @@ details.ficha[open] .ver-obs .ico { transform: rotate(90deg); }
   text-shadow: none;
 }
 .escaner .btn { position: relative; width: min(100%, 260px); }
+
+/* ------------------------------------------------ historial: el calendario */
+
+.cal-cab {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.cal-cab b { font-size: 16px; color: var(--text-strong); }
+/* El mismo glifo girado, para no cargar otro icono al shell. */
+#cal-despues .ico { transform: rotate(180deg); }
+
+.cal-sem, .cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
+.cal-sem {
+  margin-bottom: 5px;
+  font-size: 10.5px;
+  letter-spacing: var(--track-label);
+  color: var(--text-faint);
+  text-align: center;
+}
+
+.dia {
+  position: relative;
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line-hairline);
+  border-radius: var(--radius-md);
+  background: var(--surface-card);
+  color: var(--text-faint);
+  font-size: 13px;
+  padding: 0;
+  cursor: pointer;
+}
+.dia.vacio { border: 0; background: none; }
+.dia[disabled] { cursor: default; opacity: .55; }
+
+/* Amarillo = se hizo una sola de las dos rondas del dia, o sea faltó un turno.
+   Verde = los dos turnos rondaron. El color dice cobertura, no calidad: las
+   novedades van en el numerito de la esquina. */
+.dia.lleno   { background: var(--status-ok-bg);   border-color: var(--status-ok);   color: var(--status-ok); }
+.dia.parcial { background: var(--status-warn-bg); border-color: var(--status-warn); color: var(--status-warn); }
+.dia.sin     { background: var(--surface-raised); }
+.dia b { font-weight: var(--weight-semibold); }
+
+.dia.hoy::after {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  border-radius: inherit;
+  border: 1px solid var(--text-faint);
+}
+.dia.sel-a, .dia.sel-b {
+  outline: 2px solid var(--ttfa-red);
+  outline-offset: 1px;
+}
+
+/* Cantidad de novedades del dia. Chico a proposito: es un dato secundario
+   frente a si la ronda se hizo o no. */
+.dia .pip {
+  position: absolute;
+  top: 2px;
+  right: 3px;
+  font-size: 9px;
+  font-family: var(--font-mono);
+  color: var(--ttfa-red);
+}
+
+.cal-ref {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 14px;
+  font-size: 11.5px;
+  color: var(--text-faint);
+}
+.cal-ref span { display: inline-flex; align-items: center; gap: 6px; }
+.cal-ref .p { width: 11px; height: 11px; border-radius: 3px; border: 1px solid; }
+.cal-ref .p.lleno   { background: var(--status-ok-bg);   border-color: var(--status-ok); }
+.cal-ref .p.parcial { background: var(--status-warn-bg); border-color: var(--status-warn); }
+.cal-ref .p.sin     { background: var(--surface-raised); border-color: var(--line-hairline); }
+
+/* En el detalle de un dia las bahias no se tocan: son lectura. */
+.bahia.plana { cursor: default; }
+
+/* ---------------------------------------------- historial: la comparacion */
+
+.cmp-cab, .cmp-fila {
+  display: grid;
+  grid-template-columns: 34px 1fr 1fr auto;
+  gap: 8px;
+  align-items: center;
+}
+.cmp-cab {
+  padding: 0 4px 8px;
+  font-size: 11px;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.cmp { display: grid; gap: 1px; background: var(--line-hairline); border-radius: var(--radius-md); overflow: hidden; }
+.cmp-fila { padding: 10px 4px; background: var(--surface-card); }
+.cmp-fila .cod { font-size: 15px; font-weight: var(--weight-semibold); color: var(--text-strong); text-align: center; }
+.cmp-cel { font-size: 12.5px; color: var(--text-body); }
+.cmp-cel i { color: var(--text-faint); font-style: normal; }
+.cmp-tags { display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end; }
+.cmp-tag {
+  font-size: 10.5px;
+  padding: 2px 7px;
+  border-radius: var(--radius-pill);
+  white-space: nowrap;
+}
+.cmp-tag.sigue { background: var(--ttfa-red-16);  color: var(--ttfa-red); }
+.cmp-tag.ok    { background: var(--status-ok-bg);  color: var(--status-ok); }
+.cmp-tag.nuevo { background: var(--status-warn-bg); color: var(--status-warn); }
+
+/* --------------------------------------------- matriz de bahias x items */
+
+/* Una columna en rojo = la misma herramienta falta en varias bahias. Eso es un
+   problema de reposicion y no de una bahia, y en una lista de renglones no se
+   ve nunca. */
+.matriz {
+  display: grid;
+  grid-template-columns: 22px repeat(var(--cols), 1fr);
+  gap: 3px;
+  margin: 4px 0 12px;
+}
+.mz-esq { }
+.mz-num, .mz-cod {
+  font-size: 9.5px;
+  color: var(--text-faint);
+  text-align: center;
+  font-family: var(--font-mono);
+  line-height: 1.6;
+}
+.mz-cod { font-size: 11px; color: var(--text-muted); }
+.mz-c {
+  aspect-ratio: 1;
+  border-radius: 2px;
+  background: var(--surface-raised);
+}
+/* El conforme va callado: es el estado normal y ocupa el 95% de la grilla.
+   Lo que tiene que saltar es la novedad. Pintar los dos con la misma fuerza
+   convierte la matriz en un muro verde donde el rojo se pierde. */
+.mz-c.ok { background: var(--status-ok); opacity: .16; }
+.mz-c.ng { background: var(--ttfa-red); }
+/* Sin dato: la bahia no se controlo. Se distingue del conforme a proposito --
+   "no lo miramos" y "estaba bien" no son lo mismo. */
+.mz-c.nd {
+  background: repeating-linear-gradient(45deg,
+    var(--surface-raised) 0 2px, transparent 2px 4px);
+  border: 1px solid var(--line-hairline);
+}
+
+.mz-ref { margin-bottom: 12px; }
+.mz-ref summary {
+  cursor: pointer;
+  list-style: none;
+  font-size: 11px;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.mz-ref ol { margin: 8px 0 0; padding-left: 20px; display: grid; gap: 3px; }
+.mz-ref li { font-size: 12px; color: var(--text-body); }
+.mz-ref li i { color: var(--text-faint); font-style: normal; font-size: 11px; }
+
+/* Dos barritas por dia: dicen CUAL turno rondo, no solo cuantos. */
+.dia .turnos {
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 2px;
+}
+.dia .turnos i { width: 8px; height: 3px; border-radius: 2px; background: var(--line-rule); }
+.dia .turnos i.si    { background: currentColor; }
+.dia .turnos i.medio { background: currentColor; opacity: .45; }
+.dia .turnos i.no    { background: var(--line-rule); }
+.dia b { position: relative; top: -3px; }

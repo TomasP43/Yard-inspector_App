@@ -278,6 +278,33 @@ codificador contra un decodificador real.
 Los tres patrones de las esquinas importan mas que el resto: si se arruina uno,
 no hay correccion de errores que valga — el lector ni encuentra el codigo.
 
+### El historial: un calendario, no una lista
+
+La pantalla de historial es un **calendario del mes**. El color del dia dice
+cuantos de los dos turnos rondaron — **verde los dos, amarillo uno solo, gris
+ninguno** — y dos barritas abajo dicen *cual* falto, que es lo que se necesita
+para ir a preguntar. El numerito rojo de la esquina son las novedades del dia.
+
+Tocando un dia se abre su detalle, y ahi va lo que la lista de renglones no
+daba. Seis filas diciendo "Completa" no informan nada; en su lugar hay:
+
+- los cuatro numeros del dia (turnos, cobertura, novedades, bahias afectadas);
+- por turno, quien lo hizo, de que hora a que hora y cuanto tardo la ronda;
+- una **matriz bahias x items**;
+- las novedades con su detalle: cantidad contra el estandar, ubicacion, estado
+  y comentario.
+
+**La matriz es la parte que vale.** Una columna en rojo significa que la misma
+herramienta falta en varias bahias, y eso es un problema de reposicion, no de
+una bahia puntual. El conforme va pintado muy suave a proposito: es el estado
+normal y ocupa casi toda la grilla, asi que pintarlo fuerte convierte la matriz
+en un muro verde donde el rojo se pierde. Y **el "sin controlar" se distingue
+del conforme** con una trama: "no lo miramos" y "estaba bien" no son lo mismo.
+
+Desde el detalle se puede **comparar contra otro dia**: se vuelve al calendario
+a elegir el segundo, y la comparacion muestra por bahia que **sigue**, que se
+**corrigio** y que **aparecio**. Un conteo suelto no dice ninguna de las tres.
+
 ### Los turnos, que cruzan la medianoche
 
 Viven en `js/turnos.js`, compartidos con patrullas:
