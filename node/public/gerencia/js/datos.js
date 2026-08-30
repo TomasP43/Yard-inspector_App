@@ -43,6 +43,30 @@ const Datos = (() => {
   }
 
   /**
+   * Trae el tablero de precarga.
+   *
+   * Va por separado y no como un bloque mas de `api/tablero` a proposito: son
+   * dos pantallas que se miran en momentos distintos, y meter los agregados de
+   * precarga en el pedido de patrullas haria que abrir una pague el costo de la
+   * otra. El contrato esta en YI-014.
+   */
+  async function traerPrecarga(periodo) {
+    if (window.TABLERO_PRECARGA) {
+      await new Promise((r) => setTimeout(r, 180));
+      return window.TABLERO_PRECARGA;
+    }
+
+    // TODO: reemplazar por el endpoint real cuando exista (ver YI-014).
+    //       GET api/precarga/tablero?periodo=anual|mensual
+    const r = await fetch(`api/precarga/tablero?periodo=${encodeURIComponent(periodo)}`, {
+      credentials: 'same-origin'
+    });
+    if (r.status === 401) throw new Error('sesion_invalida');
+    if (!r.ok) throw new Error('http ' + r.status);
+    return r.json();
+  }
+
+  /**
    * Baja lo que se esta viendo como CSV.
    *
    * Se arma en el navegador con lo que ya esta en pantalla, en vez de pedirle
@@ -72,5 +96,5 @@ const Datos = (() => {
     URL.revokeObjectURL(url);
   }
 
-  return { traer, exportarCsv };
+  return { traer, traerPrecarga, exportarCsv };
 })();

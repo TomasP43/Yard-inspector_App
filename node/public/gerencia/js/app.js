@@ -26,6 +26,7 @@ const UMBRAL_PARETO = 80;
 
 let D = null;                 // el tablero que devolvio el servidor
 let periodo = 'anual';
+let pantalla = 'patrullas';   // patrullas | precarga
 let elegido = null;           // clave del mes o del dia abierto en el detalle
 let empresa = null;           // transportista que filtra el Pareto
 
@@ -159,16 +160,21 @@ ANGOSTA.addEventListener('change', () => {
 
 // --------------------------------------------------------------- estructura
 
+const PANTALLAS = {
+  patrullas: { titulo: 'Patrulla de calidad — tablero de gerencia', menu: 'Patrullas', icono: 'gauge' },
+  precarga:  { titulo: 'Inspección de precarga — tablero de gerencia', menu: 'Precarga', icono: 'package' }
+};
+
 function pintarLateral() {
-  // Un solo item: el tablero es la unica pantalla que hay de este lado.
-  //
-  // El diseño trae ademas "Patrulla de hoy", "Historial completo" y "Equipos",
-  // pero apuntaban a `../#hoy` y compañia -- y la PWA no lee el hash, asi que
-  // los tres caian en la misma pantalla por defecto. "Equipos" ni siquiera
-  // existe como vista. Un menu que promete cuatro lugares y lleva a uno es peor
-  // que un menu de uno.
-  $('#menu').innerHTML =
-    `<span class="it activo">${ico('gauge', 16)}<span>Tablero gerencia</span></span>`;
+  // Dos items, y los dos llevan a algo. El diseño traia ademas "Patrulla de
+  // hoy", "Historial completo" y "Equipos" apuntando a `../#hoy` y compañia --
+  // la PWA no lee el hash, asi que los tres caian en la misma pantalla y
+  // "Equipos" ni siquiera existia. Un menu que promete cuatro lugares y lleva a
+  // uno es peor que un menu de uno; por eso quedo con los que existen.
+  $('#menu').innerHTML = Object.entries(PANTALLAS).map(([k, p]) =>
+    `<button type="button" class="it${pantalla === k ? ' activo' : ''}" data-pantalla="${k}">${ico(p.icono, 16)}<span>${esc(p.menu)}</span></button>`).join('');
+
+  $('#titulo-tablero').textContent = PANTALLAS[pantalla].titulo;
 
   // Quien esta mirando. Viene con el tablero: es el mismo usuario de la sesion
   // de ttfa, no se elige.
@@ -910,10 +916,19 @@ async function cargar() {
   $('#cargando').hidden = false;
   $('#cargando').textContent = 'Cargando el período…';
   try {
+    if (pantalla === 'precarga') {
+      await TableroPrecarga.cargar(periodo);
+      $('#cargando').hidden = true;
+      $('#contenido').hidden = true;
+      $('#contenido-precarga').hidden = false;
+      return;
+    }
     D = await Datos.traer(periodo);
+    $('#contenido-precarga').hidden = true;
     pintar();
   } catch (e) {
     $('#contenido').hidden = true;
+    $('#contenido-precarga').hidden = true;
     $('#cargando').hidden = false;
     $('#cargando').textContent = e.message === 'sesion_invalida'
       ? 'Se venció la sesión. Volvé a entrar a la intranet.'
@@ -924,6 +939,18 @@ async function cargar() {
 // -------------------------------------------------------------------- eventos
 
 document.addEventListener('click', (e) => {
+  const pa = e.target.closest('[data-pantalla]');
+  if (pa) {
+    if (pa.dataset.pantalla === pantalla) return;
+    pantalla = pa.dataset.pantalla;
+    elegido = null;       // el detalle es de la otra pantalla, no se arrastra
+    empresa = null;
+    pintarLateral();
+    if (ANGOSTA.matches && lateralAbierta) alternarLateral();   // en angosto tapa lo que se vino a ver
+    cargar();
+    return;
+  }
+
   const p = e.target.closest('[data-p]');
   if (p) {
     if (p.dataset.p === periodo) return;
@@ -974,6 +1001,11 @@ $('#tema').addEventListener('click', () =>
   aplicarTema(document.documentElement.getAttribute('data-tema') !== 'claro'));
 
 $('#exportar').addEventListener('click', () => {
+  if (pantalla === 'precarga') {
+    const filas = TableroPrecarga.filasCsv();
+    if (filas) Datos.exportarCsv(`precarga-${periodo}.csv`, filas);
+    return;
+  }
   if (!D) return;
   const st = (periodo === 'anual' ? D.annual : D.monthly).stats;
   const filas = [

@@ -720,3 +720,41 @@
   .dos-col, .dos-col.reinc, .tres-col, .detalle-3 { grid-template-columns: minmax(0, 1fr); }
   .titulos b { font-size: 15px; }
 }
+
+/* ------------------------------------------------------------ precarga */
+
+/* Dos tarjetas al lado. Debajo de 1000px se apilan: dos barras-h de doce filas
+   en media pantalla angosta no se leen. */
+.rejilla-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; }
+@media (max-width: 1000px) { .rejilla-2 { grid-template-columns: 1fr; } }
+
+/* La evolucion: barra entera = unidades bajadas, la parte roja = con daño.
+   Dos colores y un solo significado; la fraccion roja ES la tasa. */
+.pcg-evo {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 8px;
+  align-items: end;
+  height: 176px;
+}
+.pcg-col { display: grid; align-content: end; justify-items: center; gap: 6px; height: 100%; min-width: 0; }
+.pcg-barra {
+  width: 100%;
+  max-width: 46px;
+  min-height: 2px;
+  display: flex;
+  align-items: flex-end;
+  background: var(--graphite-600);
+  border-radius: 2px 2px 0 0;
+  overflow: hidden;
+}
+[data-tema="claro"] .pcg-barra { background: var(--gray-200); }
+.pcg-barra i { width: 100%; background: var(--ttfa-red); }
+.pcg-eje { font-family: var(--font-mono); font-size: 10px; color: var(--text-faint); }
+
+/* Cobertura: la barra verde va ENCIMA de la gris, no al lado. Lo registrado es
+   una parte de lo solicitado, y dos barras separadas lo leerian como dos cosas
+   distintas que hay que restar a ojo. */
+.barras-h .pista { position: relative; }
+.pcg-encima { position: absolute; left: 0; top: 0; height: 100%; }

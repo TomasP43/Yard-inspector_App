@@ -445,3 +445,160 @@
 
   console.log('[preview] tablero de gerencia · datos falsos');
 })();
+
+/**
+ * Datos falsos del tablero de precarga.
+ *
+ * Define `window.TABLERO_PRECARGA` con la forma que tiene que devolver
+ * `GET api/precarga/tablero` (ver YI-014 en REQUERIMIENTOS.md).
+ *
+ * A diferencia de patrullas, aca **no hay una trampa historica**: el modulo es
+ * nuevo, asi que la serie arranca donde arranca el registro y no hay meses con
+ * el denominador roto. Si algun dia se migran las Inspecciones de la planilla de
+ * AppSheet, esos meses van a tener daños sin unidades bajadas -- porque alla
+ * solo se cargaba la unidad cuando tenia algo -- y va a hacer falta la misma
+ * salvedad que en patrullas. Queda anotado antes de que pase.
+ */
+(() => {
+  let s = 20260829;
+  const r = () => (s = (s * 1103515245 + 12345) % 2147483648) / 2147483648;
+  const ent = (a, b) => a + Math.floor(r() * (b - a + 1));
+
+  const MES = ['sep', 'oct', 'nov', 'dic', 'ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago'];
+
+  const PARTES = [
+    ['Puerta trasera izquierda', 'Exterior'], ['Puerta delantera derecha', 'Exterior'],
+    ['Puerta delantera izquierda', 'Exterior'], ['Paragolpe delantero', 'Exterior'],
+    ['Puerta trasera derecha', 'Exterior'], ['Guardabarro trasero izquierdo', 'Exterior'],
+    ['Zócalo lateral izquierdo', 'Exterior'], ['Guardabarro trasero derecho', 'Exterior'],
+    ['Paragolpe trasero', 'Exterior'], ['Capot', 'Exterior'],
+    ['Techo', 'Exterior'], ['Espejo exterior izquierdo', 'Exterior'],
+    ['Alfombra delantera', 'Interior'], ['Asiento trasero', 'Interior'],
+    ['Tablero', 'Interior'], ['Rueda de auxilio', 'Mecánica'],
+    ['Herramientas / gato', 'Mecánica']
+  ];
+  const TIPOS = ['Abollado', 'Rayado', 'Fallo de pintura', 'Filo de panel', 'Desprendido',
+                 'Mellado', 'Roto', 'Faltante', 'Contaminado (no daño)'];
+  const MODELOS = ['Hilux', 'Corolla Cross', 'Corolla', 'Yaris', 'Hiace', 'SW4'];
+  const DESTINOS = ['TOYOTA DO BRASIL LTDA', 'TOYOTA CHILE S.A.', 'DELTA DOCK', 'TOYOSA S.A.'];
+  const TRANSPORTISTAS = ['TTFA', 'Autoport', 'Green Mile'];
+  const BAHIAS = ['3A', '3B', '5A', '5B', '6B', '7A'];
+
+  /** Una lista de Pareto: cuenta descendente y porcentaje acumulado. */
+  function pareto(nombres, total) {
+    // Reparto con cola larga: unas pocas concentran, que es como se ve de
+    // verdad. Con cuentas parejas la curva acumulada sale una recta y la
+    // pantalla no diria nada.
+    let resto = total;
+    const filas = nombres.map((n, i) => {
+      // 0.80 y no menos: en el historico real cuatro partes se llevan el 55%
+      // y hacen falta unas ocho para el 80%. Con una caida mas brusca la cola
+      // se va a cero y el reparto por grupo da 98/1/0, que no es lo que pasa.
+      const peso = Math.pow(0.80, i);
+      return { n, peso };
+    });
+    const suma = filas.reduce((a, f) => a + f.peso, 0);
+    const out = filas.map((f) => {
+      const c = Math.max(1, Math.round((f.peso / suma) * total));
+      return { name: f.n, count: c };
+    });
+    const real = out.reduce((a, o) => a + o.count, 0);
+    let acum = 0;
+    return out.map((o) => {
+      acum += o.count;
+      return { ...o, cumPct: Math.round((acum / real) * 1000) / 10 };
+    });
+  }
+
+  /** Un corte completo: stats, serie y los cruces. */
+  function corte(meses, porMes) {
+    const serie = [];
+    for (let i = 0; i < meses; i++) {
+      const solicitadas = porMes + ent(-Math.round(porMes * 0.18), Math.round(porMes * 0.18));
+      // La cobertura ronda el 100% y de vez en cuando baja: es la metrica de
+      // vigilancia, y una serie siempre en 100 no dejaria ver que hace cuando
+      // se rompe.
+      const falla = r() < 0.25 ? ent(1, Math.round(solicitadas * 0.06)) : 0;
+      const unidades = solicitadas - falla;
+      serie.push({
+        key: String(i),
+        label: meses === 12 ? MES[i] : String(i + 1),
+        solicitadas,
+        unidades,
+        con_dano: Math.round(unidades * (0.16 + r() * 0.09)),
+        desviadas: Math.round(unidades * (0.05 + r() * 0.06))
+      });
+    }
+
+    const tot = (k) => serie.reduce((a, w) => a + w[k], 0);
+    const solicitadas = tot('solicitadas');
+    const unidades = tot('unidades');
+    const conDano = tot('con_dano');
+    const desviadas = tot('desviadas');
+    const danos = Math.round(conDano * 1.4);   // una unidad dañada suele traer mas de uno
+
+    const p10 = (x) => Math.round(x * 10) / 10;
+    const stats = {
+      solicitadas, unidades, con_dano: conDano, danos, desviadas,
+      tasa_dano: p10((conDano / unidades) * 100),
+      tasa_desvio: p10((desviadas / unidades) * 100),
+      cobertura: p10((unidades / solicitadas) * 100),
+      prev: {
+        tasa_dano: p10((conDano / unidades) * 100 + (r() * 4 - 2)),
+        tasa_desvio: p10((desviadas / unidades) * 100 + (r() * 3 - 1.5)),
+        cobertura: p10((unidades / solicitadas) * 100 + (r() * 2 - 1))
+      }
+    };
+
+    const pPartes = pareto(PARTES.map((p) => p[0]), danos)
+      .map((x, i) => ({ ...x, grupo: PARTES[i][1] }));
+
+    const pTipos = pareto(TIPOS, danos).map((x) => ({
+      name: x.name, count: x.count, pct: Math.round((x.count / danos) * 1000) / 10
+    }));
+
+    const porGrupo = ['Exterior', 'Interior', 'Mecánica'].map((g) => {
+      const c = pPartes.filter((p) => p.grupo === g).reduce((a, p) => a + p.count, 0);
+      return { name: g, count: c, pct: Math.round((c / danos) * 100) };
+    });
+
+    // Cada uno con su propio denominador: son las unidades que movio ese
+    // transportista, no el total. Si no, el que mas mueve encabeza siempre.
+    const reparto = (nombres, base, lo, hi) => {
+      const pesos = nombres.map(() => 0.5 + r());
+      const suma = pesos.reduce((a, b) => a + b, 0);
+      return nombres.map((n, i) => {
+        const u = Math.max(1, Math.round((pesos[i] / suma) * base));
+        const p = Math.round((lo + r() * (hi - lo)) * 10) / 10;
+        return { name: n, unidades: u, desviadas: Math.round((u * p) / 100), pct: p };
+      });
+    };
+
+    const repartoDano = (nombres, base, lo, hi) =>
+      reparto(nombres, base, lo, hi).map((x) => ({
+        name: x.name, unidades: x.unidades, con_dano: x.desviadas, pct: x.pct
+      }));
+
+    return {
+      stats,
+      serie,
+      pareto_partes: pPartes,
+      pareto_tipos: pTipos,
+      por_grupo: porGrupo,
+      desvios: {
+        por_transportista: reparto(TRANSPORTISTAS, unidades, 4, 16),
+        por_bahia: reparto(BAHIAS, unidades, 3, 19)
+      },
+      por_modelo: repartoDano(MODELOS, unidades, 11, 28),
+      por_destino: repartoDano(DESTINOS, unidades, 12, 26)
+    };
+  }
+
+  window.TABLERO_PRECARGA = {
+    meta: { updated: '2026-08-29', usuario: { email: 'demo@ejemplo.com', nombre: 'Usuario Demo' } },
+    annual: corte(12, 1450),
+    monthly: corte(30, 48)
+  };
+
+  console.log('[preview] tablero de precarga · datos falsos');
+})();
