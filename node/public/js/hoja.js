@@ -143,7 +143,7 @@ const Hoja = (() => {
             ${conFoto.map((d, i) => `
               <figure>
                 <img src="${esc(d.foto)}" alt="">
-                <figcaption><b>${i + 1}</b> ${esc(Precarga.nombreParte(d.parte_id))} · ${esc(Precarga.nombreDano(d.tipo_dano_id))}${Precarga.codigoAiag(d) ? ` <b class="hj-cod">${Precarga.codigoAiag(d)}</b>` : ''}</figcaption>
+                <figcaption><b>${i + 1}</b> ${esc(Precarga.nombreParte(d.parte_id))} · ${esc(Precarga.nombreDano(d.tipo_dano_id))}${Precarga.codigoAiag(d) ? ` <b class="hj-cod">${Precarga.codigoAiag(d)}</b>` : ''}${d.foto_calidad && d.foto_calidad.aviso ? ` <i class="hj-foto-aviso">${esc(Camara.TEXTO_AVISO[d.foto_calidad.aviso] || '').toLowerCase()}</i>` : ''}</figcaption>
               </figure>`).join('')}
           </div>
         </section>` : ''}

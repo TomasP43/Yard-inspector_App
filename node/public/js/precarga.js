@@ -92,7 +92,7 @@ const Precarga = (() => {
 
   /** Le devuelve al borrador las URL de las fotos, que no sobreviven al disco. */
   function hidratar(d, vin) {
-    const url = (f) => (f && f.blob ? { blob: f.blob, url: URL.createObjectURL(f.blob) } : null);
+    const url = (f) => (f && f.blob ? { blob: f.blob, url: URL.createObjectURL(f.blob), calidad: f.calidad || null } : null);
     return {
       vin,
       resultado: d.resultado || null,
@@ -103,7 +103,7 @@ const Precarga = (() => {
 
   /** Saca las URL: un `blob:` de otra sesion no apunta a nada. */
   function deshidratar(f) {
-    const sinUrl = (x) => (x && x.blob ? { blob: x.blob } : null);
+    const sinUrl = (x) => (x && x.blob ? { blob: x.blob, calidad: x.calidad || null } : null);
     return {
       resultado: f.resultado || null,
       escaneado_en: escaneadas.get(f.vin) || null,
@@ -800,7 +800,8 @@ const Precarga = (() => {
         ${n.foto
           ? `<div class="foto"><img src="${n.foto.url}" alt=""><button type="button" class="quitar" data-quitar-foto-dano>${ico('x', 12)}</button></div>`
           : `<button type="button" class="foto-add" data-foto="dano">${ico('camera', 20)}<span>Foto del daño</span></button>`}
-      </div>`;
+      </div>
+      ${avisoFoto(n.foto)}`;
 
     const listo = n.parte_id && n.tipo_dano_id && n.gravedad && n.foto;
     const falta = !n.parte_id ? 'Elegí la parte'
@@ -819,6 +820,38 @@ const Precarga = (() => {
         ${paso2}
         <button type="button" class="btn chico" id="pc-ok-dano" ${listo ? '' : 'disabled'}>${falta}</button>
       </div>`;
+  }
+
+  /**
+   * El aviso de que la foto puede no servir como prueba.
+   *
+   * **Avisa, no bloquea, y queda anotado.** Las tres cosas son la misma
+   * decision. Bloquear seria decidir desde un heuristico que el inspector no
+   * puede documentar un daño: una bahia sin luz o un auto mojado dan lecturas
+   * malas con fotos que son lo unico que hay. Y no avisar deja la calidad de la
+   * prueba colgada del pulso de quien saca.
+   *
+   * Lo que cierra el circulo es que **la marca viaja con el registro**: si la
+   * foto se usa igual, quien la mire despues ve que se aviso. Ver D-019.
+   *
+   * El texto no reta. Dice que se ve y ofrece la salida; el boton de sacar otra
+   * es el mismo que ya estaba.
+   */
+  /** La marca que queda cuando la foto se aviso y se uso igual. */
+  function marcaFoto(d) {
+    const q = d.foto_calidad && d.foto_calidad.aviso;
+    if (!q) return '';
+    return `<span class="pc-aiag sin">foto: ${esc((Camara.TEXTO_AVISO[q] || q).toLowerCase())}</span>`;
+  }
+
+  function avisoFoto(foto) {
+    if (!foto || !foto.calidad || !foto.calidad.aviso) return '';
+    const q = foto.calidad.aviso;
+    return `
+      <p class="nota alerta pc-foto-aviso">
+        ${ico('octagon-alert', 15)}
+        <span>${esc(Camara.TEXTO_AVISO[q] || 'Puede no servir')}. Si es la única que se puede sacar, va igual.</span>
+      </p>`;
   }
 
   /** Lo que se cargo, ya guardado. No se edita: se corrige del lado de quien mira. */
@@ -856,7 +889,7 @@ const Precarga = (() => {
               <span class="txt">
                 <b>${esc(nombreParte(d.parte_id))}</b>
                 <small>${esc(nombreDano(d.tipo_dano_id))}${d.comentario ? ' · ' + esc(d.comentario) : ''}</small>
-                ${etiquetaCodigo(d)}
+                ${etiquetaCodigo(d)}${marcaFoto(d)}
               </span>
             </div>`).join('')}</div>`
         : '<p class="nota">Se revisó y no tenía daños.</p>'}`;
@@ -953,8 +986,8 @@ const Precarga = (() => {
     const file = input.files && input.files[0];
     input.value = '';
     if (!file || !form || !form.nuevo) return;
-    const blob = await Camara.comprimir(file);
-    form.nuevo.foto = { blob, url: URL.createObjectURL(blob) };
+    const { blob, calidad } = await Camara.comprimirConLectura(file);
+    form.nuevo.foto = { blob, url: URL.createObjectURL(blob), calidad };
     pintarUnidad();
   }
 
@@ -983,7 +1016,8 @@ const Precarga = (() => {
           tipo_dano_id: d.tipo_dano_id,
           gravedad: d.gravedad,
           comentario: d.comentario || null,
-          foto: d.foto ? d.foto.blob : null
+          foto: d.foto ? d.foto.blob : null,
+          foto_calidad: (d.foto && d.foto.calidad) || null
         }))
       });
 

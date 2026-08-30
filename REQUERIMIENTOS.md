@@ -39,8 +39,8 @@ ahi arranca el siguiente.**
 | 2 | ~~Buscar un VIN y ver todo su historial~~ | front + `YI-016` | **front hecho**, falta el endpoint |
 | 3 | **Codigos AIAG y gravedad** | datos + front + `YI-015` | **hecho en el front** |
 | 4 | ~~**PDF del legajo**~~ | front | **hecho**: imprimir → guardar PDF |
-| 5 | **Punto exacto** sobre el esquema, no sector | front | pendiente |
-| 6 | **Captura guiada** de fotos | front | pendiente |
+| 5 | ~~Punto exacto sobre el esquema~~ | front | **no se hace**: la zona alcanza (D-020) |
+| 6 | ~~**Captura guiada** de fotos~~ | front | **hecho**: avisa, no bloquea (D-019) |
 | 7 | **Descarga en destino** | modulo nuevo | se planifica aparte |
 
 El orden sale de **lo que cuesta no tenerlo**, no de lo que cuesta hacerlo.
@@ -1261,3 +1261,22 @@ Los dos están marcados con un comentario en su router.
   diálogo usa `document.title` y sin eso los ocho legajos de una jornada salían
   todos como «Yard Inspector.pdf». Funciona sin señal: el CSS de impresión, las
   fotos de la cola y el esquema cacheado están todos del lado del cliente.
+
+---
+
+### YI-018 — La lectura de calidad de la foto
+- **Estado:** pendiente
+- **Prioridad:** menor
+- **Tipo:** campo de datos
+
+- **Qué necesito:** que `precarga_dano` guarde `foto_calidad` —un JSON chico con
+  `{ nitidez, luz, aviso }`, nullable— y que el `POST` lo acepte.
+
+- **Para qué:** al sacar la foto la app mide si se ve movida, oscura o quemada, y
+  avisa **sin bloquear** (D-019). Si el inspector la usa igual, esa marca tiene
+  que viajar con el registro: la hoja impresa la muestra en el pie de la foto,
+  para que quien pese la prueba en un reclamo sepa que se avisó. Sin el campo, el
+  aviso muere en el teléfono y no sirve de nada.
+
+- **Nullable a propósito:** el histórico de AppSheet no lo tiene, y una foto sin
+  lectura tiene que mostrarse sin marca en vez de romper la hoja.

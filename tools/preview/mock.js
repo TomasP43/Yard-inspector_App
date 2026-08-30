@@ -1215,7 +1215,8 @@
         tipo_dano_id: d.tipo_dano_id,
         gravedad: d.gravedad,
         comentario: d.comentario || null,
-        foto: 'uploads/demo-' + entre(1, 4) + '.svg'
+        foto: 'uploads/demo-' + entre(1, 4) + '.svg',
+        foto_calidad: d.foto_calidad || null
       }))
     };
     persistirPC(reg);

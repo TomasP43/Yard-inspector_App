@@ -43,8 +43,10 @@
  *     el esquema avisa si no cargo (vehiculo.js) y el PDF sale con nombre.
  * v40: los codigos pasan a M-22 v4 oficial. Cambia la escala de gravedad --seis
  *     y no siete-- asi que el catalogo viejo cacheado no sirve.
+ * v41: la foto avisa si se ve movida, oscura o quemada (camera.js). Se mide
+ *     sobre el canvas que la compresion ya dibuja: 2 ms.
  */
-const VERSION = 'v40';
+const VERSION = 'v41';
 const CACHE = `yard-${VERSION}`;
 
 // El app shell tiene que alcanzar para abrir la app sin conexion. Rutas

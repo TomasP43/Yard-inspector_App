@@ -131,6 +131,9 @@ const Sync = (() => {
         tipo_dano_id: d.tipo_dano_id,
         gravedad: d.gravedad || null,
         comentario: d.comentario || null,
+        // Viaja la lectura de la foto, no solo la foto: si se aviso que se veia
+        // movida y se uso igual, quien la mire despues tiene que saberlo.
+        foto_calidad: d.foto_calidad || null,
         foto: d.foto ? await Camara.aBase64(d.foto) : null
       });
     }

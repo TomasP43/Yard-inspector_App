@@ -1823,3 +1823,11 @@ details.ficha[open] .ver-obs .ico { transform: rotate(90deg); }
 .veh .veh-falta { display: none; }
 .veh.sin-dibujo .veh-falta { display: flex; }
 .veh.sin-dibujo .veh-lienzo { display: none; }
+
+/* El aviso de la foto: informa, no reta. Va debajo de la miniatura y no
+   deshabilita nada -- el boton de agregar el daño sigue vivo. */
+.pc-foto-aviso {
+  padding: 8px 0 0; font-size: 12px;
+  align-items: flex-start; gap: 6px;
+}
+.pc-foto-aviso .ico { flex: 0 0 auto; margin-top: 1px; }

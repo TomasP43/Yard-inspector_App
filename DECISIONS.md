@@ -453,3 +453,90 @@ escala vieja de gravedad: si se revierte, hay que migrarlos.
 **Como se descubrio:** preguntando como resuelven esto los que venden el mismo
 software, que es D-016 aplicado una segunda vez. La primera encontro que el papel
 era una norma; la segunda, que nuestra copia de la norma estaba vencida.
+
+---
+
+## D-019 — La foto avisa, no bloquea, y queda anotado
+
+**Fecha:** 30-08-2026 · **Ambito:** precarga, foto del daño
+
+En precarga **la foto ES la prueba** --lo unico que sostiene un reclamo-- y su
+calidad dependia enteramente del pulso del inspector. El rubro chequea esto en el
+momento de sacarla: Monk mide desenfoque, exposicion, angulo y partes visibles.
+
+**Decision:** al comprimir se mide **nitidez y luz**, y si la foto se ve movida,
+oscura o quemada aparece un aviso debajo. **El aviso no deshabilita nada**: el
+boton de agregar el daño sigue vivo y el texto dice «si es la unica que se puede
+sacar, va igual». Lo que cambia es que **la lectura viaja con el registro** y la
+hoja impresa la muestra en el pie de la foto.
+
+**Por que no bloquea.** Bloquear seria decidir desde un heuristico que el
+inspector no puede documentar un daño. Una bahia sin luz o un auto mojado dan
+lecturas malas con fotos que son lo unico que hay, y el que esta parado al lado
+del auto sabe mas que el algoritmo. Es lo contrario del gate del escaneo (D-015),
+y la diferencia es cual es el costo del error: sin escanear no hay registro
+valido, pero una foto imperfecta sigue siendo mejor que ninguna.
+
+**Por que igual se anota.** Un aviso que se puede ignorar y no deja rastro no
+existe. Con la marca en el registro, quien pese la prueba despues ve que se
+aviso y se uso igual -- que es informacion real sobre la prueba, no un reproche
+al inspector.
+
+**El riesgo era la friccion, y estaba medido de antemano.** En las reseñas de la
+categoria la queja mas repetida es «sacar fotos deberia ser rapido, sin tantos
+requisitos sin sentido». Por eso: un solo aviso, sin pasos nuevos, sin
+confirmacion. Y **no se implemento la secuencia de angulos con plantilla**: eso
+es un walkaround del vehiculo y nuestras fotos son por daño -- no hay un juego
+de angulos fijos para «un rayon en la puerta delantera izquierda».
+
+**La nitidez sale del percentil 99 del laplaciano, no de su varianza.** La
+varianza es la receta de manual y aca daria falsos rechazos todo el dia: el
+inspector fotografia **paneles pintados y planos**, legitimamente de baja
+varianza aunque esten enfocados. Medido con un panel liso y un solo rayon fino:
+
+| Foto | Nitidez (p99) | Resultado |
+|---|---|---|
+| Panel plano, **nitido** | 43 | pasa |
+| Panel plano, movido 7 px | 8 | avisa |
+| Panel plano, movido 16 px | 3 | avisa |
+| Escena con textura, nitida | 151 | pasa |
+
+El corte esta en 18, comodo entre 43 y 8. Los umbrales estan elegidos **para que
+el falso rechazo sea raro**, no para atajar todo: si el aviso molesta cuando no
+corresponde, el inspector deja de mirarlo y el paso entero se vuelve decorativo.
+
+**Costo: 2 ms.** Se mide sobre el canvas que la compresion ya dibujo, sobre una
+copia de 360 px. La compresion de una foto de 3000x4000 son 1.124 ms y ya
+estaban.
+
+**Reversibilidad:** total. Son tres constantes.
+
+---
+
+## D-020 — El esquema marca la zona, y ahi se queda
+
+**Fecha:** 30-08-2026 · **Ambito:** precarga, esquema del vehiculo
+
+Estaba planificado darle **coordenadas por parte** al esquema, para marcar el
+punto exacto en vez del sector: ~110 coordenadas sobre cinco vistas y ocho
+modelos con proporciones distintas.
+
+Mirando como lo resuelve el rubro aparecio que **hay dos escuelas**: las
+plataformas de terminal usan diagramas por panel, y las de transporte terrestre
+--Super Dispatch-- **marcan el daño sobre la foto**, que ya es obligatoria.
+
+**Decision:** ninguna de las dos. **El esquema se queda marcando la zona**, como
+esta.
+
+**Motivo:** el esquema no es el registro. El dato son los daños de la lista, con
+su parte exacta, su codigo AIAG y su foto; el dibujo es la ayuda para ver de un
+golpe que no se salteo un lado del auto, que es la misma lectura que hoy se hace
+mirando el circulo en el papel. **Para eso la zona alcanza.** El punto exacto
+agregaria precision a la ayuda, no al registro -- y la precision del registro ya
+la da el nombre de la parte, que es mas exacto que un punto en una silueta
+generica de un modelo que no es el auto que se esta mirando.
+
+**Costo:** un mapeo largo y facil de errar que no se hace. Si algun dia se
+quiere, las coordenadas entran sin tocar la pantalla, que es como estaba pensado.
+
+**Reversibilidad:** total, no se saco nada.

@@ -317,3 +317,9 @@
 .hj-cod-nota b { font-weight: 700; }
 .hj-cod-nota i { font-style: italic; }
 .hj-danos th.tam, .hj-danos td.tam { width: 20mm; white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+/* Si la foto se aviso y se uso igual, la hoja lo dice: es la que va al
+   reclamo, y quien la mire tiene que poder pesar la prueba. */
+.hj-fotos .hj-foto-aviso {
+  font-style: italic; color: var(--gris);
+}
