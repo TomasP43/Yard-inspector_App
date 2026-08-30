@@ -317,3 +317,41 @@ daño. Si aun así aparece el problema, el escalón siguiente es NFC.
 
 **Reversibilidad:** alta, es una guarda de cliente. Pero abrirla la vuelve
 inútil: no hay medio gate.
+
+---
+
+## D-016 · Mirar el mercado antes de dar por cerrado un modulo
+
+**Pregunta:** el modulo de precarga ya estaba andando. ¿Que aporta comparar con
+productos que resuelven lo mismo?
+
+**Evidencia, dura:** el benchmark encontro en una tarde que
+`Checklist control de precarga y recepcion.xlsx` **no es un formulario de la
+casa: es el estandar AIAG M-14 / M-22**, la norma global para reportar daño de
+transporte en logistica de vehiculos terminados. Cotejado contra el ejemplo
+oficial, area 10, tipo 12 y gravedad 3 coinciden exactamente con la planilla.
+
+Sobre esa premisa equivocada se habian tomado tres decisiones:
+
+| Se decidio | Con el estandar a la vista |
+|---|---|
+| Reemplazar los 28 codigos de tipo por 14 nombres | Los 28 son los *type codes* con los que se reclama afuera |
+| No registrar la gravedad | Es el quinto digito; sin ella el codigo no se arma |
+| Sumar 16 partes sin numero | Sin *area code* no son reportables |
+
+Ninguna de las tres se veia mal desde adentro. Las tres se ven distinto sabiendo
+que el papel es una norma.
+
+**Decision:** antes de dar por cerrado un modulo, mirar que hacen los productos
+que resuelven lo mismo. No para copiarlos --el orden de bajada, que la operacion
+pidio primero, no lo cubre ninguno-- sino para **descubrir el vocabulario del
+dominio**, que es donde estan los errores que no se ven desde el codigo.
+
+**Motivo:** los formularios que una operacion usa hace años rara vez se
+inventaron ahi. Tratar uno como interno cuando es una norma se paga tarde, en el
+primer reclamo que hay que traducir a mano.
+
+**Costo:** una tarde de busqueda. Barato contra rehacer el modelo de datos
+despues de cargar meses de daños.
+
+**Reversibilidad:** no aplica. Es politica de trabajo, como D-005.

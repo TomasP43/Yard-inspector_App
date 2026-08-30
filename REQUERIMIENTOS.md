@@ -978,6 +978,61 @@ deduplicación del catálogo, las trampas de los datos— está en
 
 ---
 
+### YI-015 — Los códigos de daño son un estándar global, no un formulario interno
+- **Estado:** pendiente · **descubierto haciendo el benchmark del módulo**
+- **Prioridad:** alta
+- **Tipo:** modelo de datos
+
+- **Qué pasa:** existe una norma global para reportar daño de transporte en
+  logística de vehículos terminados — **AIAG M-14 / M-22**, «Global Standard
+  Logistics Damage Codes». Define un código de **cinco dígitos** que se arma con
+  **área (2) + tipo (2) + gravedad (1)**, y es lo que usan armadoras,
+  transportistas y terminales para reclamarse daños entre sí.
+
+- **⚠ La planilla `Checklist control de precarga y recepcion.xlsx` ES ese
+  estándar**, traducido al castellano y con las pulgadas pasadas a centímetros.
+  Cotejado contra el ejemplo oficial de AIAG:
+
+  | Segmento | Dice AIAG | Dice la planilla |
+  |---|---|---|
+  | área `10` | Left Front Door | Puerta delantera izq. |
+  | tipo `12` | Scratch | Rayado (exc. vidrio) |
+  | gravedad `3` | Over 3" up to 6" → 7,6–15,2 cm | Más de 7,5 y hasta 15 cm |
+
+  Los tres coinciden. Los números 1–99 de las partes son los *area codes*, los 28
+  códigos de daño son los *type codes*, y las ocho gravedades son la *severity*.
+
+- **Qué rompimos sin darnos cuenta**, tratándolo como papel interno:
+  - Los 28 códigos de tipo se reemplazaron por **14 nombres locales** (`YI-013`).
+    Son los que la operación carga, así que la decisión no fue mala — pero el
+    catálogo perdió el código con el que se habla afuera.
+  - **La gravedad no se registra.** Sin ella el código de cinco dígitos no se
+    puede armar: quedan tres.
+  - Las **16 partes que se sumaron del catálogo de AppSheet** no tienen *area
+    code*, así que un daño ahí no es reportable en el estándar.
+
+- **Lo que hay que hacer:** que `precarga_tipo_dano` y `precarga_parte` lleven su
+  **código AIAG** además del nombre, y volver a registrar la gravedad. Guardar el
+  nombre que la gente elige y el código con el que se reclama no es contradictorio
+  — es la misma idea que `desvio_catalogo`, donde el inspector ve un nombre y la
+  base guarda un id.
+
+- **Lo bueno: el trabajo está casi hecho.** Los 91 números ya están en el
+  catálogo, los 28 códigos de tipo están extraídos de la planilla (hoja UNID1,
+  filas 62–73) y las 8 gravedades también. Falta mapear las 16 partes agregadas y
+  volver a poner el paso de gravedad en el formulario.
+
+- **⚠ No pude verificar las tablas completas.** Los PDF de AIAG y de ACERTUS son
+  imágenes o están protegidos, y M-14/M-22 se compran. La estructura y el ejemplo
+  `10 · 12 · 3` sí están confirmados en fuentes públicas. Antes de migrar hay que
+  conseguir el documento — o reconstruirlo desde la planilla, que ya lo tiene
+  traducido y es la que la operación usa.
+
+- **Mientras tanto:** el catálogo guarda el nombre y el número de parte, que es
+  el *area code*. Lo que falta es el tipo y la gravedad.
+
+---
+
 ## Nota sobre lo que el backend tiene y la app no usa
 
 No es un requerimiento, es para que nadie los tome por carga viva:
