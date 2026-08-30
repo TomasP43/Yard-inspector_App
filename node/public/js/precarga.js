@@ -163,7 +163,8 @@ const Precarga = (() => {
    * viendo sus solicitudes. Se guarda para que volver desde el detalle de una
    * solicitud caiga donde estabas y no en la lista de arriba de todo.
    */
-  const hist = { jornadas: null, clave: null, solicitudes: null, cargando: false };
+  const hist = { jornadas: null, clave: null, solicitudes: null, cargando: false,
+                 busca: '', resultados: undefined, buscando: false };
 
   // --------------------------------------------------------------- datos
 
@@ -757,6 +758,7 @@ const Precarga = (() => {
 
       <div class="acciones-full">
         <button type="button" class="btn sec" id="pc-hoja">${ico('file-text', 16)} Ver la hoja de la unidad</button>
+        <button type="button" class="btn sec" id="pc-vin">${ico('search', 16)} Ver todo lo de este VIN</button>
       </div>
 
       ${danos.length ? Vehiculo.marcado(u.modelo, danos.map((d) => ({ grupo: (parteDe(d.parte_id) || {}).grupo }))) : ''}
@@ -987,6 +989,8 @@ const Precarga = (() => {
    * que caer en esa jornada y no mandarte al principio.
    */
   function verHistorial() {
+    // La busqueda gana sobre todo: si hay algo escrito, es lo que se vino a ver.
+    if (hist.busca) { pintarBusqueda(); return; }
     if (hist.clave) { pintarJornada(); return; }
     if (!hist.jornadas && !hist.cargando) {
       hist.cargando = true;
@@ -1066,6 +1070,157 @@ const Precarga = (() => {
       ${porBahia.get(b).map(filaSolicitud).join('')}`).join('')}</div>`;
   }
 
+  // ------------------------------------------------------ historial de un VIN
+
+  /**
+   * Todo lo que le paso a una unidad, cruzando jornadas.
+   *
+   * Es la pregunta que llega cuando hay un reclamo: «¿que paso con este auto?».
+   * Hasta aca todo se consultaba por jornada, asi que el registro existia pero no
+   * se podia interrogar.
+   *
+   * Se entra por dos lados: el buscador del historial, y el boton de la ficha de
+   * una unidad ya cargada. Son dos momentos distintos --uno arranca del numero,
+   * el otro de tenerla adelante-- y llevan al mismo lugar.
+   */
+  const vinVista = { vin: null, filas: null, cargando: false, desde: 'unidad' };
+
+  function verVin(vin, desde) {
+    vinVista.vin = vin;
+    vinVista.desde = desde || 'unidad';
+    vinVista.filas = null;
+    irA('vin');
+    pintarVin();
+    buscarUnidades(vin).then((filas) => {
+      if (vinVista.vin !== vin) return;   // ya se fue a otra: no pisar
+      vinVista.filas = filas;
+      pintarVin();
+    });
+  }
+
+  /**
+   * La busqueda va al servidor, no al cliente.
+   *
+   * Es lo mismo que en el historial de patrullas (YI-001): el cliente solo tiene
+   * la jornada en curso cargada, y filtrar sobre eso daria una lista corta al
+   * lado de un total que es de otra cosa. Con un VIN el error seria peor: diria
+   * "no hay nada" de una unidad que si viajo, la semana pasada.
+   */
+  async function buscarUnidades(q) {
+    try {
+      const d = await pedir('api/precarga/unidades?vin=' + encodeURIComponent(q));
+      return d.unidades || [];
+    } catch (e) {
+      return null;   // null es "no se pudo", distinto de [] que es "no hay"
+    }
+  }
+
+  function pintarVin() {
+    const cuerpo = $('#vin-cuerpo');
+    if (!cuerpo) return;
+
+    $('#titulo').textContent = vinVista.vin || 'Unidad';
+    $('#eyebrow').textContent = 'Historial de la unidad';
+
+    if (vinVista.filas === null) { cuerpo.innerHTML = '<p class="nota centro">Buscando…</p>'; return; }
+    if (!vinVista.filas.length) {
+      cuerpo.innerHTML = `<p class="nota centro">No hay registros de <b class="mono">${esc(vinVista.vin)}</b>.</p>`;
+      return;
+    }
+
+    const filas = vinVista.filas;
+    const viajes = filas.length;
+    const conDano = filas.filter((f) => f.inspeccion && (f.inspeccion.danos || []).length).length;
+    const desviadas = filas.filter((f) => f.orden_real && f.orden_solicitado && f.orden_real !== f.orden_solicitado).length;
+    const primera = filas[0];
+
+    const kpis = `
+      <section class="card">
+        <div class="pc-datos">
+          ${dato('Modelo', primera.modelo)}
+          ${dato('Katashiki', primera.katashiki, true)}
+        </div>
+      </section>
+      <div class="rejilla tres" style="margin-top:12px">
+        <div class="kpi"><b class="k-val">${viajes}</b><span class="k-pie">${viajes === 1 ? 'Viaje' : 'Viajes'}</span></div>
+        <div class="kpi${conDano ? ' negative' : ''}"><b class="k-val">${conDano}</b><span class="k-pie">Con daño</span></div>
+        <div class="kpi${desviadas ? ' warn' : ''}"><b class="k-val">${desviadas}</b><span class="k-pie">Fuera de orden</span></div>
+      </div>`;
+
+    // Un renglon por viaje, del mas reciente al mas viejo. Mismo timeline que el
+    // detalle de equipo de patrullas: la pregunta es la misma forma.
+    const linea = filas.map((f) => {
+      const insp = f.inspeccion || {};
+      const danos = insp.danos || [];
+      const r = rotulo(f.jornada_clave);
+      const desvio = f.orden_real && f.orden_solicitado && f.orden_real !== f.orden_solicitado;
+
+      return `
+        <div class="linea">
+          <span class="rail" style="background:${danos.length ? 'var(--ttfa-red)' : 'var(--status-ok)'}"></span>
+          <div class="cuerpo">
+            <div class="cab">
+              <span class="fecha">${esc(r.dia)}</span>
+              <span class="badge sin-punto ${danos.length ? 'warn' : 'ok'}">${danos.length ? danos.length + (danos.length === 1 ? ' daño' : ' daños') : 'Sin daños'}</span>
+              <span class="tr">${esc(f.solicitud.destino || '')}</span>
+            </div>
+            <span class="dv">${esc(f.solicitud.codigo || '')} · equipo ${esc(f.solicitud.equipo || '—')} · bahía ${esc(f.solicitud.bahia || '—')}</span>
+            <span class="extra">
+              Bajó ${f.orden_real || '—'}.º de ${f.orden_solicitado || '—'} solicitado${desvio ? ' · fuera de orden' : ''}
+              ${insp.escaneado_en ? ' · ' + hhmm(insp.escaneado_en) : ''}
+            </span>
+            ${danos.length ? `<div class="pc-danos" style="margin-top:6px">${danos.map((d) => `
+              <div class="pc-dano">
+                ${d.foto ? `<img src="${esc(d.foto)}" alt="" data-ver="${esc(d.foto)}">` : `<span class="pc-sinfoto">${ico('image', 16)}</span>`}
+                <span class="txt">
+                  <b>${esc(nombreParte(d.parte_id))}</b>
+                  <small>${esc(nombreDano(d.tipo_dano_id))}${d.comentario ? ' · ' + esc(d.comentario) : ''}</small>
+                </span>
+              </div>`).join('')}</div>` : ''}
+          </div>
+        </div>`;
+    }).join('');
+
+    cuerpo.innerHTML = kpis
+      + `<div class="cab-lista"><span class="eq-label">Viajes</span><span class="mono">${viajes}</span></div>`
+      + linea;
+  }
+
+  /** Resultados del buscador del historial, antes de entrar a un VIN. */
+  function pintarBusqueda() {
+    const cuerpo = $('#ph-cuerpo');
+    if (!cuerpo) return;
+
+    if (hist.buscando) { cuerpo.innerHTML = '<p class="nota centro">Buscando…</p>'; return; }
+    if (hist.resultados === null) {
+      cuerpo.innerHTML = '<p class="nota centro">No se pudo buscar. Probá de nuevo cuando haya señal.</p>';
+      return;
+    }
+    if (!hist.resultados.length) {
+      cuerpo.innerHTML = `<p class="nota centro">Ningún VIN con <b class="mono">${esc(hist.busca)}</b>. Probá con los últimos seis.</p>`;
+      return;
+    }
+
+    // Un VIN puede haber viajado varias veces: se agrupa para no repetirlo.
+    const porVin = new Map();
+    for (const f of hist.resultados) {
+      if (!porVin.has(f.vin)) porVin.set(f.vin, []);
+      porVin.get(f.vin).push(f);
+    }
+
+    cuerpo.innerHTML = `<div class="pc-lista">${Array.from(porVin.entries()).map(([vin, viajes]) => {
+      const danos = viajes.reduce((a, f) => a + ((f.inspeccion && f.inspeccion.danos) || []).length, 0);
+      return `
+        <button type="button" class="fila pc-unidad ${danos ? 'ng' : 'ok'}" data-vin-hist="${esc(vin)}">
+          <span class="txt">
+            <b class="mono">${esc(vin)}</b>
+            <small>${esc(viajes[0].modelo || '—')} · ${viajes.length} ${viajes.length === 1 ? 'viaje' : 'viajes'}${danos ? ' · ' + danos + (danos === 1 ? ' daño' : ' daños') : ''}</small>
+          </span>
+          ${ico('chevron-left', 15)}
+        </button>`;
+    }).join('')}</div>`;
+  }
+
   // ------------------------------------------------------------- eventos
 
   /**
@@ -1089,6 +1244,11 @@ const Precarga = (() => {
 
     const sol = t.closest('[data-sol]');
     if (sol) { verSolicitud(sol.dataset.sol); return; }
+
+    const vh = t.closest('[data-vin-hist]');
+    if (vh) { verVin(vh.dataset.vinHist, 'historial'); return; }
+
+    if (t.closest('#pc-vin')) { verVin(vinAbierto, 'unidad'); return; }
 
     const jor = t.closest('[data-jornada]');
     if (jor) { verJornada(jor.dataset.jornada); return; }
@@ -1207,6 +1367,20 @@ const Precarga = (() => {
     }
   });
 
+  /** Lo llama app.js cuando cambia el buscador del historial. */
+  function buscar(q) {
+    hist.busca = q;
+    if (!q) { hist.resultados = undefined; verHistorial(); return; }
+    hist.buscando = true;
+    pintarBusqueda();
+    buscarUnidades(q).then((filas) => {
+      if (hist.busca !== q) return;   // llego una respuesta vieja: se descarta
+      hist.buscando = false;
+      hist.resultados = filas;
+      pintarBusqueda();
+    });
+  }
+
   /** Lo llama app.js cuando la cola sincroniza, para que deje de decir "sin sincronizar". */
   function refrescar(vistaActual) {
     cargar().then(() => {
@@ -1217,11 +1391,14 @@ const Precarga = (() => {
   }
 
   return { cargar, refrescar, verBajadas, verSolicitud, verUnidad, verHistorial,
+           verVin, pintarVin, buscar,
            pintarSolicitud, tomarFoto, verHoja, pintarHoja,
            // Los usa js/hoja.js para escribir los nombres en el documento.
            parte: parteDe, nombreParte, nombreDano,
            catalogo: () => CATA || { partes: [], tipos_dano: [] },
            // A donde vuelve la hoja: depende de si se abrio desde una unidad o
            // desde la solicitud. Lo consulta `atras` en app.js.
-           vueltaDeHoja: () => (hojaTipo === 'legajo' ? 'solicitud' : 'unidad') };
+           vueltaDeHoja: () => (hojaTipo === 'legajo' ? 'solicitud' : 'unidad'),
+           // El historial de un VIN se abre desde dos lados; vuelve al que lo abrio.
+           vueltaDeVin: () => (vinVista.desde === 'historial' ? 'precarga-hist' : 'unidad') };
 })();

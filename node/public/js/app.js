@@ -947,13 +947,15 @@ const MODULOS = {
     // inspector que abre un VIN para mirarlo sale del camion entero.
     atras: (v) => (v === 'unidad' ? 'solicitud'
       : v === 'hoja' ? Precarga.vueltaDeHoja()   // la unidad, o la solicitud si es el legajo
+      : v === 'vin' ? Precarga.vueltaDeVin()
       : null)
   }
 };
 
 /** Las vistas de detalle no tienen pestaña, pero pertenecen a un modulo. */
 const DETALLES = { detalle: 'equipos', control: 'equipos', bahia: 'bahias',
-                   solicitud: 'precarga', unidad: 'precarga', hoja: 'precarga' };
+                   solicitud: 'precarga', unidad: 'precarga', hoja: 'precarga',
+                   vin: 'precarga' };
 
 let modulo = 'equipos';
 
@@ -1001,6 +1003,7 @@ function irA(nombre) {
   // aca, y sin esto el encabezado se queda con el VIN de la unidad.
   if (nombre === 'solicitud') Precarga.pintarSolicitud();
   if (nombre === 'hoja') Precarga.pintarHoja();
+  if (nombre === 'vin') Precarga.pintarVin();
 }
 
 function abrirDrawer() { $('#drawer').hidden = false; $('#scrim').hidden = false; }
@@ -1152,7 +1155,7 @@ $('#refrescar').addEventListener('click', () => {
  * `espera` es para el Historial, que pega contra el servidor en cada tecla si
  * no se lo frena. En Hoy es 0 porque filtra un array que ya esta en memoria.
  */
-function cablearBuscador(id, espera, alCambiar) {
+function cablearBuscador(id, espera, alCambiar, limpiarTexto) {
   const caja = $('#' + id + '-buscar');
   const limpiar = $('#' + id + '-limpiar');
   $('#' + id + '-lupa').innerHTML = ico('search', 15);
@@ -1160,7 +1163,9 @@ function cablearBuscador(id, espera, alCambiar) {
 
   let t;
   const aplicar = () => {
-    const v = caja.value.replace(/\D/g, '');
+    // Por defecto solo digitos, que es un numero de equipo. Un VIN es
+    // alfanumerico, asi que quien lo necesite pasa su propia limpieza.
+    const v = (limpiarTexto || ((s) => s.replace(/\D/g, '')))(caja.value);
     if (caja.value !== v) caja.value = v;
     limpiar.hidden = !v;
     clearTimeout(t);
@@ -1173,6 +1178,8 @@ function cablearBuscador(id, espera, alCambiar) {
 
 cablearBuscador('h', 0, (v) => { buscaHoy = v; verHoy(); });
 cablearBuscador('f', 350, (v) => { buscaHist = v; verHistorial(true); });
+// El VIN es alfanumerico; se busca en mayuscula y sin separadores.
+cablearBuscador('pv', 350, (v) => Precarga.buscar(v), (s) => s.toUpperCase().replace(/[^A-Z0-9]/g, ''));
 
 $('#mas').addEventListener('click', () => verHistorial(false));
 $('#form').addEventListener('submit', guardar);

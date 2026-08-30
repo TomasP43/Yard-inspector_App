@@ -36,7 +36,7 @@ ahi arranca el siguiente.**
 | # | Que | Toca | Estado |
 |---|---|---|---|
 | 1 | ~~El borrador sobrevive a que se cierre la app~~ | front | **hecho** |
-| 2 | **Buscar un VIN** y ver todo su historial | front + `YI-016` | pendiente |
+| 2 | ~~Buscar un VIN y ver todo su historial~~ | front + `YI-016` | **front hecho**, falta el endpoint |
 | 3 | **Codigos AIAG y gravedad** | datos + front + `YI-015` | bloqueado: falta M-14/M-22 |
 | 4 | **PDF del legajo** y envio | front + decision | pendiente |
 | 5 | **Punto exacto** sobre el esquema, no sector | front | pendiente |
@@ -1093,7 +1093,9 @@ evita que vuelvan a aparecer en cada conversacion.
   vez. Por eso `unidades` es una lista y no un objeto — lo mismo que dice
   `YI-013` sobre `ix_unidad_vin` no siendo único.
 
-- **Mientras tanto:** no hay forma. El historial sólo llega por jornada.
+- **Mientras tanto:** el front ya está hecho y andando contra el mock, que
+  busca sobre la jornada en curso más las catorce cerradas. Conectar esto es
+  implementar el endpoint; la pantalla no cambia.
 
 ---
 

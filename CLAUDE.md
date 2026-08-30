@@ -496,6 +496,29 @@ medido sobre el historico, **Abollado y Rayado son el 77% de los daños** y hoy
 quedan cuarto y noveno. Ordenarlos por uso ahorraria un barrido de la lista en
 tres de cada cuatro cargas — es cambiar el orden de un array.
 
+### Buscar un VIN
+
+Todo lo que le paso a una unidad, cruzando jornadas. Es la pregunta que llega
+cuando hay un reclamo --«¿que paso con este auto?»-- y hasta ahora no habia donde
+escribirla: el registro existia pero no se podia interrogar.
+
+**Se entra por dos lados** y llevan al mismo lugar: el buscador de la pestaña
+Historial, y el boton de la ficha de una unidad ya cargada. Son dos momentos
+distintos: uno arranca del numero, el otro de tener la unidad adelante.
+
+**La busqueda va al servidor, no al cliente**, por lo mismo que el historial de
+patrullas (YI-001): el cliente solo tiene la jornada en curso cargada. Con un VIN
+el error seria peor que una cuenta mal -- diria «no hay nada» de una unidad que si
+viajo, la semana pasada.
+
+Se busca **parcial**: un VIN son 17 caracteres y nadie los escribe enteros, pero
+los ultimos seis lo identifican. `cablearBuscador` pasa a aceptar su propia
+limpieza de texto -- por defecto solo digitos, que es un numero de equipo, y el
+VIN pasa la suya porque es alfanumerico.
+
+La pantalla es el mismo timeline que el detalle de equipo de patrullas: la
+pregunta tiene la misma forma, y no habia razon para inventar otra.
+
 ### El borrador no se pierde
 
 El borrador de la unidad --lo que se eligio, los daños cargados y sus fotos-- va

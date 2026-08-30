@@ -35,8 +35,9 @@
  * v35: entra el esquema del vehiculo (vehiculo.js). Los ocho dibujos NO van al
  *     SHELL --son 1,1 MB-- sino cache-first, como uploads.
  * v36: entra la hoja de la unidad para imprimir (hoja.js + hoja.css).
+ * v37: buscador de VIN y el historial de una unidad.
  */
-const VERSION = 'v36';
+const VERSION = 'v37';
 const CACHE = `yard-${VERSION}`;
 
 // El app shell tiene que alcanzar para abrir la app sin conexion. Rutas

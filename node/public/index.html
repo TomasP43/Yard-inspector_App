@@ -249,8 +249,23 @@ try {
     <div id="pc-cuerpo"></div>
   </section>
 
+  <!-- Acá la búsqueda va al servidor: el cliente sólo tiene la jornada en curso,
+       y filtrar sobre eso diría "no hay nada" de una unidad que sí viajó. -->
   <section id="v-precarga-hist" class="vista" hidden>
+    <div class="filtros">
+      <div class="buscador">
+        <span class="lupa" id="pv-lupa"></span>
+        <input id="pv-buscar" type="search" autocomplete="off" spellcheck="false"
+               placeholder="Buscar un VIN" aria-label="Buscar una unidad por VIN">
+        <button type="button" class="limpiar" id="pv-limpiar" aria-label="Limpiar la búsqueda" hidden></button>
+      </div>
+    </div>
     <div id="ph-cuerpo"></div>
+  </section>
+
+  <!-- Todo lo que le pasó a una unidad, cruzando jornadas. -->
+  <section id="v-vin" class="vista" hidden>
+    <div id="vin-cuerpo"></div>
   </section>
 
   <!-- Una solicitud: sus datos, el botón de escanear y sus VINs con el orden

@@ -928,6 +928,17 @@
     return out;
   })();
 
+  /**
+   * Un VIN que viaja DOS veces.
+   *
+   * Los VIN se generan al azar, asi que dos jornadas nunca repetian uno y el
+   * historial de una unidad se veia siempre con un solo viaje -- justo el caso
+   * que esa pantalla no tiene que resolver. Este se fuerza en la jornada en
+   * curso y en una cerrada.
+   */
+  const VIN_REPETIDO = '8AJRPT2VU41007733';
+  SOLICITUDES[0].unidades[1].vin = VIN_REPETIDO;
+
   const CLAVE_PC = 'yard-preview-precarga';
 
   // `?limpiar` tiene que llevarse tambien lo de precarga, o "empezar de cero"
@@ -1133,6 +1144,16 @@
       });
     }
 
+    // El VIN repetido aparece en UNA jornada cerrada, la de ayer a la tarde.
+    // En todas seria peor que en ninguna: un VIN que viaja quince veces en dos
+    // semanas no existe, y la pantalla se veria con un caso que no pasa.
+    const ayer = new Date(); ayer.setDate(ayer.getDate() - 1);
+    const claveAyer = ayer.getFullYear() + '-' + String(ayer.getMonth() + 1).padStart(2, '0')
+      + '-' + String(ayer.getDate()).padStart(2, '0') + '-tarde';
+    if (clave === claveAyer && out.length && out[0].unidades.length > 2) {
+      out[0].unidades[2].vin = VIN_REPETIDO;
+    }
+
     CACHE_JORNADAS.set(clave, out);
     return out;
   }
@@ -1203,6 +1224,55 @@
       + '<button type="button" class="btn sec" data-sim="">Usar el VIN escrito</button>';
   }
 
+  /**
+   * Buscar un VIN cruzando jornadas.
+   *
+   * La busqueda va en el servidor y no en el cliente por lo mismo que el
+   * historial de patrullas: el cliente solo tiene la jornada en curso, y filtrar
+   * sobre eso daria una lista corta al lado de un total que es de otra cosa.
+   *
+   * Parcial y por el final: un VIN son 17 caracteres y nadie los escribe
+   * enteros, pero los ultimos seis lo identifican.
+   */
+  function buscarVin(q) {
+    const clave = String(q || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (clave.length < 3) return [];
+
+    const actual = Turnos.de(new Date()).clave;
+    const jornadas = [{ clave: actual, sols: solicitudesConEstado() }]
+      .concat(jornadasCerradas(14).map((j) => ({ clave: j.clave, sols: solicitudesDeJornada(j.clave) })));
+
+    const out = [];
+    for (const j of jornadas) {
+      for (const s of j.sols) {
+        // El orden real sale del momento del escaneo, igual que en el front.
+        const orden = new Map();
+        s.unidades.filter((u) => u.inspeccion && u.inspeccion.escaneado_en)
+          .sort((a, b) => String(a.inspeccion.escaneado_en).localeCompare(String(b.inspeccion.escaneado_en)))
+          .forEach((u, i) => orden.set(u.vin, i + 1));
+
+        for (const u of s.unidades) {
+          if (!u.vin.includes(clave)) continue;
+          out.push({
+            vin: u.vin,
+            jornada_clave: j.clave,
+            solicitud: { codigo: s.codigo, hora: s.hora, equipo: s.equipo,
+                         bahia: s.bahia, destino: s.destino, transportista: s.transportista },
+            modelo: u.modelo,
+            katashiki: u.katashiki,
+            so: u.so,
+            orden_solicitado: u.orden_solicitado,
+            orden_real: orden.get(u.vin) || null,
+            inspeccion: u.inspeccion || null
+          });
+        }
+      }
+    }
+    // El mas reciente primero: la pregunta suele ser por el ultimo viaje.
+    out.sort((a, b) => String(b.jornada_clave).localeCompare(String(a.jornada_clave)));
+    return out.slice(0, 40);
+  }
+
   const real = window.fetch.bind(window);
   window.fetch = (url, opts) => {
     const s = String(url && url.url ? url.url : url);
@@ -1236,6 +1306,12 @@
     }
 
     if (s.includes('api/precarga/catalogos')) return json(CATALOGOS_PC);
+
+    if (s.includes('api/precarga/unidades')) {
+      const q = new URLSearchParams(s.split('?')[1] || '');
+      const vin = q.get('vin') || '';
+      return json({ vin, unidades: buscarVin(vin) });
+    }
 
     if (s.includes('api/precarga/jornadas')) {
       const q = new URLSearchParams(s.split('?')[1] || '');
