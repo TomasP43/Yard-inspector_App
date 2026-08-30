@@ -554,7 +554,7 @@ const Precarga = (() => {
            <input type="search" id="pc-busca" value="${esc(n.busca || '')}"
                   placeholder="Buscar parte…" autocomplete="off" enterkeyhint="search">
          </div>
-         <div class="tags fila" id="pc-sectores"${buscando ? ' hidden' : ''}>
+         <div class="tags" id="pc-sectores"${buscando ? ' hidden' : ''}>
            ${grupos.map((g) => `<button type="button" class="tag${g === grupo ? ' sel' : ''}" data-grupo="${esc(g)}">${esc(g)}</button>`).join('')}
          </div>
          <div class="pc-partes" id="pc-lista-partes">${filasPartes(n)}</div>`;

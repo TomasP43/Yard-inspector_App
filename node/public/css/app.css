@@ -402,6 +402,12 @@ main {
 /* ------------------------------------------------------------------ formulario */
 
 .paso { display: grid; gap: 8px; margin-bottom: 16px; }
+/* Un item de grid no baja de su contenido (`min-width: auto`), asi que una fila
+   de chips con `nowrap` --las zonas, los sectores-- estiraba el bloque entero y
+   lo sacaba de la columna: la caja quedaba mas ancha que la tarjeta de arriba.
+   Con esto el bloque se achica a la pista y los chips scrollean, que es lo que
+   `.tags.fila` ya sabia hacer. */
+.paso > * { min-width: 0; }
 .paso > .cab { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
 
 .campo { display: grid; gap: var(--space-2); }
