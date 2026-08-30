@@ -490,7 +490,12 @@ const Precarga = (() => {
     const grupos = [];
     for (const p of (CATA && CATA.partes) || []) if (!grupos.includes(p.grupo)) grupos.push(p.grupo);
     const grupo = n.grupo || grupos[0];
-    const partes = ((CATA && CATA.partes) || []).filter((p) => p.grupo === grupo);
+    // "Otros" va ultimo siempre. Conserva el codigo Furlong del sector (54, 55,
+    // 98), asi que ordenado por id le tocaba el medio de la lista -- y el cajon
+    // de sastre a mitad de camino invita a usarlo antes de haber buscado.
+    const partes = ((CATA && CATA.partes) || [])
+      .filter((p) => p.grupo === grupo)
+      .sort((a, b) => (a.nombre === 'Otros') - (b.nombre === 'Otros'));
     const listo = n.parte_id && n.tipo_dano_id && n.foto;
 
     return `
