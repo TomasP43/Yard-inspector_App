@@ -106,7 +106,8 @@ const Vehiculo = (() => {
 
     const cuerpo = dibujo
       ? `<div class="veh-lienzo">
-           <img src="${esc(op.base || '')}${esc(dibujo)}" alt="Esquema del vehículo">
+           <img src="${esc(op.base || '')}${esc(dibujo)}" alt="Esquema del vehículo"
+                onerror="this.closest('.veh').classList.add('sin-dibujo')">
            ${marcas}
          </div>`
       : `<p class="nota alerta">${ico('octagon-alert', 15)} No tenemos el esquema de ${esc(modelo || 'este modelo')}. Los daños quedan en la lista.</p>`;
@@ -120,6 +121,7 @@ const Vehiculo = (() => {
 
     return `
       <div class="veh">
+        ${dibujo ? `<p class="nota alerta veh-falta">${ico('octagon-alert', 15)} No se pudo cargar el esquema. Los daños quedan en la lista.</p>` : ''}
         ${cuerpo}
         <div class="veh-refs">${leyenda}</div>
         ${interior && dibujo

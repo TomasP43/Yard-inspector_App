@@ -219,7 +219,8 @@ const Precarga = (() => {
           registrado_en: it.registrado_en,
           danos: (it.danos || []).map((d) => ({
             parte_id: d.parte_id, tipo_dano_id: d.tipo_dano_id,
-            gravedad: d.gravedad, comentario: d.comentario
+            gravedad: d.gravedad, comentario: d.comentario,
+            foto: urlDeFoto(d.foto)
           })),
           enCola: true,
           rechazada: it.estado === 'rechazada',
@@ -227,6 +228,28 @@ const Precarga = (() => {
         };
       }
     }
+  }
+
+  /**
+   * La URL de una foto que todavia esta en la cola.
+   *
+   * **Sin esto la hoja de una unidad sin sincronizar salia sin fotos**, que es
+   * justo el caso para el que existe esta app: se carga en la playa sin señal y
+   * se imprime ahi mismo. Los recuadros quedaban en blanco --el fallback de
+   * cuando no hay fotos-- asi que el documento no mentia, pero perdia la unica
+   * prueba de lo que se encontro.
+   *
+   * Memoizado por Blob: `superponerCola` corre en cada refresco y un
+   * `createObjectURL` por vuelta deja las URL colgadas hasta recargar. WeakMap
+   * para que se suelten solas cuando la cola libera el item.
+   */
+  const urlDeBlob = new WeakMap();
+  function urlDeFoto(f) {
+    if (!f) return null;
+    if (typeof f === 'string') return f;          // ya sincronizada: es un path
+    if (!(f instanceof Blob)) return null;
+    if (!urlDeBlob.has(f)) urlDeBlob.set(f, URL.createObjectURL(f));
+    return urlDeBlob.get(f);
   }
 
   /** Busca en la jornada en curso y despues en la del historial que este abierta. */
@@ -1013,6 +1036,37 @@ const Precarga = (() => {
     pintarHoja();
   }
 
+  /**
+   * Imprimir, que en el telefono es tambien **guardar el PDF**.
+   *
+   * No hay generador de PDF propio y no lo va a haber: el navegador ya sabe
+   * hacerlo desde el `@media print`, y escribir uno a mano significaria
+   * mantener el mismo documento dos veces --una en CSS y otra en primitivas de
+   * PDF-- hasta que las dos se separen. Ver D-018.
+   *
+   * Lo unico que hay que darle es **el nombre del archivo**, porque el dialogo
+   * usa `document.title` y sin esto los ocho legajos de la jornada salian todos
+   * como «Yard Inspector.pdf», que es exactamente el problema en un documento
+   * que se archiva por camion. Se restaura despues, que el titulo tambien es la
+   * pestaña.
+   */
+  function imprimir() {
+    const s = solPorId(solAbierta);
+    const limpio = (x) => String(x || '').replace(/[^A-Za-z0-9-]+/g, '-').replace(/^-|-$/g, '');
+    const nombre = hojaTipo === 'legajo'
+      ? 'legajo-' + limpio(s && s.codigo) + '-equipo-' + limpio(s && s.equipo)
+      : 'unidad-' + limpio(vinAbierto);
+
+    const antes = document.title;
+    document.title = nombre;
+    // El `afterprint` cierra el ciclo del dialogo. Si el navegador no lo emite
+    // --pasa en algunos webviews-- el timer devuelve el titulo igual.
+    const volver = () => { document.title = antes; window.removeEventListener('afterprint', volver); };
+    window.addEventListener('afterprint', volver);
+    setTimeout(volver, 60000);
+    window.print();
+  }
+
   function pintarHoja() {
     const cuerpo = $('#hj-cuerpo');
     if (!cuerpo) return;
@@ -1022,7 +1076,7 @@ const Precarga = (() => {
 
     const barra = `
       <div class="hj-acciones">
-        <button type="button" class="btn" id="hj-imprimir">${ico('file-text', 16)} Imprimir</button>
+        <button type="button" class="btn" id="hj-imprimir">${ico('file-text', 16)} Guardar PDF o imprimir</button>
       </div>`;
 
     if (hojaTipo === 'legajo') {
@@ -1322,7 +1376,7 @@ const Precarga = (() => {
 
     if (t.closest('#pc-hoja')) { verHoja(vinAbierto); return; }
     if (t.closest('#pc-legajo')) { verLegajo(); return; }
-    if (t.closest('#hj-imprimir')) { window.print(); return; }
+    if (t.closest('#hj-imprimir')) { imprimir(); return; }
 
     const uni = t.closest('[data-vin]');
     if (uni) { verUnidad(uni.dataset.vin); return; }

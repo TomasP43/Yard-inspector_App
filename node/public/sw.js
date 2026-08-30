@@ -39,8 +39,10 @@
  * v38: el codigo AIAG de cinco digitos. El paso de tamaño en el formulario
  *     (precarga.js), el campo en el payload (sync.js), la columna en la hoja
  *     (hoja.js) y sus estilos.
+ * v39: la hoja de una unidad sin sincronizar sale con sus fotos (precarga.js),
+ *     el esquema avisa si no cargo (vehiculo.js) y el PDF sale con nombre.
  */
-const VERSION = 'v38';
+const VERSION = 'v39';
 const CACHE = `yard-${VERSION}`;
 
 // El app shell tiene que alcanzar para abrir la app sin conexion. Rutas

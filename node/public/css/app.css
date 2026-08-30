@@ -1816,3 +1816,11 @@ details.ficha[open] .ver-obs .ico { transform: rotate(90deg); }
   background: transparent; border-color: transparent; padding: 1px 0;
   color: var(--text-muted);
 }
+
+/* El aviso de que el esquema no cargo.
+   Va escondido y lo destapa el `onerror` de la imagen: la mayoria de las veces
+   el dibujo esta --se cachea al abrir la primera unidad de ese modelo-- y
+   preguntarle al SW si lo tiene, desde el render, seria asincrono. */
+.veh .veh-falta { display: none; }
+.veh.sin-dibujo .veh-falta { display: flex; }
+.veh.sin-dibujo .veh-lienzo { display: none; }
