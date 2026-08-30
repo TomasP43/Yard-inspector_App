@@ -945,12 +945,13 @@ const MODULOS = {
     // Dos niveles de detalle: solicitud -> unidad. Sin esto, volver desde una
     // unidad cae en la pestaña y se saltea la solicitud, o sea que el
     // inspector que abre un VIN para mirarlo sale del camion entero.
-    atras: (v) => (v === 'unidad' ? 'solicitud' : null)
+    atras: (v) => (v === 'unidad' ? 'solicitud' : v === 'hoja' ? 'unidad' : null)
   }
 };
 
 /** Las vistas de detalle no tienen pestaña, pero pertenecen a un modulo. */
-const DETALLES = { detalle: 'equipos', control: 'equipos', bahia: 'bahias', solicitud: 'precarga', unidad: 'precarga' };
+const DETALLES = { detalle: 'equipos', control: 'equipos', bahia: 'bahias',
+                   solicitud: 'precarga', unidad: 'precarga', hoja: 'precarga' };
 
 let modulo = 'equipos';
 
@@ -997,6 +998,7 @@ function irA(nombre) {
   // Vista de detalle: no se recarga, se repinta. Volver desde la unidad entra
   // aca, y sin esto el encabezado se queda con el VIN de la unidad.
   if (nombre === 'solicitud') Precarga.pintarSolicitud();
+  if (nombre === 'hoja') Precarga.pintarHoja();
 }
 
 function abrirDrawer() { $('#drawer').hidden = false; $('#scrim').hidden = false; }

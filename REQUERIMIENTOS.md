@@ -796,7 +796,18 @@ deduplicación del catálogo, las trampas de los datos— está en
   daño, y esa sí es obligatoria. Si alguna vez hace falta, vuelve como una
   columna en `precarga_inspeccion` y un paso más en el formulario.
 
-- **⚠ La unidad se cierra con una afirmación, no por omisión.** El formulario
+- **La hoja de la unidad se arma en el cliente, no la pide al servidor.** Es el
+  `LOGISTIC'S CHECKLIST` del formulario, con los datos que ya vinieron en
+  `api/precarga/solicitudes`. No hace falta un endpoint: pedirlo obligaría a
+  tener señal justo cuando el inspector cierra la unidad.
+
+  ⚠ **Queda abierto si en destino hay que firmar sobre el papel.** Los recuadros
+  de firma del formulario se usan para las fotos del daño; el bloque de recepción
+  de destino queda en blanco para el módulo de descarga. Si además hacen falta
+  las firmas impresas, vuelven como recuadros y las fotos bajan.
+
+- **⚠ La unidad se cierra con una afirmación, no por omisión.**
+ El formulario
   pide «Sin daños» o «Con daños» sin nada preseleccionado, y hasta contestar no
   deja guardar; «Con daños» exige al menos un daño cargado. En el payload eso no
   agrega ningún campo — `danos: []` después de esa elección **es** la

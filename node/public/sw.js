@@ -34,8 +34,9 @@
  *     navegador solo reinstala el SW si el archivo sw.js cambio.
  * v35: entra el esquema del vehiculo (vehiculo.js). Los ocho dibujos NO van al
  *     SHELL --son 1,1 MB-- sino cache-first, como uploads.
+ * v36: entra la hoja de la unidad para imprimir (hoja.js + hoja.css).
  */
-const VERSION = 'v35';
+const VERSION = 'v36';
 const CACHE = `yard-${VERSION}`;
 
 // El app shell tiene que alcanzar para abrir la app sin conexion. Rutas
@@ -51,6 +52,7 @@ const SHELL = [
   './icon.svg',
   './css/tokens.css',
   './css/app.css',
+  './css/hoja.css',
   './js/iconos.js',
   './js/similitud.js',
   './js/turnos.js',
@@ -61,6 +63,7 @@ const SHELL = [
   './js/sync.js',
   './js/bahias.js',
   './js/vehiculo.js',
+  './js/hoja.js',
   './js/precarga.js',
   './js/app.js'
 ];

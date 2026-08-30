@@ -630,6 +630,10 @@ const Precarga = (() => {
         ${insp.rechazada ? `<p class="nota alerta">El servidor la rechazó: ${esc(insp.motivo || 'sin motivo')}. No se borró.</p>` : ''}
       </section>
 
+      <div class="acciones-full">
+        <button type="button" class="btn sec" id="pc-hoja">${ico('file-text', 16)} Ver la hoja de la unidad</button>
+      </div>
+
       ${danos.length ? Vehiculo.marcado(u.modelo, danos.map((d) => ({ grupo: (parteDe(d.parte_id) || {}).grupo }))) : ''}
 
       <div class="cab-lista"><span class="eq-label">Daños</span><span class="mono">${danos.length}</span></div>
@@ -784,6 +788,42 @@ const Precarga = (() => {
     }
   }
 
+  // --------------------------------------------------------------- la hoja
+
+  /**
+   * El documento de la unidad, para imprimir.
+   *
+   * Se abre desde la ficha de una unidad ya guardada: antes de guardar no hay
+   * documento que emitir. Vive como una vista mas y no como una pagina aparte
+   * --al reves que los carteles de bahia-- porque los datos ya estan en memoria:
+   * asi sale sin señal, que es la mitad del sentido de esta app.
+   */
+  function verHoja(vin) {
+    vinAbierto = vin;
+    irA('hoja');
+    pintarHoja();
+  }
+
+  function pintarHoja() {
+    const cuerpo = $('#hj-cuerpo');
+    if (!cuerpo) return;
+    const s = solPorId(solAbierta);
+    const u = unidadDe(s, vinAbierto);
+    if (!u || !u.inspeccion) {
+      cuerpo.innerHTML = '<p class="nota centro">Esta unidad todavía no se cargó.</p>';
+      return;
+    }
+
+    $('#titulo').textContent = 'Hoja de la unidad';
+    $('#eyebrow').textContent = u.vin;
+
+    cuerpo.innerHTML = `
+      <div class="hj-acciones">
+        <button type="button" class="btn" id="hj-imprimir">${ico('file-text', 16)} Imprimir</button>
+      </div>
+      ${Hoja.unidad(s, u, ordenReal(s).get(u.vin))}`;
+  }
+
   // ----------------------------------------------------------- historial
 
   /**
@@ -902,6 +942,9 @@ const Precarga = (() => {
 
     if (t.closest('#ph-volver')) { hist.clave = null; hist.solicitudes = null; pintarJornadas(); return; }
 
+    if (t.closest('#pc-hoja')) { verHoja(vinAbierto); return; }
+    if (t.closest('#hj-imprimir')) { window.print(); return; }
+
     const uni = t.closest('[data-vin]');
     if (uni) { verUnidad(uni.dataset.vin); return; }
 
@@ -1019,5 +1062,8 @@ const Precarga = (() => {
     });
   }
 
-  return { cargar, refrescar, verBajadas, verSolicitud, verUnidad, verHistorial, pintarSolicitud, tomarFoto };
+  return { cargar, refrescar, verBajadas, verSolicitud, verUnidad, verHistorial,
+           pintarSolicitud, tomarFoto, verHoja, pintarHoja,
+           // Los usa js/hoja.js para escribir los nombres en el documento.
+           parte: parteDe, nombreParte, nombreDano };
 })();

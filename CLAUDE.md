@@ -539,6 +539,42 @@ Los ocho dibujos **no van al `SHELL`** sino cache-first, como `uploads`: son
 3G-- pague de una todos los modelos. El esquema es una ayuda para revisar, no el
 registro; el dato son los daños de la lista. Ver D-013.
 
+### La hoja de la unidad
+
+Desde la ficha de una unidad ya guardada se abre **el documento para imprimir**:
+es el `LOGISTIC'S CHECKLIST` del formulario de precarga (hojas UNID1..UNID8),
+que hoy se imprime en blanco y se llena a mano, saliendo con lo que la app ya
+registro.
+
+Vive como una vista mas de la PWA y **no como una pagina aparte**, al reves que
+los carteles de bahia: los datos ya estan en memoria, asi que la hoja sale sin
+señal. Los carteles necesitan red para traer los tokens; esto no.
+
+| Del papel | En la hoja |
+|---|---|
+| Datos de la unidad | Salen cargados, mas el orden real de bajada y si fue fuera de orden |
+| Observacion de origen | La tabla de daños: sector, parte, tipo y comentario |
+| "Marcar con un circulo la zona dañada" | El esquema, ya marcado |
+| Los recuadros de firma | **Las fotos del daño** |
+| Recepcion de destino | **En blanco**, la llena el modulo de descarga |
+
+**Lo que no se porta:** la grilla de 95 partes con su numero y la leyenda de
+codigos. Existen para que alguien busque el codigo y lo escriba a mano; con la
+hoja generada el nombre ya esta puesto, asi que ocuparian una carilla para nada.
+Por lo mismo se imprime el nombre de la parte y del daño, no el codigo numerico.
+
+**Los recuadros de firma pasan a ser las fotos** por decision de la operacion: en
+precarga esos recuadros quedaban vacios, y la foto es la prueba que si existe en
+ese momento. ⚠ Queda abierto si en destino igual hay que firmar sobre el papel;
+si es asi, los recuadros vuelven.
+
+**El `@media print` suelta el layout de la app.** La PWA tiene
+`main { position: fixed }` y la barra de pestañas fija: sin soltar eso el
+navegador imprime una sola pantalla recortada, que es el mismo bug que ya se pago
+con el scroll del tablero. Y los fondos de las zonas van con
+`print-color-adjust: exact`, o el esquema sale en blanco y la hoja pierde el
+punto.
+
 ### La jornada cierra el viaje
 
 Una solicitud de una jornada cerrada **no ofrece escanear**: el camion ya salio, y
