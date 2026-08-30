@@ -860,6 +860,58 @@
     'Neumáticos (no de auxilio)': 1, 'Parrilla': 1
   };
 
+  /**
+   * El codigo AIAG de cada tipo de daño.
+   *
+   * **La planilla Furlong ES el estandar AIAG M-14 / M-22**, traducida. Se
+   * verifico codigo por codigo contra las tablas publicas: 01 Bent = Doblado,
+   * 04 Dented = Abollado, 12 Scratched = Rayado, y las gravedades 1/2/3 son
+   * "hasta 1 pulgada / hasta 3 / hasta 6" -- los 2,5 / 7,5 / 15 cm del impreso.
+   *
+   * El codigo de AREA no esta aca: **sale de la parte que el inspector ya
+   * eligio**, que es su numero en la planilla. No se le pide dos veces lo mismo.
+   *
+   * ⚠ Tres que conviene mirar con la operacion:
+   * - `Contaminado` toma **29** (Contamination - Exterior) del estandar. La
+   *   leyenda del impreso no lo lista, pero es exactamente el concepto; el 10 es
+   *   "Stained or Soiled" y es de interior.
+   * - `Derrame de fluido` toma **33**, que es lo que dice el impreso. El
+   *   estandar publicado usa **30** para lo mismo: son dos revisiones.
+   * - `Desprendido` toma **38** (Hardware - Loose, Missing), que es el mas
+   *   cercano, pero el impreso no lo dice.
+   *
+   * ⚠ **`Fallo de pintura` se queda sin codigo, y no es un olvido.** AIAG es un
+   * estandar de daño de TRANSPORTE y un defecto de pintura viene de planta. Es
+   * el tercer tipo mas cargado del historico (347 usos), asi que decidir que se
+   * hace con el no es menor: o se reporta como otra cosa, o se acepta que ese
+   * hallazgo no viaja en un reclamo de transporte.
+   */
+  const AIAG_TIPO = {
+    'Doblado': 1, 'Roto': 2, 'Cortado': 3, 'Abollado': 4, 'Mellado': 5,
+    'Faltante': 8, 'Contaminado (No daño)': 29, 'Perforado': 11, 'Rayado': 12,
+    'Vidrio roto': 21, 'Derrame de fluido': 33, 'Filo de panel': 34,
+    'Desprendido': 38, 'Fallo de pintura': null
+  };
+
+  /**
+   * Los codigos de gravedad, el quinto digito.
+   *
+   * Salen del impreso y coinciden con el estandar convertido a metrico. El 0
+   * --"sin excepcion"-- no se ofrece: solo se cargan daños que existen.
+   */
+  const GRAVEDADES = [
+    // `nombre` es el del impreso y va en el formulario, donde hay ancho. `corto`
+    // es para la tabla de la hoja, que comparte el renglon con cinco columnas
+    // mas: ahi "Mas de 7,5 y hasta 15 cm" se parte en tres lineas.
+    { id: 1, nombre: 'Hasta 2,5 cm', corto: '≤ 2,5 cm' },
+    { id: 2, nombre: 'Más de 2,5 y hasta 7,5 cm', corto: '2,5–7,5 cm' },
+    { id: 3, nombre: 'Más de 7,5 y hasta 15 cm', corto: '7,5–15 cm' },
+    { id: 4, nombre: 'Más de 15 y hasta 30 cm', corto: '15–30 cm' },
+    { id: 5, nombre: 'Más de 30 cm', corto: '> 30 cm' },
+    { id: 6, nombre: 'Sustitución / daño severo', corto: 'Severo' },
+    { id: 7, nombre: 'Faltante', corto: 'Faltante' }
+  ];
+
   const USOS_TIPO = {
     'Abollado': 1203, 'Rayado': 1041, 'Fallo de pintura': 347, 'Filo de panel': 81,
     'Desprendido': 60, 'Contaminado (No daño)': 55, 'Mellado': 43, 'Roto': 25,
@@ -868,8 +920,21 @@
   };
 
   const CATALOGOS_PC = {
-    partes: PARTES.map((p) => ({ ...p, usos: USOS_PARTE[p.nombre] || 0 })),
-    tipos_dano: TIPOS_DANO.map((d) => ({ ...d, usos: USOS_TIPO[d.nombre] || 0 }))
+    // `aiag` de la parte ES su numero en la planilla: los 1-99 son los area
+    // codes del estandar, verificado uno por uno. Las que se sumaron del
+    // catalogo de AppSheet no tienen numero, y van en null -- inventarles uno
+    // desde otra revision daria un codigo que no significa lo que dice.
+    partes: PARTES.map((p) => ({
+      ...p,
+      usos: USOS_PARTE[p.nombre] || 0,
+      aiag: p.id < 1000 ? p.id : null
+    })),
+    tipos_dano: TIPOS_DANO.map((d) => ({
+      ...d,
+      usos: USOS_TIPO[d.nombre] || 0,
+      aiag: AIAG_TIPO[d.nombre] === undefined ? null : AIAG_TIPO[d.nombre]
+    })),
+    gravedades: GRAVEDADES
   };
 
   const MODELOS = ['Hilux', 'Corolla Cross', 'Corolla', 'Yaris', 'Hiace', 'SW4'];
@@ -982,7 +1047,7 @@
         escaneado_en: new Date(base + (i + 1) * 6 * 60000).toISOString(),
         registrado_en: new Date(base + (i + 1) * 6 * 60000 + 90000).toISOString(),
         danos: idx === 2
-          ? [{ parte_id: 5, tipo_dano_id: 1, comentario: 'En el filo, lado interno', foto: 'uploads/demo-2.svg' }]
+          ? [{ parte_id: 5, tipo_dano_id: 1, gravedad: 2, comentario: 'En el filo, lado interno', foto: 'uploads/demo-2.svg' }]
           : []
       });
     });
@@ -1030,6 +1095,7 @@
     // regla que vive nada mas que en el cliente no es una regla.
     for (const d of b.danos || []) {
       if (!d.foto) return json({ error: 'foto_de_dano_requerida' }, 400);
+      if (!d.gravedad) return json({ error: 'gravedad_requerida' }, 400);
     }
 
     // Idempotencia: reenviar el mismo uuid devuelve 200 con lo que ya existe,
@@ -1049,6 +1115,7 @@
       danos: (b.danos || []).map((d) => ({
         parte_id: d.parte_id,
         tipo_dano_id: d.tipo_dano_id,
+        gravedad: d.gravedad,
         comentario: d.comentario || null,
         foto: 'uploads/demo-' + entre(1, 4) + '.svg'
       }))
@@ -1123,6 +1190,7 @@
             danos: conDano ? [{
               parte_id: un(PARTES).id,
               tipo_dano_id: un(TIPOS_DANO).id,
+              gravedad: ent(1, 5),
               comentario: null,
               foto: 'uploads/demo-' + ent(1, 4) + '.svg'
             }] : []

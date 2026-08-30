@@ -295,3 +295,25 @@
     print-color-adjust: exact;
   }
 }
+
+/* el codigo de cinco digitos --------------------------------------------- */
+
+/* Es la columna que se lee primero en un reclamo: monoespaciada, ancha fija y
+   con las cifras alineadas. */
+.hj-danos th.cod, .hj-danos td.cod {
+  width: 16mm; text-align: center;
+  font-family: var(--font-mono);
+  font-weight: 700; letter-spacing: .06em;
+  font-variant-numeric: tabular-nums;
+}
+.hj-danos td.cod i { font-style: normal; font-weight: 400; opacity: .45; }
+
+.hj-cod {
+  font-family: var(--font-mono);
+  letter-spacing: .06em;
+}
+
+.hj-cod-nota { margin: 3mm 0 2mm; }
+.hj-cod-nota b { font-weight: 700; }
+.hj-cod-nota i { font-style: italic; }
+.hj-danos th.tam, .hj-danos td.tam { width: 20mm; white-space: nowrap; font-variant-numeric: tabular-nums; }

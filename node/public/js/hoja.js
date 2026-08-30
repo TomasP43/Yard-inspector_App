@@ -75,13 +75,14 @@ const Hoja = (() => {
 
     const observacion = danos.length
       ? `<table class="hj-danos">
-           <thead><tr><th class="n">#</th><th>Área</th><th>Parte</th><th>Daño</th><th>Detalle</th></tr></thead>
+           <thead><tr><th class="n">#</th><th class="cod">CÓDIGO</th><th>Parte</th><th>Daño</th><th class="tam">Tamaño</th><th>Detalle</th></tr></thead>
            <tbody>${danos.map((d, i) => `
              <tr>
                <td class="n">${i + 1}</td>
-               <td>${esc((Precarga.parte(d.parte_id) || {}).grupo || '')}</td>
+               <td class="cod">${Precarga.codigoAiag(d) || '<i>—</i>'}</td>
                <td class="fuerte">${esc(Precarga.nombreParte(d.parte_id))}</td>
                <td>${esc(Precarga.nombreDano(d.tipo_dano_id))}</td>
+               <td class="tam">${esc(Precarga.gravedadCorta(d.gravedad) || '—')}</td>
                <td class="det">${esc(d.comentario || '')}</td>
              </tr>`).join('')}</tbody>
          </table>`
@@ -142,7 +143,7 @@ const Hoja = (() => {
             ${conFoto.map((d, i) => `
               <figure>
                 <img src="${esc(d.foto)}" alt="">
-                <figcaption><b>${i + 1}</b> ${esc(Precarga.nombreParte(d.parte_id))} · ${esc(Precarga.nombreDano(d.tipo_dano_id))}</figcaption>
+                <figcaption><b>${i + 1}</b> ${esc(Precarga.nombreParte(d.parte_id))} · ${esc(Precarga.nombreDano(d.tipo_dano_id))}${Precarga.codigoAiag(d) ? ` <b class="hj-cod">${Precarga.codigoAiag(d)}</b>` : ''}</figcaption>
               </figure>`).join('')}
           </div>
         </section>` : ''}
@@ -165,7 +166,10 @@ const Hoja = (() => {
    */
   function referencia(s) {
     const partes = Precarga.catalogo().partes || [];
-    const tipos = Precarga.catalogo().tipos_dano || [];
+    // Ordenados por codigo, que es como se busca en una leyenda: el inspector
+    // tiene el numero y quiere el nombre. Los sin codigo van al final.
+    const tipos = (Precarga.catalogo().tipos_dano || []).slice()
+      .sort((a, b) => (a.aiag == null) - (b.aiag == null) || a.aiag - b.aiag);
 
     const filas = [];
     for (const sector of SECTORES) {
@@ -210,22 +214,22 @@ const Hoja = (() => {
             </table>`).join('')}
         </div>
 
+        <p class="hj-nota hj-cod-nota">
+          <b>El código son cinco dígitos: área + tipo + tamaño.</b>
+          El área es el Nº de la parte de esta grilla, el tipo sale de la lista
+          de abajo y el tamaño del último dígito. <i>Abollado de 10 cm en la
+          puerta delantera izquierda</i> es <b>10043</b>.
+        </p>
+
         <div class="hj-leyendas">
           <section>
             <h3>Tipos de daño</h3>
-            <ul>${tipos.map((t) => `<li><i>${String(t.id).padStart(2, '0')}</i>${esc(t.nombre)}</li>`).join('')}</ul>
+            <ul>${tipos.map((t) => `<li><i>${t.aiag == null ? '··' : String(t.aiag).padStart(2, '0')}</i>${esc(t.nombre)}${t.aiag == null ? ' <small>(sin código)</small>' : ''}</li>`).join('')}</ul>
           </section>
           <section>
-            <h3>Código de gravedad <small>· no se registra en precarga</small></h3>
+            <h3>Tamaño del daño <small>· el 5.º dígito</small></h3>
             <ul class="grav">
-              <li><i>0</i>Sin excepción</li>
-              <li><i>1</i>Hasta 2,5 cm</li>
-              <li><i>2</i>Más de 2,5 y hasta 7,5 cm</li>
-              <li><i>3</i>Más de 7,5 y hasta 15 cm</li>
-              <li><i>4</i>Más de 15 y hasta 30 cm</li>
-              <li><i>5</i>Más de 30 cm</li>
-              <li><i>6</i>Sustitución / daño severo</li>
-              <li><i>7</i>Faltante</li>
+              ${(Precarga.catalogo().gravedades || []).map((g) => `<li><i>${g.id}</i>${esc(g.nombre)}</li>`).join('')}
             </ul>
           </section>
         </div>

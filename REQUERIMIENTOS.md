@@ -37,7 +37,7 @@ ahi arranca el siguiente.**
 |---|---|---|---|
 | 1 | ~~El borrador sobrevive a que se cierre la app~~ | front | **hecho** |
 | 2 | ~~Buscar un VIN y ver todo su historial~~ | front + `YI-016` | **front hecho**, falta el endpoint |
-| 3 | **Codigos AIAG y gravedad** | datos + front + `YI-015` | bloqueado: falta M-14/M-22 |
+| 3 | **Codigos AIAG y gravedad** | datos + front + `YI-015` | **hecho en el front** |
 | 4 | **PDF del legajo** y envio | front + decision | pendiente |
 | 5 | **Punto exacto** sobre el esquema, no sector | front | pendiente |
 | 6 | **Captura guiada** de fotos | front | pendiente |
@@ -1003,7 +1003,7 @@ evita que vuelvan a aparecer en cada conversacion.
 ---
 
 ### YI-015 — Los códigos de daño son un estándar global, no un formulario interno
-- **Estado:** pendiente · **descubierto haciendo el benchmark del módulo**
+- **Estado:** **hecho en el front** · falta el backend · descubierto haciendo el benchmark
 - **Prioridad:** alta
 - **Tipo:** modelo de datos
 
@@ -1046,14 +1046,51 @@ evita que vuelvan a aparecer en cada conversacion.
   filas 62–73) y las 8 gravedades también. Falta mapear las 16 partes agregadas y
   volver a poner el paso de gravedad en el formulario.
 
-- **⚠ No pude verificar las tablas completas.** Los PDF de AIAG y de ACERTUS son
-  imágenes o están protegidos, y M-14/M-22 se compran. La estructura y el ejemplo
-  `10 · 12 · 3` sí están confirmados en fuentes públicas. Antes de migrar hay que
-  conseguir el documento — o reconstruirlo desde la planilla, que ya lo tiene
-  traducido y es la que la operación usa.
+#### Lo que ya está hecho (front, contra el mock)
 
-- **Mientras tanto:** el catálogo guarda el nombre y el número de parte, que es
-  el *area code*. Lo que falta es el tipo y la gravedad.
+**El código se arma solo con lo que el inspector ya eligió.** No se le pide: el
+área es el número de la parte que tocó, el tipo es el daño que tocó, y lo único
+que se sumó es un paso de **tamaño**, un toque, siete opciones, nada
+preseleccionado. En AppSheet ese código se tipeaba a mano.
+
+- `precarga_parte.aiag` = su número Furlong, verificado uno por uno contra las
+  tablas públicas: 1 Antenna, 3 Bumper Front, 10–13 Doors, 14/16 Fenders,
+  15 Quarter Panel, 30/31 Mirror Outside, 37 Roof, 40 Spare Tire, 44 Gas Tank,
+  52 Deck Lid, 53 Sunroof, 57 Wheel Covers, 64 Spoiler, 99 Engine Compartment.
+- `precarga_tipo_dano.aiag`, los 14 que la operación carga.
+- Las 7 gravedades del impreso, que son las del estándar convertidas a métrico:
+  `1` ≤2,5 cm · `2` 2,5–7,5 · `3` 7,5–15 · `4` 15–30 · `5` >30 · `6` severo ·
+  `7` faltante. Confirmado: AIAG dice ≤1", >1–3", >3–6", >6–12", >12". El `0`
+  («sin excepción») no se ofrece, porque solo se cargan daños que existen.
+- La hoja imprime la columna **CÓDIGO** y explica de qué se arma.
+
+#### Tres cosas que decide la operación, no el código
+
+| Qué | Cómo quedó | Por qué hay que mirarlo |
+|---|---|---|
+| **`Fallo de pintura` no tiene código** | se carga igual, la hoja dice «sin código» | AIAG codifica daño de **transporte**; un defecto de pintura viene de planta. Es el **3.º tipo más cargado (347 usos)**: o se reporta como otra cosa, o se acepta que ese hallazgo no entra en un reclamo de transporte |
+| **`Derrame de fluido` toma `33`** | como dice el impreso | El estándar publicado usa `30` para lo mismo. Son dos revisiones; si el reclamo va contra un tercero, gana la de él |
+| **19 partes sin *area code*** | se cargan igual, sin código | 16 vinieron del catálogo de AppSheet (ópticas, tapizados, airbags, llantas…) y 3 son los «Otros» de cada sector. El estándar tiene números para varias —24 Headlight, 45 Tail Light, 93 Steering Wheel— pero de **otra revisión**, donde 41 y 93 significan cosas distintas que en el impreso. Importarlos mezclaría revisiones y daría un código que no dice lo que parece |
+
+Dos más, elegidas sin poder consultar: `Contaminado (No daño)` toma **29**
+(*Contamination - Exterior*), que el impreso no lista pero es exactamente el
+concepto — el `10` es *Stained or Soiled* y es de interior. Y `Desprendido` toma
+**38** (*Hardware - Loose, Missing*), que es el más cercano.
+
+#### Lo que falta del backend
+
+- Columna `aiag` en `precarga_parte` y `precarga_tipo_dano`, y columna
+  `gravedad` (TINYINT, 1–7, nullable) en `precarga_dano`. **Nullable a
+  propósito:** el histórico de AppSheet no la tiene, y un daño sin gravedad
+  tiene que seguir mostrándose sin código en vez de romper la hoja — ya está
+  probado en el front.
+- `POST api/precarga/inspecciones` acepta `gravedad` por daño.
+- Migración 009.
+
+- **⚠ No se pudieron verificar las tablas completas.** M-14/M-22 se compran; las
+  tablas de tipo y gravedad salieron de un documento público de ACERTUS que las
+  reproduce, y el área salió del impreso de Furlong. Coinciden entre sí, que es
+  la mejor evidencia disponible sin comprar la norma.
 
 ---
 

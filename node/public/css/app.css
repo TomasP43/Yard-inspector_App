@@ -1776,3 +1776,43 @@ details.ficha[open] .ver-obs .ico { transform: rotate(90deg); }
 /* El interior no tiene vista en el blueprint: su chip lo dice con el borde. */
 .veh-ref.suelto { border-style: dashed; border-color: var(--line-strong); }
 .veh-ref.suelto b { background: var(--graphite-500); }
+
+/* el codigo AIAG: se lee, no se tipea ------------------------------------- */
+
+/* Los siete tamaños en dos columnas. En una sola fila de tags los textos son
+   largos ("Mas de 15 y hasta 30 cm") y quedaban tres renglones desparejos. */
+.pc-gravedad { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.pc-gravedad .tag {
+  /* `.tag` fija `height: 30px`; aca el texto puede ir a dos renglones. */
+  height: auto; min-height: 34px;
+  justify-content: flex-start; gap: 8px; text-align: left;
+  padding: 7px 10px; line-height: 1.25;
+}
+.pc-gravedad .tag i {
+  font-style: normal; font-family: var(--font-mono);
+  font-size: 11px; font-weight: 700; flex: 0 0 18px;
+  display: grid; place-items: center;
+  height: 18px; border-radius: 5px;
+  background: var(--surface-inset); color: var(--text-strong);
+}
+.pc-gravedad .tag.sel i { background: var(--ttfa-red-40); color: var(--text-strong); }
+/* Los dos ultimos son cualitativos, no una medida: van solos abajo. */
+.pc-gravedad .tag:nth-child(6),
+.pc-gravedad .tag:nth-child(7) { grid-column: 1 / -1; min-height: 30px; }
+
+/* El codigo va monoespaciado y chico: es una referencia para el reclamo, no
+   algo que el inspector tenga que leer mientras carga. */
+.pc-aiag {
+  display: inline-block; margin-top: 3px;
+  font-family: var(--font-mono);
+  font-size: 10.5px; font-weight: 700; letter-spacing: .08em;
+  color: var(--text-strong);
+  background: var(--surface-inset);
+  border: 1px solid var(--line-hairline);
+  border-radius: 4px; padding: 1px 5px;
+}
+.pc-aiag.sin {
+  font-family: inherit; font-weight: 500; letter-spacing: 0;
+  background: transparent; border-color: transparent; padding: 1px 0;
+  color: var(--text-muted);
+}

@@ -355,3 +355,44 @@ primer reclamo que hay que traducir a mano.
 despues de cargar meses de daños.
 
 **Reversibilidad:** no aplica. Es politica de trabajo, como D-005.
+
+---
+
+## D-017 — El codigo AIAG se deriva, no se pide
+
+**Fecha:** 30-08-2026 · **Ambito:** precarga, formulario de daño
+
+Con el hallazgo de D-016 --el impreso de Furlong es la norma AIAG M-14/M-22--
+habia que meter el codigo de cinco digitos en el modulo. La forma obvia era un
+campo donde el inspector lo escribe, que es lo que hacia AppSheet.
+
+**Decision:** el codigo **no se pide nunca**. Se arma solo: el area son los dos
+primeros digitos y sale del **numero de la parte que el inspector ya eligio**, el
+tipo son los dos siguientes y sale del **daño que ya eligio**, y lo unico que se
+agrego es un paso de **tamaño** --un toque, siete opciones, nada
+preseleccionado--. `Paragolpe delantero` + `Abollado` + `7,5-15 cm` es `03043`,
+sin que nadie escriba un numero.
+
+**Motivo:** alguien que ya dijo «paragolpe delantero, abollado, de unos diez
+centimetros» dijo el codigo entero. Pedirselo de nuevo en cifras es pedir lo
+mismo dos veces, y es el molde exacto del campo que se saco en YI-008: uno que
+mide al que lo carga en vez de medir lo que se encontro. Un codigo tipeado a mano
+tiene ademas la falla de que **un digito mal no se ve**: `03043` y `03042` son
+los dos plausibles, y nadie los revisa.
+
+**Costo:** un paso mas por daño, obligatorio. Se acepta porque el tamaño es el
+unico de los tres que el inspector todavia no habia dicho, y porque sin el no hay
+codigo: quedan cuatro digitos de cinco.
+
+**Lo que el codigo NO inventa.** Cuando falta alguna de las tres piezas no se
+muestra un codigo a medias: se muestra **por que no hay**. Pasa en tres casos
+reales --19 partes sin numero de area, `Fallo de pintura` que la norma no tiene
+porque es defecto de planta y no de transporte, y los daños viejos cargados antes
+de que existiera el paso--. Un `03000` de relleno viajaria a un reclamo como si
+significara algo.
+
+**Reversibilidad:** alta en el front. La que no es reversible es la de los
+codigos elegidos sin poder consultar (`29` para contaminado, `33` para derrame,
+`38` para desprendido): esos ya viajan en los registros, y cambiarlos despues
+obliga a migrar lo cargado. Estan marcados en YI-015 para que los confirme la
+operacion antes de que haya volumen.

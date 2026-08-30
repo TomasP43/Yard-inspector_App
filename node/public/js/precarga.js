@@ -218,7 +218,8 @@ const Precarga = (() => {
           escaneado_en: it.escaneado_en,
           registrado_en: it.registrado_en,
           danos: (it.danos || []).map((d) => ({
-            parte_id: d.parte_id, tipo_dano_id: d.tipo_dano_id, comentario: d.comentario
+            parte_id: d.parte_id, tipo_dano_id: d.tipo_dano_id,
+            gravedad: d.gravedad, comentario: d.comentario
           })),
           enCola: true,
           rechazada: it.estado === 'rechazada',
@@ -237,6 +238,59 @@ const Precarga = (() => {
   const danoDe = (id) => ((CATA && CATA.tipos_dano) || []).find((d) => String(d.id) === String(id));
   const nombreParte = (id) => { const p = parteDe(id); return p ? p.nombre : 'Parte ' + id; };
   const nombreDano = (id) => { const d = danoDe(id); return d ? d.nombre : 'Daño ' + id; };
+
+  /**
+   * El codigo AIAG de un daño: **area + tipo + gravedad**, cinco digitos.
+   *
+   * No se le pide al inspector: **se arma solo con lo que ya eligio**. El area
+   * es el numero de la parte, el tipo el del daño, y la gravedad el unico paso
+   * que se sumo. Pedirle un codigo a alguien que ya dijo «puerta delantera
+   * izquierda, abollado, hasta 7,5 cm» seria pedirle lo mismo dos veces, y en
+   * AppSheet ese campo se tipeaba a mano.
+   *
+   * Devuelve null cuando falta alguno de los tres, y eso pasa de verdad: las 16
+   * partes que vinieron del catalogo de AppSheet no tienen numero de area, y
+   * `Fallo de pintura` no tiene tipo --AIAG es un estandar de daño de TRANSPORTE
+   * y un defecto de pintura viene de planta--. Un codigo a medias no es un
+   * codigo: en esos casos no se muestra ninguno y se dice por que.
+   */
+  function codigoAiag(d) {
+    const p = parteDe(d.parte_id);
+    const ti = danoDe(d.tipo_dano_id);
+    if (!p || !ti || p.aiag == null || ti.aiag == null || !d.gravedad) return null;
+    return String(p.aiag).padStart(2, '0')
+         + String(ti.aiag).padStart(2, '0')
+         + String(d.gravedad);
+  }
+
+  /** Por que este daño no tiene codigo. Se dice, no se esconde. */
+  function porQueSinCodigo(d) {
+    const p = parteDe(d.parte_id);
+    const ti = danoDe(d.tipo_dano_id);
+    if (p && p.aiag == null) return 'la parte no tiene código de área';
+    if (ti && ti.aiag == null) return 'ese tipo no existe en el estándar';
+    if (!d.gravedad) return 'falta la gravedad';
+    return 'faltan datos';
+  }
+
+  /**
+   * El codigo, o el motivo de que no haya.
+   *
+   * Un daño viejo --cargado antes de que existiera este paso-- no tiene
+   * gravedad, y la etiqueta lo dice en vez de romperse: el historico de
+   * AppSheet nunca la tuvo, y son 4.268 registros.
+   */
+  function etiquetaCodigo(d) {
+    const c = codigoAiag(d);
+    if (!c) return `<span class="pc-aiag sin">sin código · ${esc(porQueSinCodigo(d))}</span>`;
+    const p = parteDe(d.parte_id), ti = danoDe(d.tipo_dano_id);
+    return `<span class="pc-aiag" title="Área ${p.aiag} · tipo ${ti.aiag} · tamaño ${d.gravedad}">${c}</span>`;
+  }
+
+  const gravedadDe = (id) => ((CATA && CATA.gravedades) || []).find((x) => String(x.id) === String(id));
+  const nombreGravedad = (id) => { const g = gravedadDe(id); return g ? g.nombre : null; };
+  /** La version corta, para la tabla de la hoja: ahi el nombre entero se parte en tres lineas. */
+  const gravedadCorta = (id) => { const g = gravedadDe(id); return g ? (g.corto || g.nombre) : null; };
 
   /**
    * El orden real de bajada de cada VIN de la solicitud.
@@ -602,6 +656,7 @@ const Precarga = (() => {
         <span class="txt">
           <b>${esc(nombreParte(d.parte_id))}</b>
           <small>${esc(nombreDano(d.tipo_dano_id))}${d.comentario ? ' · ' + esc(d.comentario) : ''}</small>
+          ${etiquetaCodigo(d)}
         </span>
         <button type="button" class="quitar" data-quitar-dano="${i}">${ico('x', 12)}</button>
       </div>`;
@@ -706,6 +761,12 @@ const Precarga = (() => {
         ${tipos.map((d) => `<button type="button" class="tag${String(d.id) === String(n.tipo_dano_id) ? ' sel' : ''}" data-tipodano="${esc(d.id)}">${esc(d.nombre)}</button>`).join('')}
       </div>
 
+      ${!n.tipo_dano_id ? '' : `
+        <span class="eq-label pc-sep">Tamaño del daño <b class="pc-req">obligatorio</b></span>
+        <div class="pc-gravedad">
+          ${((CATA && CATA.gravedades) || []).map((g) => `<button type="button" class="tag${String(g.id) === String(n.gravedad) ? ' sel' : ''}" data-grav="${esc(g.id)}"><i>${g.id}</i>${esc(g.nombre)}</button>`).join('')}
+        </div>`}
+
       <label class="campo pc-sep">
         <span>Comentario</span>
         <input type="text" id="pc-com" value="${esc(n.comentario || '')}" placeholder="Opcional" autocomplete="off">
@@ -718,9 +779,10 @@ const Precarga = (() => {
           : `<button type="button" class="foto-add" data-foto="dano">${ico('camera', 20)}<span>Foto del daño</span></button>`}
       </div>`;
 
-    const listo = n.parte_id && n.tipo_dano_id && n.foto;
+    const listo = n.parte_id && n.tipo_dano_id && n.gravedad && n.foto;
     const falta = !n.parte_id ? 'Elegí la parte'
       : !n.tipo_dano_id ? 'Elegí el tipo de daño'
+      : !n.gravedad ? 'Elegí el tamaño'
       : !n.foto ? 'Falta la foto'
       : 'Agregar el daño';
 
@@ -771,6 +833,7 @@ const Precarga = (() => {
               <span class="txt">
                 <b>${esc(nombreParte(d.parte_id))}</b>
                 <small>${esc(nombreDano(d.tipo_dano_id))}${d.comentario ? ' · ' + esc(d.comentario) : ''}</small>
+                ${etiquetaCodigo(d)}
               </span>
             </div>`).join('')}</div>`
         : '<p class="nota">Se revisó y no tenía daños.</p>'}`;
@@ -895,6 +958,7 @@ const Precarga = (() => {
         danos: form.danos.map((d) => ({
           parte_id: d.parte_id,
           tipo_dano_id: d.tipo_dano_id,
+          gravedad: d.gravedad,
           comentario: d.comentario || null,
           foto: d.foto ? d.foto.blob : null
         }))
@@ -1175,6 +1239,7 @@ const Precarga = (() => {
                 <span class="txt">
                   <b>${esc(nombreParte(d.parte_id))}</b>
                   <small>${esc(nombreDano(d.tipo_dano_id))}${d.comentario ? ' · ' + esc(d.comentario) : ''}</small>
+                  ${etiquetaCodigo(d)}
                 </span>
               </div>`).join('')}</div>` : ''}
           </div>
@@ -1286,7 +1351,7 @@ const Precarga = (() => {
     if (t.closest('#pc-add-dano')) {
       capturar();
       form.nuevo = { grupo: (form.ultima && form.ultima.grupo) || null, busca: '',
-                     parte_id: null, tipo_dano_id: null, comentario: '', foto: null };
+                     parte_id: null, tipo_dano_id: null, gravedad: null, comentario: '', foto: null };
       pintarUnidad();
       return;
     }
@@ -1315,6 +1380,15 @@ const Precarga = (() => {
     if (t.closest('#pc-cambiar-parte')) {
       capturar();
       form.nuevo.parte_id = null;
+      pintarUnidad();
+      return;
+    }
+
+    const grav = t.closest('[data-grav]');
+    if (grav && form.nuevo) {
+      capturar();
+      const g = Number(grav.dataset.grav);
+      form.nuevo.gravedad = form.nuevo.gravedad === g ? null : g;
       pintarUnidad();
       return;
     }
@@ -1394,7 +1468,8 @@ const Precarga = (() => {
            verVin, pintarVin, buscar,
            pintarSolicitud, tomarFoto, verHoja, pintarHoja,
            // Los usa js/hoja.js para escribir los nombres en el documento.
-           parte: parteDe, nombreParte, nombreDano,
+           parte: parteDe, nombreParte, nombreDano, nombreGravedad, gravedadCorta,
+           codigoAiag, porQueSinCodigo, etiquetaCodigo,
            catalogo: () => CATA || { partes: [], tipos_dano: [] },
            // A donde vuelve la hoja: depende de si se abrio desde una unidad o
            // desde la solicitud. Lo consulta `atras` en app.js.

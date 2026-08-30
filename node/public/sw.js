@@ -36,8 +36,11 @@
  *     SHELL --son 1,1 MB-- sino cache-first, como uploads.
  * v36: entra la hoja de la unidad para imprimir (hoja.js + hoja.css).
  * v37: buscador de VIN y el historial de una unidad.
+ * v38: el codigo AIAG de cinco digitos. El paso de tamaño en el formulario
+ *     (precarga.js), el campo en el payload (sync.js), la columna en la hoja
+ *     (hoja.js) y sus estilos.
  */
-const VERSION = 'v37';
+const VERSION = 'v38';
 const CACHE = `yard-${VERSION}`;
 
 // El app shell tiene que alcanzar para abrir la app sin conexion. Rutas

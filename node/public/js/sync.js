@@ -129,6 +129,7 @@ const Sync = (() => {
       danos.push({
         parte_id: d.parte_id,
         tipo_dano_id: d.tipo_dano_id,
+        gravedad: d.gravedad || null,
         comentario: d.comentario || null,
         foto: d.foto ? await Camara.aBase64(d.foto) : null
       });
