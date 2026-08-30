@@ -503,33 +503,41 @@ los sectores dañados marcados**. Es el ultimo momento en que el inspector puede
 ver que se le escapo un lado del auto, y es la misma lectura que hace hoy
 mirando el circulo en el papel.
 
-**El dibujo es el de la planilla, no uno nuevo.** Salio de
-`Checklist control de precarga y recepcion.xlsx`: el que lo mira en papel y el
-que lo mira en la pantalla tienen que ver la misma cosa. Son cuatro vistas, y
-cada una cubre un sector sin superponerse:
+El dibujo trae **cinco vistas en cruz** y cada sector cae en una, sin
+superponerse:
 
 | Sector | Vista |
 |---|---|
-| Frente | frontal, arriba a la derecha |
-| Extremo trasero | trasera, abajo a la derecha |
-| Lateral izquierdo | planta, flanco de arriba |
-| Lateral derecho | planta, flanco de abajo |
-| Tren inferior, techo y varios | perfil, arriba a la izquierda |
+| Frente | frontal, arriba |
+| Lateral izquierdo | perfil de la izquierda |
+| Tren inferior, techo y varios | planta, al medio |
+| Lateral derecho | perfil de la derecha |
+| Extremo trasero | trasera, abajo |
 | Interior | ninguna — no se ve desde afuera, va como nota al pie |
 
+**Cual perfil es cual hay que confirmarlo con la operacion.** Los dos estan
+dibujados con el frente hacia arriba, y desplegando la caja el flanco izquierdo
+cae a la izquierda -- pero un lateral espejado marca el lado equivocado del
+auto, que es peor que no marcar nada.
+
 **Se marca la zona, no el punto exacto**, por ahora. Son 110 partes y ubicar
-cada una sobre cuatro vistas es un mapeo largo y facil de errar; la zona ya es
-lo que el circulo a mano logra. Las coordenadas por parte entran despues sin
-tocar la pantalla.
+cada una sobre cinco vistas es un mapeo largo y facil de errar; la zona ya es lo
+que el circulo a mano logra. Las coordenadas por parte entran despues sin tocar
+la pantalla.
 
-**Hay un dibujo por modelo, y hoy solo esta el Hilux** -- es el unico que la
-planilla trae. Los demas **no** se dibujan como Hilux: un Corolla con silueta de
-pick-up hace dudar del resto del papel. Cae un aviso que dice de que modelo
-falta el esquema, y los daños quedan en la lista. Faltan los blueprints de
-Corolla, Corolla Cross, Yaris, Hiace y SW4.
+**Hay un dibujo por modelo**: Hilux, SW4, Corolla, Corolla Cross, Yaris, Yaris
+Cross, Hiace y Tacoma. El que no tenga **no** se dibuja con la silueta de otro
+-- un Corolla como pick-up hace dudar del resto del papel --: cae un aviso que
+dice de que modelo falta y los daños quedan en la lista.
 
-El PNG va al `SHELL` del service worker: si el diagrama solo saliera con señal,
-la revision previa a cerrar se veria vacia justo en la playa.
+⚠ **Son ilustraciones, no planos tecnicos de Toyota.** Alcanzan de sobra para
+señalar en que zona esta el daño, pero no son una referencia dimensional, y eso
+importa si el documento va a viajar firmado con el camion.
+
+Los ocho dibujos **no van al `SHELL`** sino cache-first, como `uploads`: son
+1,1 MB y meterlos en el shell hace que la instalacion --que a veces pasa por
+3G-- pague de una todos los modelos. El esquema es una ayuda para revisar, no el
+registro; el dato son los daños de la lista. Ver D-013.
 
 ### La jornada cierra el viaje
 

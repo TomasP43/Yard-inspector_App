@@ -3,26 +3,29 @@
 /**
  * El dibujo del vehiculo con los daños marcados.
  *
- * Es el mismo blueprint que la planilla de precarga trae impreso y que el
- * inspector ya marca con un circulo a mano ("MARCAR CON UN CIRCULO LA ZONA
- * DAÑADA", dice el formulario). Se saco de `Checklist control de precarga y
- * recepcion.xlsx` en vez de dibujar uno nuevo: el que lo mira en papel y el que
- * lo mira en la pantalla tienen que ver la misma cosa.
+ * Es lo mismo que el inspector ya hace en papel: la planilla dice "MARCAR CON
+ * UN CIRCULO LA ZONA DAÑADA" y trae un dibujo del vehiculo para eso. Aca la
+ * zona se marca sola con lo que se cargo.
  *
- * **Se marca por sector, no por parte.** Las cuatro vistas del blueprint cubren
- * los seis sectores del formulario, una zona cada una, sin superponerse:
+ * **Se marca por sector, no por parte.** El dibujo trae cinco vistas en cruz y
+ * cada sector cae en una, sin superponerse:
  *
  * | Sector | Vista |
  * |---|---|
- * | Frente | frontal, arriba a la derecha |
- * | Extremo trasero | trasera, abajo a la derecha |
- * | Lateral izquierdo | planta, flanco de arriba |
- * | Lateral derecho | planta, flanco de abajo |
- * | Tren inferior, techo y varios | perfil, arriba a la izquierda |
+ * | Frente | frontal, arriba |
+ * | Lateral izquierdo | perfil de la izquierda |
+ * | Tren inferior, techo y varios | planta, al medio |
+ * | Lateral derecho | perfil de la derecha |
+ * | Extremo trasero | trasera, abajo |
  * | Interior | ninguna: no se ve desde afuera, va aparte |
  *
+ * ⚠ **Cual perfil es cual hay que confirmarlo con la operacion.** Los dos estan
+ * dibujados con el frente hacia arriba, y desplegando la caja el flanco
+ * izquierdo cae a la izquierda -- pero un lateral espejado marca el lado
+ * equivocado del auto, que es peor que no marcar nada.
+ *
  * Marcar la zona y no el punto exacto es a proposito por ahora: son 110 partes
- * y ubicar cada una sobre cuatro vistas es un mapeo largo y facil de errar. La
+ * y ubicar cada una sobre cinco vistas es un mapeo largo y facil de errar. La
  * zona ya es lo que el circulo a mano logra. Cuando esten las coordenadas por
  * parte entran en `PUNTOS` sin tocar el resto.
  */
@@ -31,33 +34,50 @@ const Vehiculo = (() => {
   /**
    * Un dibujo por modelo.
    *
-   * Hoy solo esta el Hilux, que es el unico que la planilla trae. Los demas
-   * **no** se dibujan como Hilux: un Corolla con silueta de pick-up hace dudar
-   * del resto del papel. Caen en un aviso que lo dice, hasta que lleguen los
-   * blueprints de los otros modelos.
+   * El que no tenga **no** se dibuja con la silueta de otro: un Corolla como
+   * pick-up hace dudar del resto del papel. Cae en un aviso que lo dice.
+   *
+   * ⚠ Son ilustraciones, no planos tecnicos de Toyota. Alcanzan de sobra para
+   * señalar en que zona esta el daño, que es para lo que se usan, pero no son
+   * una referencia dimensional y conviene no venderlas como tal.
    */
   const DIBUJOS = {
-    'Hilux': 'img/vehiculos/hilux.png'
+    'hilux': 'hilux.jpg',
+    'sw4': 'sw4.jpg',
+    'corolla': 'corolla.jpg',
+    'corolla cross': 'corolla-cross.jpg',
+    'yaris': 'yaris.jpg',
+    'yaris cross': 'yaris-cross.jpg',
+    'hiace': 'hiace.jpg',
+    'tacoma': 'tacoma.jpg'
   };
 
-  /** Las cuatro vistas del blueprint, en % sobre la imagen. */
+  /** Las cinco vistas, en % sobre la imagen. Todos los dibujos usan el mismo molde. */
   const VISTAS = {
-    perfil:     { x: 2,  y: 5,  w: 64, h: 37 },
-    frontal:    { x: 67, y: 5,  w: 32, h: 37 },
-    plantaSup:  { x: 2,  y: 55, w: 62, h: 21 },
-    plantaInf:  { x: 2,  y: 76, w: 62, h: 21 },
-    trasera:    { x: 66, y: 55, w: 33, h: 42 }
+    frontal:     { x: 30, y: 1,  w: 40, h: 23 },
+    lateralIzq:  { x: 2,  y: 24, w: 30, h: 55 },
+    planta:      { x: 33, y: 24, w: 34, h: 55 },
+    lateralDer:  { x: 68, y: 24, w: 30, h: 55 },
+    trasera:     { x: 30, y: 80, w: 40, h: 19 }
   };
 
   const ZONA = {
     'Frente': 'frontal',
-    'Extremo trasero': 'trasera',
-    'Lateral izquierdo': 'plantaSup',
-    'Lateral derecho': 'plantaInf',
-    'Tren inferior, techo y varios': 'perfil'
+    'Lateral izquierdo': 'lateralIzq',
+    'Tren inferior, techo y varios': 'planta',
+    'Lateral derecho': 'lateralDer',
+    'Extremo trasero': 'trasera'
   };
 
-  const dibujoDe = (modelo) => DIBUJOS[modelo] || null;
+  /**
+   * Se busca por nombre normalizado, no literal: el modelo llega del sistema de
+   * solicitudes y puede venir en mayusculas o con acento. Coincidencia exacta y
+   * no "contiene", que si no un "Corolla Cross" entraria por "Corolla".
+   */
+  function dibujoDe(modelo) {
+    const k = Similitud.normalizar(modelo || '');
+    return DIBUJOS[k] ? 'img/vehiculos/' + DIBUJOS[k] : null;
+  }
 
   /**
    * El diagrama con los sectores marcados.

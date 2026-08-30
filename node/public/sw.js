@@ -32,9 +32,8 @@
  * v34: entra el modulo de precarga (precarga.js). escaner.js e iconos.js
  *     tambien cambiaron, asi que la version tiene que subir igual: el
  *     navegador solo reinstala el SW si el archivo sw.js cambio.
- * v35: entra el esquema del vehiculo (vehiculo.js + el blueprint). El PNG va
- *     al SHELL: si el diagrama solo saliera con señal, la revision previa a
- *     cerrar la unidad se veria vacia justo en la playa.
+ * v35: entra el esquema del vehiculo (vehiculo.js). Los ocho dibujos NO van al
+ *     SHELL --son 1,1 MB-- sino cache-first, como uploads.
  */
 const VERSION = 'v35';
 const CACHE = `yard-${VERSION}`;
@@ -63,7 +62,6 @@ const SHELL = [
   './js/bahias.js',
   './js/vehiculo.js',
   './js/precarga.js',
-  './img/vehiculos/hilux.png',
   './js/app.js'
 ];
 
@@ -112,6 +110,27 @@ self.addEventListener('fetch', (e) => {
   // (el menu lateral, el catalogo de desvios, el layout del impacto) y cada
   // vez costo un rato entender que el codigo estaba bien.
   if (url.pathname.includes('/gerencia/')) return;
+
+  // Los esquemas de vehiculo: cache-first, como uploads, y NO en el SHELL.
+  //
+  // Son ocho modelos de ~140 KB, o sea 1,1 MB. Meterlos en el shell hace que la
+  // instalacion --que a veces pasa por 3G-- pague de una todos los modelos, y el
+  // esquema es una ayuda para revisar, no el registro: el dato son los daños de
+  // la lista. Se cachea el que se usa, y despues de la primera unidad de cada
+  // modelo ya esta. Ver D-013: nada que sea una mejora va en el camino critico.
+  if (url.pathname.includes('/img/vehiculos/')) {
+    e.respondWith(
+      caches.open(CACHE).then((c) =>
+        c.match(req).then((hit) =>
+          hit || fetch(req).then((r) => {
+            if (r.ok) c.put(req, r.clone());
+            return r;
+          })
+        )
+      )
+    );
+    return;
+  }
 
   // Los carteles de bahia, por lo mismo: es una pagina de escritorio que se
   // abre para imprimir y necesita red para traer los tokens. Cachearla no
