@@ -1,6 +1,6 @@
 # yard-inspector
 
-App donde los inspectores de playa cargan observaciones (patrullas) sobre camiones y bateas. Reemplaza la app de **AppSheet** que corre hoy sobre un Google Form + Sheets.
+App de los inspectores de playa. Tres modulos en la misma PWA: **patrullas** (observaciones sobre camiones y bateas), **control de bahias** (las herramientas de cada bahia, por turno) e **inspeccion de precarga** (daños de cada unidad antes de la carga). Reemplaza las apps de **AppSheet** que corren hoy sobre Google Forms + Sheets.
 
 **Donde corre hoy: solo el front, en GitHub Pages, con datos inventados.**
 
@@ -86,12 +86,14 @@ yard-inspector/
 │   │   ├── js/turnos.js     # los turnos de la playa, compartidos
 │   │   ├── js/sync.js       # cola de sincronizacion (patrullas y bahias)
 │   │   ├── js/bahias.js     # control de bahias: ronda, checklist, auditoria
+│   │   ├── js/precarga.js   # unidades en precarga: bajadas, escaneo del VIN, daños
 │   │   ├── js/app.js        # UI
 │   │   ├── carteles/       # los carteles con el QR, para imprimir
 │   │   └── gerencia/        # tablero de gerencia, en /yard/gerencia/
 │   │       ├── index.html
 │   │       ├── css/gerencia.css
 │   │       ├── js/datos.js  # la unica costura con el backend
+│   │       ├── js/precarga.js # la pantalla de precarga del tablero
 │   │       └── js/app.js
 │   └── Dockerfile
 ├── migrations/              # 001 esquema · 002 fotos · 003 historico · 004 desvios
@@ -326,6 +328,109 @@ El corte de las 16:00 tambien corrigio patrullas, que partia a las 13:00 y
 mandaba al segundo turno **688 controles del historico (16%)** que eran del
 primero.
 
+## Inspeccion de unidades en precarga
+
+Tercer modulo de la PWA, en el mismo `/yard/`. Reemplaza la app de **AppSheet**
+sobre `Base de datos bajada de carga` y `Estado de unidades Precarga`, donde se
+cargan los daños de cada unidad antes de la carga.
+
+El camino es **bajadas → solicitud → escanear el VIN → unidad → daños**.
+
+**Lo que cambia no es la pantalla, es donde ocurre el registro.** En AppSheet el
+orden real de bajada era una columna con `MAX(SELECT(Unidades[TASA]))+1` que se
+llenaba despues. Aca la unidad se abre escaneando la etiqueta de VIN que el auto
+trae de fabrica, parado al lado del auto, y de ahi sale el orden. Es el mismo
+poka-yoke que el QR de las bahias.
+
+### El orden real sale del momento del escaneo
+
+No hay contador. El dispositivo manda `escaneado_en` y el orden real es el
+**rango de ese timestamp dentro de la solicitud**; el desvio es
+`orden_real !== orden_solicitado`, derivado y no guardado.
+
+Un `MAX+1` se rompe de dos formas que pasan todos los dias: **dos inspectores**
+sobre la misma solicitud calculan el mismo maximo, y un **escaneo sin señal** de
+las 10:05 que sincroniza a las 14:00 se lleva el numero de otro. El timestamp es
+el mismo hecho y no colisiona — y es la misma regla que `turno_clave`: el
+dispositivo manda el hecho, el servidor deriva. Ver D-014.
+
+Lo que se paga: dos telefonos con el reloj corrido se ordenan mal entre si. Es el
+orden de una jornada de playa, no un acta.
+
+### Sin escanear no se carga, sin excepcion
+
+La lista de VINs **si se ve** —el inspector necesita saber que viene— pero abrir
+una unidad para cargarla esta gateado. Es lo unico que obliga a que el registro
+se haga al lado del auto, que es todo el punto; **un escape que se puede tomar se
+toma**, y la lista "para cuando la etiqueta este rota" pasaria a ser el camino
+normal.
+
+Costo asumido: una etiqueta ilegible frena esa unidad hasta que alguien la
+resuelva. Misma apuesta que el sticker mojado de una bahia. Ver D-015.
+
+**Se escanea la etiqueta de fabrica, no un sticker nuestro.** Es Code 128 /
+Code 39 / Data Matrix, asi que `js/escaner.js` pasa a recibir los formatos como
+parametro; el default sigue siendo `qr_code` para que bahias no cambie.
+`Escaner.soportaFormatos()` es aparte de `soportado()` porque
+`getSupportedFormats()` es asincrona, y porque un navegador puede traer QR y no
+Code 128 — preguntar solo si existe el lector diria que si y despues no leeria
+nada.
+
+El VIN se saca con `/[A-HJ-NPR-Z0-9]{17}/` probando **todas** las ventanas de 17
+y no la primera: la etiqueta puede traer los asteriscos de Code 39 o el numero de
+motor pegado. Sin I, O ni Q, que el estandar no usa justamente para no
+confundirlas con 1 y 0.
+
+El lector **avisa y sigue leyendo** en vez de cerrarse — son cinco rechazos
+distintos (ya bajada, de otra solicitud, otra unidad de esta, desconocido, no es
+un VIN). Con guantes y a contraluz escanear el auto de al lado pasa seguido, y
+cerrar el visor cada vez seria la forma mas rapida de que dejen de escanear.
+
+### El formulario
+
+Un registro por unidad con sus daños adentro, no un POST por daño: los daños de
+una unidad son un hecho solo, y partirlo la dejaria guardada a medias si la señal
+se corta en el medio.
+
+Por daño: **parte** (agrupada en Exterior / Interior / Mecanica, dos toques en
+vez de un scroll, igual que las zonas del equipo), **tipo de daño**, comentario
+opcional y **foto obligatoria**. Nada arranca preseleccionado, por lo mismo que
+el checklist de bahias.
+
+Guardar con cero daños es «la mire y no tenia nada»: el escaneo ya prueba que se
+la miro, asi que no hace falta un paso mas para distinguirla de una que nadie
+toco.
+
+**Lo que quedo afuera a proposito:** las dos firmas (el inspector sale de la
+sesion de ttfa, mas la hora y la foto — mas fuerte que un garabato con el dedo),
+el **cuadrante** (en AppSheet es un numero suelto que sin saber que significa
+mide a quien lo carga) y la **gravedad**. Los tres estan anotados en YI-013.
+
+**El catalogo de partes y tipos de daño del mock es PROVISIONAL** y hay que
+reemplazarlo por la planilla real. La forma si es la definitiva. Hay uno completo
+ya derivado de las planillas en el historial de git (`0e569d9`,
+`migrations/006_unidades_catalogos.sql`): 70 partes con grupo y cuadrantes, 15
+tipos de daño y las 7 gravedades Furlong.
+
+### La jornada cierra el viaje
+
+Una solicitud de una jornada cerrada **no ofrece escanear**: el camion ya salio, y
+sumarle una unidad despues seria decir que se vio lo que no se vio. Donde iba el
+boton queda el aviso, y una unidad que quedo sin bajar lo dice en vez de mostrar
+el gate. Es la misma regla que en patrullas, donde el boton de agregar
+observacion solo esta en los controles de hoy.
+
+### El historial
+
+Lista de jornadas cerradas, cada una con **sus tres numeros** —unidades bajadas,
+con daño, y fuera de orden— y no un renglon que diga "completa". Seis filas
+iguales no informan nada; lo que se viene a buscar es en que jornada paso algo.
+Es la leccion que dejo el historial de bahias cuando era una lista.
+
+Tocando una jornada se ven sus solicitudes y de ahi se entra al mismo detalle.
+**El volver conserva la jornada abierta**, que es para lo que existe el estado
+`hist` aparte del de la jornada en curso.
+
 ## El tablero de gerencia
 
 Segunda pantalla, en `/yard/gerencia/`. Portada del diseño **"Dashboard Gerencia"** del mismo proyecto de Claude Design. Es de escritorio: barra lateral, conmutador anual/mensual, y drill-down desde el grafico al detalle de un mes o de un dia.
@@ -333,6 +438,24 @@ Segunda pantalla, en `/yard/gerencia/`. Portada del diseño **"Dashboard Gerenci
 **No calcula ni una metrica en el navegador**, y eso es una diferencia de fondo con la PWA. El tablero de la PWA agrega en el cliente porque son dos inspectores y una decena de controles por jornada. Este necesita agregados sobre el historico completo — 4.268 controles, Pareto acumulado, analisis de reincidencia, cruce de cada desvio con su desenlace de carga. La API de inspecciones corta en 500 filas y no tiene agregacion.
 
 Por eso hay un solo pedido, `GET api/tablero?periodo=`, con el contrato en `REQUERIMIENTOS.md` (YI-004). Toda la costura esta en `gerencia/js/datos.js`: conectar el tablero es cambiar ese archivo.
+
+**Tiene dos pantallas y la lateral conmuta entre ellas:** patrullas y
+**precarga**. La de precarga contesta las cuatro preguntas que la planilla no
+contestaba — que se daña (Pareto de partes y de tipos), cuanto se baja fuera del
+orden solicitado, cuanto de lo pedido se llego a mirar, y que modelos y destinos
+concentran el daño. Va con su propio pedido, `GET api/precarga/tablero?periodo=`
+(YI-014): son dos pantallas que se miran en momentos distintos, y juntarlas haria
+que abrir una pague el costo de la otra.
+
+Dos cosas que se repiten de la de patrullas porque son la misma leccion:
+**cada barra lleva su propio denominador** —las unidades que movio ese
+transportista, no el total, o el que mas mueve encabeza siempre por mover mas— y
+el reparto por grupo va como **tres numeros y no como cinta**, porque el exterior
+se lleva mas del 95% del daño y una banda de un solo color no informa nada.
+
+La lateral tenia **un solo item**, con un comentario explicando que un menu que
+promete cuatro lugares y lleva a uno es peor que un menu de uno. Ahora tiene dos
+y los dos llevan a algo.
 
 **Una trampa del dato que hay que respetar: hasta jun-2026 el OK no se cargaba.** El formulario se llenaba solo cuando habia algo para reportar, asi que esas 2.809 filas son **100% NG** — verificado contra `003_datos_historicos.sql`, el primer OK del historico es de junio de 2026. No es que no se distinguiera OK de NG: es que el OK no existia como registro.
 
@@ -352,7 +475,7 @@ Los dos frentes comparten `css/tokens.css` — la paleta — y `js/iconos.js`. *
 bash tools/preview/armar.sh && perl tools/preview/serve.pl .preview 4173
 ```
 
-Monta las dos pantallas con datos falsos, sin Docker ni base — alcanza perl. La PWA en `/` y el tablero en `/gerencia/`.
+Monta las dos pantallas con datos falsos, sin Docker ni base — alcanza perl. La PWA en `/` (con sus tres modulos) y el tablero en `/gerencia/` (con sus dos).
 
 **Usalo.** Los bugs mas caros de este proyecto **pasaron todos los chequeos estaticos y se veian a simple vista**: el 502 por una ruta mal resuelta, el helper de IndexedDB que devolvia el request en vez del resultado, los modales que tapaban la pantalla, tres promesas que no se resolvian nunca, y el tablero scrolleando la pagina entera en vez del panel. Ninguno daba error en consola.
 

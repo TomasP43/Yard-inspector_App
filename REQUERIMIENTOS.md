@@ -695,6 +695,212 @@ deduplicación del catálogo, las trampas de los datos— está en
 
 ---
 
+### YI-013 — Inspección de unidades en precarga
+- **Estado:** pendiente · el front ya está armado y andando contra el mock
+- **Prioridad:** alta
+- **Tipo:** módulo nuevo — tablas, endpoints y migración
+
+- **Qué reemplaza:** la app de **AppSheet** sobre `Base de datos bajada de carga`
+  y `Estado de unidades Precarga`, donde hoy se cargan los daños de cada unidad
+  antes de la carga. El camino de allá es: cargas por bahía → solicitud con sus
+  VINs → unidad → inspección de daño.
+
+- **Lo que cambia no es la pantalla, es dónde ocurre el registro.** En AppSheet
+  el orden real de bajada era una columna `TASA` con `MAX(SELECT(Unidades[TASA]))+1`,
+  que se llenaba después. Acá la unidad se abre **escaneando la etiqueta de VIN
+  que el auto trae de fábrica**, parado al lado del auto, y de ahí sale el orden.
+
+- **Tablas** (migración **009 o posterior**; 005–008 los quemó el módulo de
+  unidades que se sacó del repo — reusar uno haría que el runner lo dé por
+  aplicado y no lo ejecute nunca):
+
+  ```
+  precarga_solicitud   (id, codigo UNIQUE, jornada_clave, hora, transportista,
+                        equipo, bahia, destino, cerrada)
+  precarga_unidad      (id, solicitud_id, vin, orden_solicitado, so, katashiki,
+                        modelo, destino, linea_txt)
+  precarga_inspeccion  (id, uuid UNIQUE, unidad_id, inspector_id, escaneado_en,
+                        registrado_en, sincronizado_en, foto_panoramica)
+  precarga_dano        (id, inspeccion_id, parte_id, tipo_dano_id, comentario, foto)
+  precarga_parte       (id, nombre, grupo, orden, activo)
+  precarga_tipo_dano   (id, nombre, orden, activo)
+  ```
+
+  - `UNIQUE (solicitud_id, vin)` en `precarga_unidad`. El VIN **indexado pero no
+    único a secas**: un mismo vehículo puede viajar más de una vez.
+  - `UNIQUE (unidad_id)` en `precarga_inspeccion` — una unidad se inspecciona una
+    vez por solicitud. El segundo intento con otro `uuid` es **409**.
+  - `UNIQUE (uuid)` es la clave de idempotencia de la cola. Reenviar devuelve
+    **200 con lo que ya existe, nunca 409** — con un 409 el cliente no sabe si
+    puede sacarlo de la cola.
+
+- **⚠ El orden real de bajada NO se guarda: se deriva de `escaneado_en`.**
+  Es el rango del timestamp dentro de la solicitud, y `desvio_orden` es
+  `orden_real !== orden_solicitado`.
+
+  Un contador `MAX+1` se rompe de dos formas que en la playa pasan todos los
+  días: **dos inspectores** bajando la misma solicitud calculan el mismo máximo,
+  y un **escaneo hecho sin señal** a las 10:05 que sincroniza a las 14:00 se
+  lleva el número que le corresponde a otro. El timestamp es el mismo hecho y no
+  colisiona.
+
+  El costo, que conviene tener escrito: dos teléfonos con el reloj corrido se
+  ordenan mal entre sí. Es el orden de una jornada de playa, no un acta; para
+  desempatar está `sincronizado_en`.
+
+- **⚠ `escaneado_en` la manda el dispositivo y el servidor NO la recalcula**,
+  por lo mismo que `turno_clave` en YI-011: la unidad se bajó cuando se bajó, no
+  cuando llegó el POST.
+
+- **⚠ Sin escanear no se carga, sin excepción.** La lista de VINs de la solicitud
+  sí se ve —el inspector necesita saber qué viene— pero abrir una unidad para
+  cargarla está gateado. Es lo único que obliga a que el registro se haga al lado
+  del auto; cualquier escape lo reabre y volvemos al orden anotado de memoria.
+
+  Costo asumido: **una etiqueta ilegible frena esa unidad** hasta que alguien la
+  resuelva.
+
+  **Lo que el escaneo no prueba es la presencia**: se puede fotografiar la
+  etiqueta. Lo que encarece mentir es la foto obligatoria por daño. Si aun así
+  aparece el problema, el escalón siguiente es NFC.
+
+- **El código es Code 128 / Code 39 / Data Matrix, no QR.** Es la etiqueta que el
+  auto ya trae; no hay que imprimir ni pegar nada. `js/escaner.js` recibe los
+  formatos como parámetro y `Escaner.soportaFormatos()` avisa si el teléfono no
+  los lee — que se sepa, no que falle raro.
+
+- **El VIN se extrae con `/[A-HJ-NPR-Z0-9]{17}/`** sobre el texto leído, probando
+  todas las ventanas de 17: la etiqueta puede traer los asteriscos de Code 39 o
+  el número de motor pegado. Sin I, O ni Q, que el estándar no usa.
+
+- **Endpoints:**
+
+  | Método | Ruta | Qué hace |
+  |---|---|---|
+  | GET | `api/precarga/catalogos` | `{partes[], tipos_dano[]}`, con ETag como `api/catalogos` |
+  | GET | `api/precarga/solicitudes?jornada=<clave>` | `{jornada, solicitudes[]}`, **cada solicitud con todas sus unidades adentro** |
+  | POST | `api/precarga/inspecciones` | Alta de la inspección de una unidad, con sus daños. Idempotente por `uuid` |
+  | GET | `api/precarga/jornadas?limite=` | Jornadas cerradas, ya agregadas |
+
+- **⚠ Las unidades vienen en el mismo pedido que la solicitud, no en uno aparte.**
+  En la playa no hay señal para ir al servidor por cada camión, y el inspector
+  abre el detalle justo cuando está parado al lado. Una jornada son ~18 bahías
+  por ~8 unidades: entra sobrado en un payload.
+
+- **La foto del daño es obligatoria en el servidor, no solo en el front.** Si la
+  exigiera solo la pantalla, alcanzaría un POST a mano para saltearla.
+
+- **`cerrada` en la solicitud.** Una jornada cerrada no acepta inspecciones
+  nuevas: el camión ya salió, y sumarle una unidad después sería decir que se vio
+  lo que no se vio. Mismo criterio que el botón de agregar observación en
+  patrullas, que solo está en los controles de hoy. El front ya no lo ofrece;
+  **el servidor tiene que rechazarlo igual**.
+
+- **De dónde salen las solicitudes y las unidades:** de un archivo TXT del
+  sistema de solicitudes (la columna `Línea TXT` de AppSheet lo delata). El
+  inspector **no las crea**. Conviene una tabla de importación que aísle la
+  entrada detrás de un adaptador, como la que tenía el módulo de unidades: el
+  contrato del sistema de origen todavía no está definido.
+
+- **⚠ El catálogo de partes y tipos de daño del mock es PROVISIONAL.** Se puso
+  para poder ver la pantalla. Hay que reemplazarlo por la planilla real. Lo que
+  sí es definitivo es la forma: la parte trae su `grupo` (Exterior / Interior /
+  Mecánica), que es lo que parte la lista en tres toques en vez de un scroll.
+
+  > Hay un catálogo completo y ya derivado de las planillas en el historial de
+  > git, en el commit `0e569d9` (`migrations/006_unidades_catalogos.sql`): 70
+  > partes con grupo y cantidad de cuadrantes, 15 tipos de daño, 34 detalles y
+  > las 7 gravedades del estándar Furlong, todos con sus usos históricos. Se
+  > decidió empezar de cero, pero está ahí si sirve de referencia.
+
+- **Lo que quedó afuera de esta entrega, a decidir:**
+
+  | Qué | Estado |
+  |---|---|
+  | **Firmas** (inspector y TASA) | No van por ahora. El inspector queda identificado por la sesión de ttfa, más la hora y la foto — más fuerte que una firma dibujada con el dedo. Si auditoría las exige, es un pad en canvas |
+  | **Cuadrante** | Queda para después. En AppSheet es un número suelto y obligatorio; sin saber qué significa cada número el dato termina midiendo a quien lo carga. La salida natural es una grilla de 3×3 sobre la parte, con `cantidad_cuadrantes` por parte |
+  | **Gravedad** | No se registra, igual que en AppSheet. Es el tercer código del estándar Furlong (`AREA - TIPO - GRAVEDAD`) y hoy falta |
+  | **Unidad sin daño** | Guardar con cero daños es «la miré y no tenía nada»; el escaneo prueba que se la miró. Queda como punto a revisar si hace falta distinguirlo más explícitamente |
+
+---
+
+### YI-014 — Endpoint del tablero de precarga
+- **Estado:** pendiente · el front ya está armado y andando contra el mock
+- **Prioridad:** media
+- **Tipo:** endpoint
+
+- **Qué necesito:** `GET api/precarga/tablero?periodo=anual|mensual`, con todo
+  ya agregado.
+
+- **Para qué:** la pantalla de precarga de `/yard/gerencia/`. **No calcula ni una
+  métrica en el navegador**, igual que la de patrullas y por el mismo motivo: son
+  miles de unidades con su Pareto de partes y cruces por transportista, modelo y
+  destino. La API de inspecciones corta en 500 filas y no agrega.
+
+- **Por qué separado de `api/tablero`:** son dos pantallas que se miran en
+  momentos distintos. Meter los agregados de precarga en el pedido de patrullas
+  haría que abrir una pague el costo de la otra.
+
+- **Forma esperada:**
+
+  ```jsonc
+  {
+    "meta": { "updated": "2026-08-29", "usuario": { "email": "...", "nombre": "..." } },
+    "annual":  { /* los 12 meses */ },
+    "monthly": { /* día por día del mes en curso */ }
+  }
+  ```
+
+  Cada corte:
+
+  ```jsonc
+  {
+    "stats": {
+      "solicitadas": 17318,   // unidades pedidas
+      "unidades": 17175,      // bajadas y registradas
+      "con_dano": 3178,       // unidades con al menos un daño
+      "danos": 4449,          // daños totales (una unidad puede traer varios)
+      "desviadas": 1452,      // bajadas fuera del orden solicitado
+      "tasa_dano": 18.5, "tasa_desvio": 8.5, "cobertura": 99.2,
+      "prev": { "tasa_dano": 19.7, "tasa_desvio": 9.7, "cobertura": 99.0 }
+    },
+    "serie": [ { "key": "0", "label": "sep",
+                 "solicitadas": 1351, "unidades": 1351, "con_dano": 232, "desviadas": 108 } ],
+    "pareto_partes": [ { "name": "Puerta trasera izquierda", "grupo": "Exterior",
+                         "count": 85, "cumPct": 20.5 } ],
+    "pareto_tipos":  [ { "name": "Abollado", "count": 1028, "pct": 23.1 } ],
+    "por_grupo":     [ { "name": "Exterior", "count": 4239, "pct": 95 } ],
+    "desvios": {
+      "por_transportista": [ { "name": "TTFA", "unidades": 3781, "desviadas": 405, "pct": 10.7 } ],
+      "por_bahia":         [ { "name": "3A",   "unidades": 2900, "desviadas": 380, "pct": 13.1 } ]
+    },
+    "por_modelo":  [ { "name": "Hilux", "unidades": 3300, "con_dano": 759, "pct": 23.0 } ],
+    "por_destino": [ { "name": "TOYOTA CHILE S.A.", "unidades": 3614, "con_dano": 860, "pct": 23.8 } ]
+  }
+  ```
+
+- **⚠ Cada `pct` va sobre SU propio denominador**, no sobre el total: las
+  unidades que movió ese transportista, las que fueron a ese destino. Sin eso el
+  que más mueve encabeza siempre por mover más y no por andar peor — es el mismo
+  error que ya se corrigió en la tarjeta de transportistas de patrullas
+  (`YI-004`).
+
+- **`cobertura` es métrica de vigilancia, no una salvedad.** Es
+  `unidades / solicitadas`: un período por debajo del 100% significa que se
+  bajaron unidades sin registrarlas. Baja es mala, al revés que las otras dos.
+
+- **⚠ Si algún día se migran las Inspecciones de AppSheet, esos meses traen la
+  misma trampa que el histórico de patrullas.** Allá la inspección se creaba
+  **solo cuando había un daño**, así que esos meses tendrían `con_dano` sin
+  `unidades` — el denominador no existe. Van con `unidades: null`, ni cero ni
+  igual a `con_dano`. Queda escrito antes de que pase.
+
+- **Mientras tanto:** `tools/preview/mock-gerencia.js` define
+  `window.TABLERO_PRECARGA` con esta forma y `gerencia/js/datos.js` lo usa si
+  está.
+
+---
+
 ## Nota sobre lo que el backend tiene y la app no usa
 
 No es un requerimiento, es para que nadie los tome por carga viva:

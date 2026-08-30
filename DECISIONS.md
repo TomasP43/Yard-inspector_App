@@ -123,6 +123,18 @@ app y tiene que tocar una vez más para llegar a lo único que hay.
 **Reversibilidad:** total mientras el historial de git exista. El módulo entero
 está en el commit anterior a este.
 
+> **Ya no describe el repo, y conviene decirlo acá y no dejar que envejezca en
+> silencio.** Después entraron **control de bahías** y **inspección de
+> precarga**, así que hoy son tres módulos. Lo que sobrevive de esta decisión no
+> es "un solo módulo" sino **cómo conviven**: comparten página, service worker y
+> cola de sincronización, y el cajón lateral cambia de módulo en vez de un menú
+> de entrada. El menú de una sola opción era la fricción que se quiso sacar; un
+> cajón que ya está ahí para el tema y la sesión no cuesta un toque de más.
+>
+> Lo que **sigue vigente tal cual**: las tablas de unidades siguen en la base
+> desplegada sin dropear, y **los números 005–008 siguen quemados**. La próxima
+> migración es la 009.
+
 ---
 
 ## D-010 · Cómo se porta el design system de Claude Design
@@ -236,3 +248,72 @@ y sobre todo, no una razón para que se rinda **en silencio**.
 **Cómo se encontró:** ejecutando el flujo de carga en el navegador, no leyendo
 el código. Los tres eran invisibles en revisión: no hay error, no hay excepción,
 no hay nada en consola. Ver D-005.
+
+---
+
+## D-014 · De dónde sale el orden real de bajada
+
+**Pregunta:** cuando el inspector baja una unidad, ¿cómo se le asigna el número
+de orden real, el que se compara contra el solicitado?
+
+**Opciones:** (a) un contador `MAX(orden_real)+1` sobre la solicitud, que es lo
+que hacía AppSheet; (b) que el inspector lo escriba; (c) derivarlo del momento
+del escaneo.
+
+**Evidencia:** el contador se rompe de dos formas que en la playa pasan todos los
+días. **Dos inspectores** bajando la misma solicitud calculan el mismo máximo y
+los dos se quedan con el 3. Y un **escaneo hecho sin señal** a las 10:05 que
+sincroniza a las 14:00 se lleva el número que ya tomó otro. Escribirlo a mano
+mueve el problema a la persona y encima es más lento con guantes.
+
+**Decisión:** (c). El dispositivo manda `escaneado_en` y el orden real es el
+**rango de ese timestamp dentro de la solicitud**. `desvio_orden` es
+`orden_real !== orden_solicitado`, derivado, no guardado.
+
+**Motivo:** el timestamp es el mismo hecho —cuándo se bajó— expresado de una
+forma que no colisiona. Y es la misma regla que `turno_clave` en bahías: el
+dispositivo manda el hecho, el servidor deriva. Deducirlo de la hora de llegada
+del POST sería deducir la playa desde la oficina.
+
+**Costo asumido:** dos teléfonos con el reloj corrido se ordenan mal entre sí.
+Es el orden de una jornada de playa, no un acta; si algún día importa, está
+`sincronizado_en` para desempatar.
+
+**Reversibilidad:** alta mientras `escaneado_en` se siga guardando. Volver a un
+contador obliga a tocar cliente y servidor a la vez.
+
+---
+
+## D-015 · El VIN se escanea, y sin eso no se carga
+
+**Pregunta:** ¿la unidad se elige de la lista o hay que escanearla?
+
+**Opciones:** (a) de la lista, como AppSheet; (b) escaneo obligatorio; (c)
+escaneo con un escape registrado.
+
+**Evidencia:** es el mismo problema del papel de las bahías. El dato se puede
+llenar en la oficina, y entonces el orden real de bajada es lo que alguien
+recuerda, no lo que pasó. **Un escape que se puede tomar se toma**: si la lista
+queda disponible "para cuando la etiqueta esté rota", pasa a ser el camino
+normal y el escaneo se vuelve decorativo.
+
+**Decisión:** (b), sin excepción. La lista de VINs **sí se ve** —el inspector
+necesita saber qué viene— pero abrir una unidad para cargarla está gateado.
+
+Se escanea **la etiqueta de VIN que el auto trae de fábrica** (Code 128 /
+Code 39 / Data Matrix), no un sticker propio: no hay que imprimir ni pegar nada
+por unidad, y la etiqueta ya está donde tiene que estar.
+
+**Motivo:** es lo único que obliga a que el registro se haga al lado del auto,
+que es todo el punto del módulo.
+
+**Costo asumido, sabido de antemano:** una etiqueta ilegible **frena esa unidad**
+hasta que alguien la resuelva. Es la misma apuesta que el sticker mojado de una
+bahía, y se toma por la misma razón.
+
+**Lo que el escaneo no prueba es la presencia**, y conviene tenerlo escrito: se
+puede fotografiar la etiqueta. Lo que encarece mentir es la foto obligatoria por
+daño. Si aun así aparece el problema, el escalón siguiente es NFC.
+
+**Reversibilidad:** alta, es una guarda de cliente. Pero abrirla la vuelve
+inútil: no hay medio gate.

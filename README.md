@@ -1,8 +1,11 @@
 # Yard Inspector
 
-App con la que los inspectores de playa cargan observaciones (patrullas) sobre camiones y bateas en **TTFA**.
+App de los inspectores de playa de **TTFA**. Tres módulos en la misma PWA:
+**patrullas** (observaciones sobre camiones y bateas), **control de bahías** (las
+herramientas de cada bahía, una vez por turno) e **inspección de precarga** (los
+daños de cada unidad antes de la carga).
 
-Reemplaza la app de **AppSheet** que corre hoy sobre un Google Form + Sheets.
+Reemplaza las apps de **AppSheet** que corren hoy sobre Google Forms + Sheets.
 
 > **Estado: solo el front, hosteado en GitHub Pages.**
 >
@@ -14,28 +17,36 @@ Reemplaza la app de **AppSheet** que corre hoy sobre un Google Form + Sheets.
 
 ## Qué hace
 
-Dos pantallas, las dos diseñadas en el proyecto de Claude Design **"UI mockups pending details"**.
+Dos frentes: la PWA del inspector y el tablero de gerencia, los dos diseñados en el proyecto de Claude Design **"UI mockups pending details"**.
 
 ### La del inspector — `/yard/`
 
-Cuatro vistas, pensadas para el teléfono:
+Pensada para el teléfono. El cajón lateral cambia de módulo; la barra de abajo se mueve dentro del que esté abierto.
+
+**Patrullas** — observaciones sobre camiones y bateas:
 
 | Pantalla | Qué muestra |
 |---|---|
-| **Tablero** | Controles y NG de hoy, tasa NG del período, barras por jornada, desglose por tipo de control, desvíos más frecuentes y equipos que repiten |
-| **Hoy** | Los controles de la jornada agrupados por turno, con filtro Todos / Solo NG |
-| **Historial** | Todo, con chips por tipo de control |
-| **Cargar** | El formulario: equipo, tráfico, qué pasó con lo que quedó abierto, resultado, tipo, zona, desvío, fotos |
+| **Tablero** | Controles y NG de hoy, tasa NG del período, barras por jornada, desvíos más frecuentes y equipos que repiten |
+| **Hoy** | Los controles de la jornada agrupados por turno, con buscador de equipo y filtro Todos / Solo NG / Solo OK |
+| **Historial** | Todo, con el mismo buscador y filtros, y paginado |
+| **Cargar** | El formulario: equipo, tráfico, qué pasó con lo que quedó abierto, resultado, zona, desvío, fotos |
 
-Y tocando cualquier fila se abre el **detalle del equipo**: sus KPIs, el desvío que se le repite y su historial completo.
+Tocando cualquier fila se abre el **detalle del control**, y de ahí el **detalle del equipo**: sus KPIs, el desvío que se le repite y su historial.
+
+**Control de bahías** — reemplaza el papel pegado en cada bahía. La ronda del turno, el checklist de 12 ítems con su cantidad estándar, y el historial como calendario del mes con matriz de bahías × ítems. Se entra desde la ronda y **el QR de la bahía habilita la carga**: el papel se llenaba en la oficina.
+
+**Inspección de precarga** — reemplaza la carga de daños unidad por unidad. Las solicitudes de la jornada agrupadas por bahía, y la unidad se abre **escaneando la etiqueta de VIN que el auto trae de fábrica**, parado al lado del auto. De ahí sale el orden real de bajada, que en AppSheet se anotaba después.
 
 Tres cosas que en AppSheet no existían: el tablero, el detalle por equipo, y que antes de cargar un control nuevo haya que decir qué pasó con el NG anterior.
 
-Los inspectores trabajan **sin conexión**. En la playa la señal se corta, así que la app guarda las inspecciones en el dispositivo y las sincroniza cuando vuelve la señal.
+Los inspectores trabajan **sin conexión**. En la playa la señal se corta, así que la app guarda todo en el dispositivo y lo sincroniza cuando vuelve la señal — una sola cola para los tres módulos.
 
 ### La de gerencia — `/yard/gerencia/`
 
-Pantalla ancha, de escritorio. Conmuta entre **anual** y **mensual**, y desde el gráfico de evolución se entra al detalle de un mes o de un día.
+Pantalla ancha, de escritorio. La barra lateral conmuta entre **patrullas** y **precarga**; arriba se conmuta entre **anual** y **mensual**, y desde el gráfico de evolución se entra al detalle de un mes o de un día.
+
+**Patrullas:**
 
 | Bloque | Para qué |
 |---|---|
@@ -46,7 +57,9 @@ Pantalla ancha, de escritorio. Conmuta entre **anual** y **mensual**, y desde el
 | **Reincidencia** | Qué pasó después de cada observación, con watchlist de equipos que repiten |
 | **Tráfico y auditores** | Tendencia por tráfico y volumen/detección de cada auditor |
 
-**No calcula nada en el navegador.** Necesita agregados sobre el histórico completo, así que espera un endpoint que devuelva todo masticado. Ver `YI-004` en [REQUERIMIENTOS.md](REQUERIMIENTOS.md).
+**Precarga:** qué se daña (Pareto de partes y de tipos), cuánto se baja fuera del orden solicitado por transportista y por bahía, cuánto de lo pedido se llegó a registrar, y qué modelos y destinos concentran el daño.
+
+**No calcula nada en el navegador.** Necesita agregados sobre el histórico completo, así que espera endpoints que devuelvan todo masticado: `YI-004` para patrullas y `YI-014` para precarga, en [REQUERIMIENTOS.md](REQUERIMIENTOS.md).
 
 ## Stack
 
@@ -107,7 +120,7 @@ perl tools/preview/serve.pl .preview 4173
 │   ├── src/            # API Express + Sequelize — referencia, no se toca
 │   └── public/
 │       ├── css/tokens.css   # paleta compartida por las dos pantallas
-│       ├── index.html …     # PWA del inspector
+│       ├── index.html …     # PWA del inspector (patrullas, bahías, precarga)
 │       └── gerencia/        # tablero de gerencia
 ├── migrations/         # 001 esquema · 002 fotos · 003 histórico · 004 desvíos
 ├── tools/preview/      # mirar las dos pantallas con datos falsos
@@ -124,7 +137,7 @@ El origen era una tabla plana de 13 columnas. Los cambios grandes:
 - **`Desvio` era un `EnumList` separado por coma** (278 filas con más de uno). Pasa a tabla puente: contar "cuántos óxidos hubo" ya no requiere parsear strings.
 - **`Fotografias del desvio 2` no era una foto del desvío**, sino el *Checklist Batea (Vertical)*, presente en el 100% de los OK.
 - **El campo `Controlador` mezclaba personas con estados** (`Controlado`, `Solicitado controlar en TASA`). Se separan.
-- **53 de 77 desvíos tenían más de un tipo asignado** según quién los cargara, lo que rompía cualquier métrica. El catálogo ahora trae un tipo por defecto que prellena el formulario.
+- **60 de 71 desvíos tenían más de un tipo asignado** según quién los cargara, sobre el 99% de los usos: el campo terminaba diciendo quién lo cargó, no qué se encontró. **Se sacó** (`YI-008`). La pregunta la contesta el Pareto por desvío, que dice *cuál* en vez de *de qué tipo*.
 
 El detalle completo, con los números, está en [CLAUDE.md](CLAUDE.md).
 
