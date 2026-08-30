@@ -480,10 +480,10 @@
     ['Alfombra delantera', 'Interior'], ['Asiento trasero', 'Interior'],
     ['Tablero digital / velocímetro', 'Interior'], ['Neumáticos (no de auxilio)', 'Tren inferior, techo y varios']
   ];
-  // Los codigos de daño de la planilla Furlong.
-  const TIPOS = ['Abollado (pintura rota o quebrada)', 'Rayado (exc. vidrio)', 'Raspado',
-                 'Rozado', 'Mellado (exc. vidrio y bloque de panel)', 'Faltante (exc. moldura)',
-                 'Roto (exc. vidrio)', 'Doblado', 'Manchado / sucio int.'];
+  // Los catorce tipos que usa la operacion. El orden de este array es el ranking
+  // del Pareto, y sale del historico: Abollado y Rayado se llevan el 77%.
+  const TIPOS = ['Abollado', 'Rayado', 'Fallo de pintura', 'Filo de panel', 'Desprendido',
+                 'Contaminado (No daño)', 'Mellado', 'Roto', 'Perforado', 'Faltante'];
   const MODELOS = ['Hilux', 'Corolla Cross', 'Corolla', 'Yaris', 'Hiace', 'SW4'];
   const DESTINOS = ['TOYOTA DO BRASIL LTDA', 'TOYOTA CHILE S.A.', 'DELTA DOCK', 'TOYOSA S.A.'];
   const TRANSPORTISTAS = ['TTFA', 'Autoport', 'Green Mile'];

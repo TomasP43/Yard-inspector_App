@@ -810,9 +810,10 @@ deduplicación del catálogo, las trampas de los datos— está en
   entrada detrás de un adaptador, como la que tenía el módulo de unidades: el
   contrato del sistema de origen todavía no está definido.
 
-- **El catálogo son 109 partes y 28 tipos de daño**, de cruzar dos planillas:
+- **El catálogo son 110 partes**, de cruzar dos planillas:
   `Checklist control de precarga y recepcion.xlsx` (hoja UNID1 — la planilla
-  Furlong: 95 partes en seis sectores, más los códigos de daño y de gravedad) y
+  Furlong: 95 partes en seis sectores, más los códigos de daño y de gravedad del
+  estándar impreso) y
   `Estado de unidades Precarga.xlsx` (hoja Parte — las 70 de AppSheet).
 
   Cuando las dos nombran la misma pieza **gana el nombre de AppSheet**, que es el
@@ -832,10 +833,32 @@ deduplicación del catálogo, las trampas de los datos— está en
     Lateral derecho no tenían y van con id propio (2001–2003). Salieron
     `Informacion especial` (32) y `Compar. motor/otros` (99).
 
-- **Las gravedades Furlong están disponibles y no se usan.** La misma planilla
-  trae los 8 códigos por tamaño del daño (0 sin excepción, 1 hasta 2,5 cm, …,
-  5 más de 30 cm, 6 sustitución/daño severo, 7 faltante). Es el tercer código del
-  estándar `AREA - TIPO - GRAVEDAD`; hoy no se registra.
+- **⚠ Los 14 tipos de daño NO son los códigos de la planilla.** La planilla trae
+  28 códigos numerados (01 doblado, 02 roto exc. vidrio, 19 moldura/burlete…) que
+  son el estándar impreso; la operación carga otros catorce, y son estos los que
+  van en `precarga_tipo_dano`:
+
+  ```
+  Doblado · Roto · Cortado · Abollado · Mellado · Faltante ·
+  Contaminado (No daño) · Perforado · Rayado · Vidrio roto ·
+  Derrame de fluido · Filo de panel · Desprendido · Fallo de pintura
+  ```
+
+  El catálogo tiene que decir lo que la gente elige, no lo que dice el
+  formulario. Si alguna vez hay que reconciliar con el papel, los 28 códigos
+  están en `Checklist control de precarga y recepcion.xlsx`, hoja UNID1,
+  filas 62–73.
+
+- **El orden de los tipos merece una decisión.** Hoy es el que vino de la
+  operación. Medido sobre el histórico, **Abollado y Rayado concentran el 77%**
+  de los daños y quedan cuarto y noveno; ordenar por uso ahorraría un barrido de
+  la lista en tres de cada cuatro cargas. Es la misma razón por la que
+  `desvio_catalogo` y `parte` llevan `usos_historicos`.
+
+- **Las gravedades Furlong están disponibles y no se usan.** La planilla trae los
+  8 códigos por tamaño del daño (0 sin excepción, 1 hasta 2,5 cm, …, 5 más de
+  30 cm, 6 sustitución/daño severo, 7 faltante). Es el tercer código del estándar
+  `AREA - TIPO - GRAVEDAD`; hoy no se registra.
 
 - **Lo que quedó afuera de esta entrega, a decidir:**
 

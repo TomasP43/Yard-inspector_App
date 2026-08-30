@@ -636,8 +636,11 @@
    *
    * | Documento | Que aporta |
    * |---|---|
-   * | `Checklist control de precarga y recepcion.xlsx`, hoja UNID1 | La planilla Furlong: 95 partes numeradas y repartidas en seis sectores, mas los codigos de daño |
+   * | `Checklist control de precarga y recepcion.xlsx`, hoja UNID1 | La planilla Furlong: 95 partes numeradas y repartidas en seis sectores |
    * | `Estado de unidades Precarga.xlsx`, hoja Parte | Las 70 partes del catalogo de AppSheet |
+   *
+   * Los **tipos de daño** son aparte: no salen de ninguna de las dos, son los
+   * catorce que la operacion usa. Ver el comentario de `TIPOS_DANO`.
    *
    * **Cuando las dos nombran la misma pieza gana el nombre de "Estado de
    * unidades Precarga"**, que es el que los inspectores ya tienen a la vista.
@@ -786,35 +789,36 @@
     { id: 1014, nombre: 'Interior compartimiento trasero (Hiace)', grupo: 'Interior' }
   ];
 
+  /**
+   * Los tipos de daño, tal como los usa la operacion.
+   *
+   * **No son los codigos de la planilla Furlong.** La planilla trae 28 codigos
+   * numerados (01 doblado, 02 roto exc. vidrio, 19 moldura/burlete...) que son el
+   * estandar impreso; estos catorce son los que se cargan de verdad. Se toman
+   * estos: el catalogo tiene que decir lo que la gente elige, no lo que dice el
+   * formulario. Los codigos Furlong quedan documentados en YI-013 por si alguna
+   * vez hay que reconciliar con el papel.
+   *
+   * El orden es el que vino de la operacion. Ojo con esto: medido sobre el
+   * historico, **Abollado y Rayado son el 77% de los daños** y aca quedan cuarto y
+   * noveno. Ordenarlos por uso ahorraria un barrido de la lista en tres de cada
+   * cuatro cargas -- es cambiar el orden de este array, nada mas.
+   */
   const TIPOS_DANO = [
     { id: 1, nombre: 'Doblado' },
-    { id: 2, nombre: 'Roto (exc. vidrio)' },
+    { id: 2, nombre: 'Roto' },
     { id: 3, nombre: 'Cortado' },
-    { id: 4, nombre: 'Abollado (pintura rota o quebrada)' },
-    { id: 5, nombre: 'Mellado (exc. vidrio y bloque de panel)' },
-    { id: 6, nombre: 'Quebrado (exc. vidrio)' },
-    { id: 7, nombre: 'Rozado' },
-    { id: 8, nombre: 'Faltante (exc. moldura)' },
-    { id: 9, nombre: 'Raspado' },
-    { id: 10, nombre: 'Manchado / sucio int.' },
-    { id: 11, nombre: 'Perforado' },
-    { id: 12, nombre: 'Rayado (exc. vidrio)' },
-    { id: 13, nombre: 'Desgarrado' },
-    { id: 14, nombre: 'Abollado pintura, cromado no dañado' },
-    { id: 15, nombre: 'Moldura / burlete / emb. dañado' },
-    { id: 19, nombre: 'Moldura / burlete / emb. suelto o faltante' },
-    { id: 20, nombre: 'Vidrio rajado' },
-    { id: 21, nombre: 'Vidrio roto' },
-    { id: 22, nombre: 'Vidrio mellado' },
-    { id: 23, nombre: 'Vidrio rayado' },
-    { id: 24, nombre: 'Luz indicadora dañada' },
-    { id: 25, nombre: 'Daño en calcomanía / franja de pintura / veta de madera' },
-    { id: 33, nombre: 'Derrame de fluido ext.' },
-    { id: 34, nombre: 'Borde panel mellado' },
-    { id: 35, nombre: 'Pieza incorrecta' },
-    { id: 36, nombre: 'Opcional no facturado' },
-    { id: 37, nombre: 'Herrajes ext. dañados' },
-    { id: 38, nombre: 'Herrajes exteriores sueltos o faltantes' }
+    { id: 4, nombre: 'Abollado' },
+    { id: 5, nombre: 'Mellado' },
+    { id: 6, nombre: 'Faltante' },
+    { id: 7, nombre: 'Contaminado (No daño)' },
+    { id: 8, nombre: 'Perforado' },
+    { id: 9, nombre: 'Rayado' },
+    { id: 10, nombre: 'Vidrio roto' },
+    { id: 11, nombre: 'Derrame de fluido' },
+    { id: 12, nombre: 'Filo de panel' },
+    { id: 13, nombre: 'Desprendido' },
+    { id: 14, nombre: 'Fallo de pintura' }
   ];
 
   const CATALOGOS_PC = { partes: PARTES, tipos_dano: TIPOS_DANO };

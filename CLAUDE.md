@@ -417,11 +417,12 @@ mide a quien lo carga) y la **gravedad**. Los tres estan anotados en YI-013.
 
 ### El catalogo sale de cruzar las dos planillas
 
-**109 partes y 28 tipos de daño**, de dos documentos:
+**110 partes**, de cruzar dos documentos. Los **14 tipos de daño** van aparte:
+no salen de ninguno de los dos, son los que la operacion usa.
 
 | Documento | Que aporta |
 |---|---|
-| `Checklist control de precarga y recepcion.xlsx`, hoja UNID1 | La planilla Furlong: 95 partes numeradas y repartidas en **seis sectores**, mas los codigos de daño y las gravedades |
+| `Checklist control de precarga y recepcion.xlsx`, hoja UNID1 | La planilla Furlong: 95 partes numeradas y repartidas en **seis sectores**, mas los codigos de daño y las gravedades del estandar impreso |
 | `Estado de unidades Precarga.xlsx`, hoja Parte | Las 70 partes del catalogo de AppSheet |
 
 **Cuando las dos nombran la misma pieza gana el nombre de AppSheet**, que es el
@@ -451,8 +452,18 @@ forma admitida de fusionar (ver D-004):
 - **`Protector paragolpe / fleje` queda dos veces a proposito**: son el delantero
   y el trasero, y el sector los distingue.
 
-Las **gravedades Furlong** (los 8 codigos por tamaño del daño) estan en la misma
-planilla y **no se registran todavia**. Ver YI-013.
+**Los tipos de daño NO son los codigos de la planilla.** La planilla trae 28
+codigos numerados —el estandar impreso— y la operacion carga otros catorce:
+Doblado, Roto, Cortado, Abollado, Mellado, Faltante, Contaminado (No daño),
+Perforado, Rayado, Vidrio roto, Derrame de fluido, Filo de panel, Desprendido,
+Fallo de pintura. Van estos: el catalogo tiene que decir lo que la gente elige,
+no lo que dice el formulario. Los 28 codigos y las 8 **gravedades** quedan
+anotados en YI-013 por si alguna vez hay que reconciliar con el papel.
+
+**El orden de los tipos es el que vino de la operacion, y conviene mirarlo:**
+medido sobre el historico, **Abollado y Rayado son el 77% de los daños** y hoy
+quedan cuarto y noveno. Ordenarlos por uso ahorraria un barrido de la lista en
+tres de cada cuatro cargas — es cambiar el orden de un array.
 
 ### La jornada cierra el viaje
 
