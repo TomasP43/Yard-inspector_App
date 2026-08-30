@@ -550,23 +550,35 @@ Vive como una vista mas de la PWA y **no como una pagina aparte**, al reves que
 los carteles de bahia: los datos ya estan en memoria, asi que la hoja sale sin
 señal. Los carteles necesitan red para traer los tokens; esto no.
 
+**Mantiene el diseño del formulario**, no es un reporte nuevo: quien la recibe en
+destino tiene que reconocer el papel de siempre. Recuadros, etiquetas chicas en
+mayuscula y reticula visible; el molde es el del impreso.
+
 | Del papel | En la hoja |
 |---|---|
-| Datos de la unidad | Salen cargados, mas el orden real de bajada y si fue fuera de orden |
-| Observacion de origen | La tabla de daños: sector, parte, tipo y comentario |
+| Cabecera, chasis, modelo, motor, lugar de carga, FC | Salen cargados, mas el orden real de bajada y si fue fuera de orden |
+| Observacion de origen | La tabla de daños: area, parte, daño y detalle |
 | "Marcar con un circulo la zona dañada" | El esquema, ya marcado |
-| Los recuadros de firma | **Las fotos del daño** |
 | Recepcion de destino | **En blanco**, la llena el modulo de descarga |
+| La grilla de partes en tres columnas | **Se conserva**: en destino se marca a mano sobre ella |
+| Las leyendas del pie | Los 14 tipos y las 8 gravedades |
+| Los recuadros de firma | **Las fotos del daño** — si no hay fotos, quedan los recuadros |
 
-**Lo que no se porta:** la grilla de 95 partes con su numero y la leyenda de
-codigos. Existen para que alguien busque el codigo y lo escriba a mano; con la
-hoja generada el nombre ya esta puesto, asi que ocuparian una carilla para nada.
-Por lo mismo se imprime el nombre de la parte y del daño, no el codigo numerico.
+**Tres cosas cambian, y las tres estan forzadas por el dato:**
 
-**Los recuadros de firma pasan a ser las fotos** por decision de la operacion: en
-precarga esos recuadros quedaban vacios, y la foto es la prueba que si existe en
-ese momento. ⚠ Queda abierto si en destino igual hay que firmar sobre el papel;
-si es asi, los recuadros vuelven.
+1. `OBSERVACION DE ORIGEN` en el papel son tres renglones sueltos --area, daño,
+   gravedad-- porque asume un daño por hoja. Una unidad puede tener varios, asi
+   que ahi va la tabla.
+2. La leyenda es la de los **14 tipos que la operacion usa**, no la de los 28
+   codigos numerados del impreso: imprimir codigos que ya nadie carga es
+   imprimir un fosil.
+3. La grilla lleva **las 110 partes**, no las 95 del impreso. Las 16 que se
+   sumaron del catalogo de AppSheet --opticas, airbags, cinturones-- no tienen
+   numero Furlong y van con el Nº vacio; dejarlas afuera significaria que en
+   destino no se puede marcar un airbag dañado porque no figura en la lista.
+
+⚠ Queda abierto si en destino igual hay que firmar sobre el papel. Hoy los
+recuadros solo aparecen cuando la unidad no tiene fotos.
 
 **El `@media print` suelta el layout de la app.** La PWA tiene
 `main { position: fixed }` y la barra de pestañas fija: sin soltar eso el

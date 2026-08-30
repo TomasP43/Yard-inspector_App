@@ -1065,5 +1065,6 @@ const Precarga = (() => {
   return { cargar, refrescar, verBajadas, verSolicitud, verUnidad, verHistorial,
            pintarSolicitud, tomarFoto, verHoja, pintarHoja,
            // Los usa js/hoja.js para escribir los nombres en el documento.
-           parte: parteDe, nombreParte, nombreDano };
+           parte: parteDe, nombreParte, nombreDano,
+           catalogo: () => CATA || { partes: [], tipos_dano: [] } };
 })();

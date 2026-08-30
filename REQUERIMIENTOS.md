@@ -801,10 +801,13 @@ deduplicación del catálogo, las trampas de los datos— está en
   `api/precarga/solicitudes`. No hace falta un endpoint: pedirlo obligaría a
   tener señal justo cuando el inspector cierra la unidad.
 
+  Mantiene el diseño del formulario impreso, incluida la grilla de partes en
+  tres columnas y las leyendas del pie: en destino se marca a mano sobre esa
+  grilla, así que sacarla dejaría al receptor sin dónde anotar.
+
   ⚠ **Queda abierto si en destino hay que firmar sobre el papel.** Los recuadros
-  de firma del formulario se usan para las fotos del daño; el bloque de recepción
-  de destino queda en blanco para el módulo de descarga. Si además hacen falta
-  las firmas impresas, vuelven como recuadros y las fotos bajan.
+  de firma se usan para las fotos del daño y solo aparecen cuando la unidad no
+  tiene ninguna. Si hacen falta siempre, vuelven y las fotos bajan.
 
 - **⚠ La unidad se cierra con una afirmación, no por omisión.**
  El formulario
