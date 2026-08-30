@@ -1581,8 +1581,27 @@ details.ficha[open] .ver-obs .ico { transform: rotate(90deg); }
 .pc-nuevo .tags { margin-top: 6px; }
 .pc-nuevo .btn { margin-top: 14px; }
 /* El de guardar tambien se bloquea, hasta decir si la unidad tiene daños. */
+/* Un boton rojo al 50% se lee como error, no como bloqueado -- y con el
+   subformulario abierto habia dos, uno arriba del otro, diciendo cosas
+   distintas. Bloqueado pasa a ser una superficie neutra. */
 .pc-nuevo .btn[disabled],
-.acciones-full .btn[disabled] { opacity: .45; cursor: default; }
+.acciones-full .btn[disabled] {
+  opacity: 1;
+  background: var(--surface-raised);
+  border-color: var(--line-rule);
+  color: var(--text-faint);
+  cursor: default;
+}
+
+/* El ritmo del formulario. `.paso` trae su margen abajo y `.card + .card` el
+   suyo, pero `.card + .paso` no tenia ninguna regla: el titulo del paso quedaba
+   pegado a la tarjeta de arriba. */
+.card + .paso { margin-top: 16px; }
+
+/* `.nota` trae padding propio para cuando va suelta en una lista. Dentro de un
+   paso, que ya es una grilla con gap, ese padding la indenta y le abre un hueco
+   arriba que no le corresponde. */
+.paso > .nota { padding: 0; }
 
 .pc-sep { display: block; margin-top: 14px; }
 .pc-req {

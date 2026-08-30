@@ -1035,7 +1035,6 @@
       // Las fotos se guardan como ruta, igual que en produccion. Si el preview
       // devolviera el base64 que le llego, el front tendria que tratarlas
       // distinto que a las del servidor y ese camino quedaria sin probar.
-      foto_panoramica: b.foto_panoramica ? 'uploads/demo-1.svg' : null,
       danos: (b.danos || []).map((d) => ({
         parte_id: d.parte_id,
         tipo_dano_id: d.tipo_dano_id,

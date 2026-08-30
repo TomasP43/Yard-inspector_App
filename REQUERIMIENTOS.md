@@ -720,7 +720,7 @@ deduplicación del catálogo, las trampas de los datos— está en
   precarga_unidad      (id, solicitud_id, vin, orden_solicitado, so, katashiki,
                         modelo, destino, linea_txt)
   precarga_inspeccion  (id, uuid UNIQUE, unidad_id, inspector_id, escaneado_en,
-                        registrado_en, sincronizado_en, foto_panoramica)
+                        registrado_en, sincronizado_en)
   precarga_dano        (id, inspeccion_id, parte_id, tipo_dano_id, comentario, foto)
   precarga_parte       (id, nombre, grupo, usos_historicos, orden, activo)
   precarga_tipo_dano   (id, nombre, usos_historicos, orden, activo)
@@ -789,6 +789,12 @@ deduplicación del catálogo, las trampas de los datos— está en
 
 - **La foto del daño es obligatoria en el servidor, no solo en el front.** Si la
   exigiera solo la pantalla, alcanzaría un POST a mano para saltearla.
+
+- **No hay foto panorámica de la unidad.** AppSheet la tenía como campo opcional
+  y se sacó: nadie la completaba, y en el teléfono era una caja vacía de 150 px
+  entre el resultado y los daños. La única foto que el formulario pide es la del
+  daño, y esa sí es obligatoria. Si alguna vez hace falta, vuelve como una
+  columna en `precarga_inspeccion` y un paso más en el formulario.
 
 - **⚠ La unidad se cierra con una afirmación, no por omisión.** El formulario
   pide «Sin daños» o «Con daños» sin nada preseleccionado, y hasta contestar no

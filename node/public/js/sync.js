@@ -139,7 +139,6 @@ const Sync = (() => {
       solicitud_id: item.solicitud_id,
       vin: item.vin,
       escaneado_en: item.escaneado_en,
-      foto_panoramica: item.foto_panoramica ? await Camara.aBase64(item.foto_panoramica) : null,
       danos
     };
   }

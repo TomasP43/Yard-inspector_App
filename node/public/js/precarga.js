@@ -35,7 +35,6 @@ const Precarga = (() => {
   let vinAbierto = null;   // vin de la unidad abierta
 
   let form = null;         // borrador de la unidad que se esta cargando
-  let destinoFoto = null;  // 'pano' | 'dano', para saber a que slot va el archivo
 
   /**
    * VINs escaneados en esta sesion, con el momento del escaneo.
@@ -55,7 +54,7 @@ const Precarga = (() => {
    * ser posible -- y "la mire y estaba bien" tiene que ser algo que alguien
    * afirmo, no lo que queda si no se toca nada.
    */
-  const vacio = (vin) => ({ vin, resultado: null, pano: null, danos: [], nuevo: null });
+  const vacio = (vin) => ({ vin, resultado: null, danos: [], nuevo: null });
 
   /**
    * Estado del historial, aparte del de la jornada en curso.
@@ -413,16 +412,6 @@ const Precarga = (() => {
         ${desvio ? `<p class="nota alerta">Se está bajando fuera del orden solicitado (iba ${u.orden_solicitado}.º).</p>` : ''}
       </section>`;
 
-    const pano = `
-      <section class="paso">
-        <div class="cab"><span class="eq-label">Foto panorámica</span><span class="mono">opcional</span></div>
-        <div class="fotos una">
-          ${form.pano
-            ? `<div class="foto"><img src="${form.pano.url}" alt=""><button type="button" class="quitar" data-quitar-pano>${ico('x', 12)}</button></div>`
-            : `<button type="button" class="foto-add" data-foto="pano">${ico('camera', 20)}<span>Panorámica</span></button>`}
-        </div>
-      </section>`;
-
     // Nada preseleccionado: el inspector tiene que decir que encontro. Sin esto,
     // el formulario abria con "Guardar sin daños" listo para tocar y se podia
     // cerrar la unidad sin haberla mirado -- que es justo lo que el escaneo vino
@@ -459,12 +448,15 @@ const Precarga = (() => {
       : !form.danos.length ? 'Cargá al menos un daño'
       : `Guardar con ${form.danos.length} ${form.danos.length === 1 ? 'daño' : 'daños'}`;
 
-    const guardar = `
+    // Con un daño a medio componer el boton de guardar no va: eran dos botones
+    // grandes uno arriba del otro diciendo cosas distintas, y el de abajo no
+    // sirve hasta terminar el de arriba. Para volver esta la cruz del paso.
+    const guardar = form.nuevo ? '' : `
       <div class="acciones-full">
         <button type="button" class="btn" id="pc-guardar"${listo ? '' : ' disabled'}>${etiqueta}</button>
       </div>`;
 
-    return cabecera + resultado + pano + danos + guardar;
+    return cabecera + resultado + danos + guardar;
   }
 
   function filaDano(d, i) {
@@ -721,15 +713,19 @@ const Precarga = (() => {
 
   // -------------------------------------------------------------- guardar
 
-  /** El archivo del input oculto, comprimido antes de mostrarlo. */
+  /**
+   * El archivo del input oculto, comprimido antes de mostrarlo.
+   *
+   * Va siempre al daño que se esta componiendo: es la unica foto que el
+   * formulario pide. La panoramica de la unidad se saco -- era opcional y una
+   * caja vacia de 150 px entre el resultado y los daños.
+   */
   async function tomarFoto(input) {
     const file = input.files && input.files[0];
     input.value = '';
-    if (!file || !form) return;
+    if (!file || !form || !form.nuevo) return;
     const blob = await Camara.comprimir(file);
-    const foto = { blob, url: URL.createObjectURL(blob) };
-    if (destinoFoto === 'pano') form.pano = foto;
-    else if (form.nuevo) form.nuevo.foto = foto;
+    form.nuevo.foto = { blob, url: URL.createObjectURL(blob) };
     pintarUnidad();
   }
 
@@ -753,7 +749,6 @@ const Precarga = (() => {
         // El escaneo, no el guardado: entre uno y otro el inspector dio la
         // vuelta al auto y cargo tres daños, y el orden es el de la bajada.
         escaneado_en: escaneadas.get(form.vin) || new Date().toISOString(),
-        foto_panoramica: form.pano ? form.pano.blob : null,
         danos: form.danos.map((d) => ({
           parte_id: d.parte_id,
           tipo_dano_id: d.tipo_dano_id,
@@ -963,10 +958,7 @@ const Precarga = (() => {
       return;
     }
 
-    const foto = t.closest('[data-foto]');
-    if (foto) { capturar(); destinoFoto = foto.dataset.foto; $('#pc-file').click(); return; }
-
-    if (t.closest('[data-quitar-pano]')) { form.pano = null; pintarUnidad(); return; }
+    if (t.closest('[data-foto]')) { capturar(); $('#pc-file').click(); return; }
     if (t.closest('[data-quitar-foto-dano]')) { capturar(); form.nuevo.foto = null; pintarUnidad(); return; }
 
     const quitar = t.closest('[data-quitar-dano]');
