@@ -496,6 +496,37 @@ medido sobre el historico, **Abollado y Rayado son el 77% de los daños** y hoy
 quedan cuarto y noveno. Ordenarlos por uso ahorraria un barrido de la lista en
 tres de cada cuatro cargas — es cambiar el orden de un array.
 
+### El borrador no se pierde
+
+El borrador de la unidad --lo que se eligio, los daños cargados y sus fotos-- va
+a **IndexedDB**, no a memoria. Antes bastaba que el telefono se bloqueara y el
+navegador descartara la pestaña para que el inspector tuviera que escanear de
+nuevo y recargar todo, parado al lado del auto. Era lo unico del modulo que podia
+costar trabajo hecho, no solo tiempo.
+
+Va en el store `cache` con la clave `precarga_borradores`, no en un store propio:
+agregar uno obliga a subir la version de la base, y una migracion de IndexedDB
+puede quedarse en `onblocked` con otra pestaña abierta.
+
+**Uno por unidad.** Antes, abrir otra unidad pisaba el borrador anterior sin
+avisar; perder los daños de la unidad A por tocar la B es justo lo que esto vino
+a arreglar.
+
+**Solo se guarda lo escaneado.** Abrir una unidad para mirarla arma un borrador
+vacio en memoria, y persistirlo dejaria un registro por cada unidad que alguien
+toco -- basura que ademas no sirve para retomar nada, porque sin escaneo el gate
+pide escanear igual.
+
+⚠ **Caducan con la jornada, y eso no es prolijidad.** Restaurar un borrador
+restaura tambien el escaneo de esa unidad, y el escaneo es el gate que obliga a
+estar al lado del auto (D-015). Que sobreviva dentro del turno no abre un agujero
+--el inspector ya escaneo esa unidad y esta a mitad de cargarla-- pero de un dia
+para el otro si: alguien podria retomar sin haber vuelto.
+
+Se pinta primero y se guarda despues, sin `await` y con el error tragado: si el
+navegador no da almacenamiento, la carga funciona igual y solo se pierde la
+persistencia. Es la regla de D-013.
+
 ### El esquema del vehiculo, antes de cerrar
 
 Cargado el ultimo daño y antes de guardar, la unidad muestra **el blueprint con

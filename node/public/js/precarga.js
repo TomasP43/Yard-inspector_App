@@ -37,11 +37,14 @@ const Precarga = (() => {
   let form = null;         // borrador de la unidad que se esta cargando
 
   /**
-   * VINs escaneados en esta sesion, con el momento del escaneo.
+   * VINs escaneados, con el momento del escaneo.
    *
-   * Vive en memoria y no en disco a proposito, igual que `desbloqueadas` en
-   * bahias: recargar la app tiene que volver a pedir el escaneo. Lo que si
-   * sobrevive es la unidad ya guardada, que sale de la cola o del servidor.
+   * Una unidad **sin borrador** no sobrevive a recargar la app: hay que volver a
+   * escanear, que es el gate de D-015. Lo que si sobrevive es el escaneo de una
+   * unidad **a medio cargar**, porque viaja adentro de su borrador -- ahi el
+   * inspector ya estuvo al lado del auto y hacerlo escanear de nuevo solo le
+   * cuesta trabajo. Los borradores caducan con la jornada para que eso no se
+   * estire mas alla del turno.
    */
   const escaneadas = new Map();
 
@@ -55,6 +58,103 @@ const Precarga = (() => {
    * afirmo, no lo que queda si no se toca nada.
    */
   const vacio = (vin) => ({ vin, resultado: null, danos: [], nuevo: null });
+
+  /**
+   * Los borradores en curso, guardados en disco.
+   *
+   * **Sin esto se perdia trabajo ya hecho.** El borrador vivia solo en memoria:
+   * bastaba que el telefono se bloqueara y el navegador descartara la pestaña
+   * para que el inspector tuviera que escanear de nuevo y recargar los daños,
+   * parado al lado del auto. Es lo unico del modulo que podia costar trabajo
+   * hecho, no solo tiempo.
+   *
+   * Van en el store `cache`, con la clave `precarga_borradores`, en vez de un
+   * store propio: agregar uno obliga a subir la version de la base, y una
+   * migracion de IndexedDB puede quedarse en `onblocked` con otra pestaña
+   * abierta. Ver el comentario de `db.js`.
+   *
+   * **Uno por unidad, no uno solo.** Antes, abrir otra unidad pisaba el borrador
+   * anterior sin avisar -- perder los daños de la unidad A por tocar la B es
+   * exactamente lo que este punto vino a arreglar.
+   *
+   * ⚠ **Caducan con la jornada.** Restaurar un borrador restaura tambien el
+   * escaneo de esa unidad, y el escaneo es el gate que obliga a estar al lado
+   * del auto (D-015). Que sobreviva dentro del turno no abre un agujero --el
+   * inspector ya escaneo esa unidad y esta a mitad de cargarla-- pero que
+   * sobreviva de un dia para el otro si: alguien podria retomar sin haber vuelto.
+   * Al cambiar de jornada se descartan.
+   */
+  const CLAVE_BORRADORES = 'precarga_borradores';
+  const borradores = new Map();
+  let borradoresLeidos = false;
+
+  const llaveBorrador = (sol, vin) => String(sol) + '|' + vin;
+
+  /** Le devuelve al borrador las URL de las fotos, que no sobreviven al disco. */
+  function hidratar(d, vin) {
+    const url = (f) => (f && f.blob ? { blob: f.blob, url: URL.createObjectURL(f.blob) } : null);
+    return {
+      vin,
+      resultado: d.resultado || null,
+      danos: (d.danos || []).map((x) => ({ ...x, foto: url(x.foto) })),
+      nuevo: d.nuevo ? { ...d.nuevo, foto: url(d.nuevo.foto) } : null
+    };
+  }
+
+  /** Saca las URL: un `blob:` de otra sesion no apunta a nada. */
+  function deshidratar(f) {
+    const sinUrl = (x) => (x && x.blob ? { blob: x.blob } : null);
+    return {
+      resultado: f.resultado || null,
+      escaneado_en: escaneadas.get(f.vin) || null,
+      danos: (f.danos || []).map((d) => ({ ...d, foto: sinUrl(d.foto) })),
+      nuevo: f.nuevo ? { ...f.nuevo, foto: sinUrl(f.nuevo.foto) } : null
+    };
+  }
+
+  async function restaurarBorradores() {
+    if (borradoresLeidos) return;
+    borradoresLeidos = true;
+
+    let guardado = null;
+    try { guardado = await DB.leerCache(CLAVE_BORRADORES); } catch (e) { return; }
+    if (!guardado || !guardado.drafts) return;
+
+    if (guardado.turno_clave !== Turnos.de(new Date()).clave) {
+      // Otra jornada: se descartan, por el gate del escaneo.
+      try { await DB.guardarCache(CLAVE_BORRADORES, null); } catch (e) { /* da igual */ }
+      return;
+    }
+
+    for (const llave of Object.keys(guardado.drafts)) {
+      const d = guardado.drafts[llave];
+      const vin = llave.split('|')[1];
+      if (d.escaneado_en) escaneadas.set(vin, d.escaneado_en);
+      borradores.set(llave, hidratar(d, vin));
+    }
+  }
+
+  /**
+   * Vuelca los borradores a disco.
+   *
+   * **Sin `await` desde el render y con el error tragado**: escribir el cache no
+   * puede cortar el pintado ni romper la carga si el navegador no da
+   * almacenamiento. Es la misma regla que D-013 -- nada que sea una mejora va en
+   * el camino critico.
+   */
+  function persistirBorradores() {
+    const drafts = {};
+    for (const [llave, f] of borradores) drafts[llave] = deshidratar(f);
+    DB.guardarCache(CLAVE_BORRADORES, {
+      turno_clave: Turnos.de(new Date()).clave,
+      drafts
+    }).catch(() => { /* sin memoria local: se sigue igual, en RAM */ });
+  }
+
+  function olvidarBorrador(sol, vin) {
+    borradores.delete(llaveBorrador(sol, vin));
+    persistirBorradores();
+  }
 
   /**
    * Estado del historial, aparte del de la jornada en curso.
@@ -84,6 +184,7 @@ const Precarga = (() => {
       // Sin señal se sigue con lo que ya estaba. Si no habia nada, la pantalla
       // lo dice; lo que no puede pasar es que se vacie lo que ya se mostraba.
     }
+    await restaurarBorradores();
     if (DATOS) { DATOS.turnoLocal = t; await superponerCola(); }
     return DATOS;
   }
@@ -350,7 +451,13 @@ const Precarga = (() => {
     const u = unidadDe(solPorId(solAbierta), vin);
     // Solo se arma el borrador si la unidad no esta cargada todavia. Volver a
     // entrar a una ya guardada no puede pisar lo que se guardo.
-    if (u && !u.inspeccion && (!form || form.vin !== vin)) form = vacio(vin);
+    //
+    // Y si esa unidad tiene un borrador --de antes, o de esta misma sesion-- se
+    // retoma en vez de empezar de cero: cambiar de unidad y volver no puede
+    // costar los daños ya cargados.
+    if (u && !u.inspeccion && (!form || form.vin !== vin)) {
+      form = borradores.get(llaveBorrador(solAbierta, vin)) || vacio(vin);
+    }
     irA('unidad');
     pintarUnidad();
   }
@@ -364,6 +471,18 @@ const Precarga = (() => {
 
     $('#titulo').textContent = u.vin;
     $('#eyebrow').textContent = (s.codigo || '') + ' · orden solicitado ' + (u.orden_solicitado || '—');
+
+    // Se pinta primero y se guarda despues, sin `await`: escribir el cache no
+    // puede cortar el render. Ver el comentario de `persistirBorradores`.
+    //
+    // Solo se guarda lo que fue escaneado. Abrir una unidad para mirarla arma un
+    // borrador vacio en memoria, y persistirlo dejaria un registro por cada
+    // unidad que alguien toco -- basura que ademas no sirve para retomar nada,
+    // porque sin escaneo el gate pide escanear igual.
+    if (form && form.vin === u.vin && !u.inspeccion && escaneadas.has(u.vin)) {
+      borradores.set(llaveBorrador(solAbierta, u.vin), form);
+      setTimeout(persistirBorradores, 0);
+    }
 
     cuerpo.innerHTML = u.inspeccion ? fichaUnidad(s, u)
       : s.cerrada ? `<section class="card gate">${ico('clock', 30)}<b>No se bajó</b>
@@ -783,6 +902,7 @@ const Precarga = (() => {
         ? `${form.danos.length} ${form.danos.length === 1 ? 'daño' : 'daños'} en ${form.vin}`
         : `${form.vin}, sin daños`);
 
+      olvidarBorrador(s.id, form.vin);
       form = null;
       await cargar();
       irA('solicitud');

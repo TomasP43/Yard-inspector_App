@@ -35,7 +35,7 @@ ahi arranca el siguiente.**
 
 | # | Que | Toca | Estado |
 |---|---|---|---|
-| 1 | **El borrador sobrevive a que se cierre la app** — hoy vive en memoria y se pierde el trabajo | front | pendiente |
+| 1 | ~~El borrador sobrevive a que se cierre la app~~ | front | **hecho** |
 | 2 | **Buscar un VIN** y ver todo su historial | front + `YI-016` | pendiente |
 | 3 | **Codigos AIAG y gravedad** | datos + front + `YI-015` | bloqueado: falta M-14/M-22 |
 | 4 | **PDF del legajo** y envio | front + decision | pendiente |
