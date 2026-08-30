@@ -51,6 +51,52 @@ evita que vuelvan a aparecer en cada conversacion.
 
 ---
 
+## Lo que hacen los que ya lo resolvieron
+
+Salió de mirar software de **RoRo y terminales portuarias** y de **transporte
+terrestre de autos**, que son las otras patas de la misma cadena. No hay nada
+open source que sirva de base —el topic `vehicle-inspection` de GitHub son 29
+repos y uno solo pasa de 2 estrellas— pero hay diseño para copiar.
+
+### Dos cosas que corrigen lo que ya está hecho
+
+**1. ⚠ M-22 va por la versión 6, y nosotros migramos a la 4.**
+La 4.1 es la que el ECG publica gratis. AIAG anunció que la **v6 trae «revised
+and reassigned damage codes» y «numerous changes to the Type and Area codes
+listing»**. O sea: es exactamente el mismo error que acabamos de corregir, un
+escalón más arriba. Hay que conseguir la v6 antes de que haya volumen cargado.
+Confirmado de paso que **no hay estándar competidor**: AIAG-ECG son los únicos.
+
+**2. Extender el estándar está bien. Pisarle los números, no.**
+Las plataformas del rubro traen varios catálogos y dejan que cada organización
+**extienda un estándar o arme uno propio**. O sea que la planilla de Furlong
+haya sumado cuchetas, largueros y paneles de cabina **no es el error** — es lo
+normal, porque M-22 no piensa en camiones. El error es que los metió en los
+números 72–79, que el estándar ya usaba para neumáticos y llantas.
+
+**La corrección no es dejar 26 partes sin código: es darles un espacio propio**
+que no se confunda con el oficial —un prefijo, o un rango que M-22 no use— y que
+el reporte externo mande el código oficial cuando existe y el propio cuando no.
+Hoy quedan en `null`, que es seguro pero pierde información que la operación sí
+tiene.
+
+### Tres cosas para los puntos que faltan
+
+| Punto | Lo que hacen | Qué nos ahorra |
+|---|---|---|
+| **5 · punto exacto** | Super Dispatch **marca el daño sobre la foto**, no sobre un esquema. Logisoft sí usa diagramas por panel: las dos formas conviven en el mercado | Anotar la foto **sale gratis** —ya es obligatoria por daño— y evita mapear 110 partes × 5 vistas × 8 modelos. Además es mejor prueba: es el daño, no un punto en una silueta genérica |
+| **6 · captura guiada** | Dos escuelas. [Monk](https://github.com/monkvision/monkjs) muestra un **wireframe SVG del auto** y pide alinear, más chequeo de **desenfoque, exposición, ángulo y partes visibles**. Super Dispatch es más simple: **exige 6 fotos** en origen y 6 en destino, sin overlay | Se puede arrancar por la política —N ángulos fijos— y sumarle solo el chequeo de desenfoque, que son unas líneas de canvas. El overlay es una obra aparte |
+| **7 · descarga en destino** | **Damage carry-forward**: «un golpe detectado en el portón queda en el registro en cada inspección siguiente hasta que se repara o se cierra». El inspector de destino **confirma, marca reparado o anota** — no vuelve a documentar | **Ya lo tenemos escrito, en otro módulo.** Es la resolución del NG anterior de patrullas. La descarga es el mismo paso con otro nombre |
+
+**Y una que dejamos afuera y conviene revisar:** el rubro captura **firmas de
+terceros** en el handheld del inspector —chofer, representante del cargador,
+representante del consignatario— más **metadata ambiental** (luz, clima). Las
+firmas se descartaron para precarga con buen motivo: el inspector sale de la
+sesión de ttfa. Pero **en el traspaso son el punto**, porque ahí hay dos partes
+que tienen que estar de acuerdo, y eso la sesión no lo prueba.
+
+---
+
 ## Pendientes
 
 ### YI-001 — Filtrar el historial por tipo de control
@@ -1104,11 +1150,12 @@ otra punta significa otra cosa.
 
 | Qué | Por qué |
 |---|---|
-| **Las 26 sin código** | ¿Se reclaman contra alguien? Si sí, hay que ver qué código usa esa contraparte para una cuchueta o un panel de cabina |
+| **Las 26 sin código** | ⚠ Revisar: extender el estándar es normal en el rubro —las plataformas dejan armar catálogos propios—. **Lo que estuvo mal fue pisar los números oficiales, no extender.** Darles un espacio propio que no se confunda con el oficial recupera información que hoy se pierde en `null` |
 | **El corner post 71** | El estándar tiene uno solo y se lo lleva el pilar delantero **derecho**, que es arbitrario: el izquierdo queda sin código |
 | **`Fallo de pintura` sin código** | Confirmado contra el documento: M-22 codifica daño de **transporte**, y un defecto de pintura sale de planta. Es el 3.º tipo más cargado (347 usos) |
 | **`Faltante` y `Desprendido` comparten el 38** | El estándar los junta en «Hardware - Loose, Missing», que es su cajón de sastre. Nosotros los separamos |
 | **La regla de los daños múltiples** | El documento dice: varios daños en el mismo panel, sea cual sea su tamaño, se codifican **gravedad 3 o mayor**. No está implementada |
+| **⚠ Existe la v6** | Migramos a la **v4**, que es la que el ECG publica gratis. AIAG anunció que la **v6** trae códigos «revised and reassigned» y cambios en las listas de Type y Area: es el mismo error que este ítem vino a corregir, un escalón más arriba. Conseguirla antes de que haya volumen cargado |
 
 #### Lo que falta del backend
 
