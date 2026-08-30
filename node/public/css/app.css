@@ -643,7 +643,10 @@ main {
   height: calc(var(--alto-tabs) + env(safe-area-inset-bottom));
   padding-bottom: env(safe-area-inset-bottom);
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  /* Sigue a cuantas pestanas tiene el modulo abierto; lo setea
+     pintarNavegacion(). Estaba fijo en 4, que era la cantidad de
+     patrullas, y por eso las dos de bahias ocupaban media barra. */
+  grid-template-columns: repeat(var(--cols, 4), 1fr);
   background: var(--surface-panel);
   border-top: 1px solid var(--line-hairline);
 }
@@ -1443,3 +1446,146 @@ details.ficha[open] .ver-obs .ico { transform: rotate(90deg); }
    Pegado, su X depende del largo del titulo -- "Hoy · mañana" contra
    "14 ago · tarde" lo corrian 33px -- y entre grupos quedaba escalonado. */
 .grupo-cab small { margin-left: auto; }
+
+/* ------------------------------------------------------------------ precarga */
+
+.pc-lista { border-top: 1px solid var(--line-hairline); }
+
+/* El riel de la izquierda dice el estado sin leer nada: gris sin tocar, ambar a
+   medio bajar, verde completa, rojo con daño. Es el mismo lenguaje que la ronda
+   de bahias, para no aprender dos. */
+.fila.pc-sol.pend    { border-left-color: var(--status-idle); }
+.fila.pc-sol.parcial { border-left-color: var(--status-warn); }
+.fila.pc-sol.ok      { border-left-color: var(--status-ok); }
+.fila.pc-unidad.pend { border-left-color: var(--status-idle); }
+.fila.pc-unidad.ok   { border-left-color: var(--status-ok); }
+.fila.pc-unidad.ng   { border-left-color: var(--ttfa-red); }
+
+.fila .txt b { font-size: 14.5px; font-weight: var(--weight-semibold); color: var(--text-strong); }
+.fila .txt small {
+  font-size: 11.5px;
+  color: var(--text-faint);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* El orden real arriba y el solicitado abajo, en la misma columna. Los dos
+   numeros juntos son la lectura que importa: si no coinciden, se bajo fuera de
+   orden y se ve sin comparar contra nada. */
+.pc-orden {
+  flex: 0 0 40px;
+  display: grid;
+  justify-items: center;
+  gap: 1px;
+  padding: 3px 0;
+  border-radius: var(--radius-md);
+  background: var(--surface-inset);
+}
+.pc-orden b { font-size: 15px; font-weight: var(--weight-bold); color: var(--text-strong); }
+.pc-orden small { font-size: 9.5px; color: var(--text-faint); }
+.pc-orden.desvio { background: var(--ttfa-red-08); }
+.pc-orden.desvio b { color: var(--ttfa-red); }
+
+/* Los datos de la solicitud y de la unidad. Dos columnas: en un telefono, una
+   sola deja la ficha de seis renglones y hay que scrollear para ver el destino. */
+.pc-datos { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 14px; }
+.pc-dato { display: grid; gap: 2px; min-width: 0; }
+.pc-dato b {
+  font-size: 14px;
+  font-weight: var(--weight-semibold);
+  color: var(--text-strong);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cab-lista {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin: 20px 0 6px;
+}
+.cab-lista .mono { font-size: 11px; color: var(--text-faint); }
+
+.acciones-full { margin: 16px 0 4px; }
+.acciones-full .nota { margin-top: 8px; }
+
+/* Un daño cargado: la foto, que parte y de que tipo, y la cruz para sacarlo. */
+.pc-danos { display: grid; gap: 8px; }
+.pc-dano {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  border: 1px solid var(--line-hairline);
+  border-radius: var(--radius-lg);
+  background: var(--surface-card);
+}
+.pc-dano img {
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+  object-fit: cover;
+  border-radius: var(--radius-md);
+}
+.pc-sinfoto {
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-md);
+  background: var(--surface-inset);
+  color: var(--text-faint);
+}
+.pc-dano .txt { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.pc-dano .txt b { font-size: 13px; font-weight: var(--weight-semibold); color: var(--text-strong); }
+.pc-dano .txt small {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pc-dano .quitar {
+  position: static;
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: var(--surface-inset);
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+/* El daño que se esta componiendo. Va embutido en el paso y no en un modal: los
+   modales de este proyecto ya taparon la pantalla una vez, y aca ademas hay que
+   ver los daños que ya se cargaron mientras se agrega el siguiente. */
+.pc-nuevo {
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid var(--line-rule);
+  border-radius: var(--radius-lg);
+  background: var(--surface-inset);
+}
+.pc-nuevo > .cab {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.pc-nuevo .tags { margin-top: 6px; }
+.pc-nuevo .btn { margin-top: 14px; }
+.pc-nuevo .btn[disabled] { opacity: .45; cursor: default; }
+
+.pc-sep { display: block; margin-top: 14px; }
+.pc-req {
+  font-size: 10px;
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--track-label);
+  color: var(--ttfa-red);
+}

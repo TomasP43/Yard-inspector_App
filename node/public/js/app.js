@@ -911,8 +911,8 @@ async function guardar(e) {
 // -------------------------------------------------------------- navegacion
 
 /**
- * Los dos modulos de la app. El cajon lateral cambia de modulo; la barra de
- * abajo se mueve dentro del que este abierto.
+ * Los modulos de la app. El cajon lateral cambia de modulo; la barra de abajo
+ * se mueve dentro del que este abierto.
  *
  * Comparten pagina, service worker y cola de sincronizacion a proposito. Un
  * segundo service worker con su propio scope ya fue fuente de dolor, y ademas
@@ -935,11 +935,18 @@ const MODULOS = {
       ronda:  { titulo: 'Ronda de bahías',    eyebrow: 'Herramientas por bahía', icono: 'list-checks', corto: 'Ronda' },
       rondas: { titulo: 'Rondas anteriores',  eyebrow: 'Turnos cerrados',        icono: 'file-text',   corto: 'Historial' }
     }
+  },
+  precarga: {
+    titulo: 'Inspección de precarga', icono: 'package',
+    pantallas: {
+      bajadas:        { titulo: 'Bajadas de hoy',    eyebrow: 'Solicitudes por bahía', icono: 'car',       corto: 'Bajadas' },
+      'precarga-hist': { titulo: 'Bajadas anteriores', eyebrow: 'Jornadas cerradas',    icono: 'file-text', corto: 'Historial' }
+    }
   }
 };
 
 /** Las vistas de detalle no tienen pestaña, pero pertenecen a un modulo. */
-const DETALLES = { detalle: 'equipos', control: 'equipos', bahia: 'bahias' };
+const DETALLES = { detalle: 'equipos', control: 'equipos', bahia: 'bahias', solicitud: 'precarga', unidad: 'precarga' };
 
 let modulo = 'equipos';
 
@@ -981,12 +988,20 @@ function irA(nombre) {
   if (nombre === 'cargar') pintarFormulario();
   if (nombre === 'ronda') Bahias.verRonda();
   if (nombre === 'rondas') Bahias.verRondas();
+  if (nombre === 'bajadas') Precarga.verBajadas();
+  if (nombre === 'precarga-hist') Precarga.verHistorial();
 }
 
 function abrirDrawer() { $('#drawer').hidden = false; $('#scrim').hidden = false; }
 function cerrarDrawer() { $('#drawer').hidden = true; $('#scrim').hidden = true; }
 
 function pintarNavegacion() {
+  // La grilla sigue a cuantas pestañas tiene el modulo. Estaba fija en 4, que
+  // era la cantidad de patrullas, y por eso las dos de bahias ocupaban media
+  // barra y la otra mitad quedaba vacia. Es el mismo `--cols` que usa la matriz
+  // del historial de bahias.
+  $('#tabs').style.setProperty('--cols', Object.keys(pantallas()).length);
+
   $('#tabs').innerHTML = Object.entries(pantallas()).map(([k, p]) => `
     <button type="button" class="tab${vista === k ? ' activo' : ''}" data-v="${k}">
       ${ico(p.icono, 20)}<span>${esc(p.corto)}</span>
@@ -1165,6 +1180,7 @@ async function tomarFoto(input, destino) {
 $('#c-file').addEventListener('change', (e) => tomarFoto(e.target, 'foto'));
 $('#c-file-chk').addEventListener('change', (e) => tomarFoto(e.target, 'chk'));
 $('#b-file').addEventListener('change', (e) => Bahias.tomarFoto(e.target));
+$('#pc-file').addEventListener('change', (e) => Precarga.tomarFoto(e.target));
 
 Sync.alCambiar((s) => {
   if (s.tipo === 'sincronizando') estado('Sincronizando…', 'aviso');
@@ -1184,6 +1200,7 @@ Sync.alCambiar((s) => {
     // La ronda tambien: al sincronizar, las bahias que estaban "sin
     // sincronizar" pasan a mostrar hora y auditor de verdad.
     if (s.enviadas && (vista === 'ronda' || vista === 'bahia')) Bahias.refrescar(vista);
+      if (s.enviadas && (vista === 'bajadas' || vista === 'solicitud' || vista === 'unidad')) Precarga.refrescar(vista);
   }
 });
 

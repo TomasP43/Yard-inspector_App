@@ -29,8 +29,11 @@
  *     similitud.js SE QUEDA aunque el formulario ya no cree desvios: zonas.js
  *     lo usa para normalizar y enganchar el catalogo con el mapa de zonas.
  *     Sacarlo tiraba zonas.js entero y con el la app -- probado a los golpes.
+ * v34: entra el modulo de precarga (precarga.js). escaner.js e iconos.js
+ *     tambien cambiaron, asi que la version tiene que subir igual: el
+ *     navegador solo reinstala el SW si el archivo sw.js cambio.
  */
-const VERSION = 'v33';
+const VERSION = 'v34';
 const CACHE = `yard-${VERSION}`;
 
 // El app shell tiene que alcanzar para abrir la app sin conexion. Rutas
@@ -55,6 +58,7 @@ const SHELL = [
   './js/escaner.js',
   './js/sync.js',
   './js/bahias.js',
+  './js/precarga.js',
   './js/app.js'
 ];
 

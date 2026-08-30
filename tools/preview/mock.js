@@ -589,15 +589,19 @@
   // demostracion de botones.
   if (typeof Escaner !== 'undefined' && !('BarcodeDetector' in window)) {
     Escaner.soportado = () => true;
-    Escaner.abrir = (titulo, validar) => new Promise((resolver, rechazar) => {
+    Escaner.soportaFormatos = () => Promise.resolve(true);
+    Escaner.abrir = (titulo, validar, formatos) => new Promise((resolver, rechazar) => {
+      // Que ofrece depende de lo que se este por leer. Precarga pide Code 128
+      // (la etiqueta de VIN) y bahias QR.
+      const esVin = (formatos || []).includes('code_128');
       const caja = document.createElement('div');
       caja.className = 'escaner';
       caja.innerHTML = `
         <p class="escaner-titulo">${titulo} · lector simulado</p>
         <p class="escaner-error" id="sim-error" hidden></p>
         <div style="position:relative;display:grid;gap:8px;width:min(100%,280px)">
-          ${BAHIAS.map((b) => `<button type="button" class="btn sec" data-sim="${b.token}">QR de la bahía ${b.codigo}</button>`).join('')}
-          <button type="button" class="btn sec" data-sim="basura-123">Un QR cualquiera</button>
+          ${esVin ? opcionesVin() : BAHIAS.map((b) => `<button type="button" class="btn sec" data-sim="${b.token}">QR de la bahía ${b.codigo}</button>`).join('')}
+          <button type="button" class="btn sec" data-sim="basura-123">${esVin ? 'Un código que no es un VIN' : 'Un QR cualquiera'}</button>
           <button type="button" class="btn" data-sim-cancelar>Cancelar</button>
         </div>`;
       document.body.appendChild(caja);
@@ -610,13 +614,249 @@
         }
         const b = e.target.closest('[data-sim]');
         if (!b) return;
-        const veredicto = validar ? validar(b.dataset.sim) : true;
-        if (veredicto === true) { caja.remove(); resolver(b.dataset.sim); return; }
+        // `data-sim` vacio significa "usar lo que se escribio en el campo".
+        const campo = caja.querySelector('#sim-vin');
+        const valor = b.dataset.sim || (campo ? campo.value.trim() : '');
+        if (!valor) return;
+        const veredicto = validar ? validar(valor) : true;
+        if (veredicto === true) { caja.remove(); resolver(valor); return; }
         const err = caja.querySelector('#sim-error');
         err.textContent = veredicto;
         err.hidden = false;
       });
     });
+  }
+
+  // ---------------------------------------------------------------- precarga
+
+  /**
+   * Catalogo de partes y tipos de daño.
+   *
+   * **PROVISIONAL, a proposito.** Se puso para poder ver la pantalla mientras no
+   * este la planilla real (ver YI-013). Los nombres son de relleno; lo que si es
+   * definitivo es la forma -- la parte trae su `grupo`, que es lo que parte la
+   * lista en tres toques en vez de un scroll de setenta nombres, igual que las
+   * zonas del equipo en patrullas.
+   */
+  const PARTES = [
+    'Paragolpe delantero', 'Paragolpe trasero', 'Capot', 'Techo',
+    'Puerta delantera izquierda', 'Puerta delantera derecha',
+    'Puerta trasera izquierda', 'Puerta trasera derecha',
+    'Guardabarro delantero izquierdo', 'Guardabarro trasero izquierdo',
+    'Zócalo lateral izquierdo', 'Espejo exterior izquierdo',
+    'Óptica delantera derecha', 'Parabrisas', 'Llantas'
+  ].map((nombre, i) => ({ id: i + 1, nombre, grupo: 'Exterior' }))
+    .concat([
+      'Asiento delantero izquierdo', 'Asiento trasero', 'Alfombra delantera',
+      'Tablero', 'Volante', 'Panel de puerta izquierda'
+    ].map((nombre, i) => ({ id: 100 + i, nombre, grupo: 'Interior' })))
+    .concat([
+      'Batería', 'Radiador', 'Herramientas / gato', 'Rueda de auxilio'
+    ].map((nombre, i) => ({ id: 200 + i, nombre, grupo: 'Mecánica' })));
+
+  const TIPOS_DANO = [
+    'Abollado', 'Rayado', 'Fallo de pintura', 'Filo de panel', 'Desprendido',
+    'Mellado', 'Roto', 'Faltante', 'Contaminado (no daño)', 'Doblado'
+  ].map((nombre, i) => ({ id: i + 1, nombre }));
+
+  const CATALOGOS_PC = { partes: PARTES, tipos_dano: TIPOS_DANO };
+
+  const MODELOS = ['Hilux', 'Corolla Cross', 'Corolla', 'Yaris', 'Hiace', 'SW4'];
+  const DESTINOS_PC = ['TOYOTA DO BRASIL LTDA', 'TOYOTA CHILE S.A.', 'DELTA DOCK', 'TOYOSA S.A.'];
+  const TRANSPORTISTAS = ['TTFA', 'Autoport', 'Green Mile'];
+  const BAHIAS_PC = ['3A', '3B', '5A', '5B', '6B', '7A'];
+
+  /**
+   * Un VIN con la forma real: 17 caracteres sin I, O ni Q.
+   *
+   * El estandar las excluye para que no se confundan con 1 y 0, y el lector de
+   * la app se apoya en eso para reconocerlo. Un VIN falso con una O haria pasar
+   * un caso que en la playa no existe.
+   */
+  const LETRAS_VIN = 'ABCDEFGHJKLMNPRSTUVWXYZ';
+  function nuevoVin() {
+    let v = '8AJ';
+    for (let i = 0; i < 6; i++) v += uno((LETRAS_VIN + '0123456789').split(''));
+    for (let i = 0; i < 8; i++) v += String(entre(0, 9));
+    return v;
+  }
+
+  /** Las solicitudes de la jornada, con sus unidades adentro. */
+  const SOLICITUDES = (() => {
+    const hoy = new Date();
+    const out = [];
+    for (let i = 0; i < 7; i++) {
+      const unidades = [];
+      const n = entre(5, 9);
+      const destino = uno(DESTINOS_PC);
+      for (let k = 0; k < n; k++) {
+        unidades.push({
+          vin: nuevoVin(),
+          orden_solicitado: k + 1,
+          so: 'SO-' + entre(10000, 99999),
+          katashiki: 'GUN' + entre(120, 145) + 'L',
+          modelo: uno(MODELOS),
+          destino,
+          linea_txt: 'L' + entre(1, 9),
+          inspeccion: null
+        });
+      }
+      const h = new Date(hoy);
+      h.setHours(7 + i, entre(0, 55), 0, 0);
+      out.push({
+        id: i + 1,
+        codigo: 'SOL-901484' + String(10 + i),
+        hora: h.toISOString(),
+        transportista: uno(TRANSPORTISTAS),
+        equipo: String(entre(120, 7999)),
+        bahia: BAHIAS_PC[i % BAHIAS_PC.length],
+        destino,
+        unidades
+      });
+    }
+    return out;
+  })();
+
+  const CLAVE_PC = 'yard-preview-precarga';
+
+  const leerPC = () => { try { return JSON.parse(localStorage.getItem(CLAVE_PC) || '[]'); } catch (e) { return []; } };
+
+  /**
+   * Upsert por uuid, no push.
+   *
+   * Es el mismo motivo que en bahias: reenviar el mismo uuid tiene que pisar,
+   * no duplicar. Con push, reintentar la cola dejaba dos veces la misma unidad
+   * y el orden real de bajada saltaba de a dos.
+   */
+  function persistirPC(reg) {
+    const todas = leerPC().filter((x) => x.uuid !== reg.uuid);
+    todas.push(reg);
+    try { localStorage.setItem(CLAVE_PC, JSON.stringify(todas)); } catch (e) { /* modo privado */ }
+  }
+
+  /**
+   * Siembra unas cuantas unidades ya bajadas.
+   *
+   * Una de ellas queda fuera del orden solicitado a proposito: sin eso la
+   * pantalla arranca toda verde y el caso que el modulo vino a mostrar --el
+   * desvio de orden-- no se ve hasta que alguien lo produzca a mano.
+   */
+  (function sembrarPC() {
+    if (leerPC().length) return;
+    const s = SOLICITUDES[0];
+    const base = new Date(s.hora).getTime();
+    // 1.º, 3.º y 2.º en ese orden: la tercera baja segunda y queda desviada.
+    [0, 2, 1].forEach((idx, i) => {
+      persistirPC({
+        uuid: 'sembrada-' + s.id + '-' + idx,
+        solicitud_id: s.id,
+        vin: s.unidades[idx].vin,
+        escaneado_en: new Date(base + (i + 1) * 6 * 60000).toISOString(),
+        registrado_en: new Date(base + (i + 1) * 6 * 60000 + 90000).toISOString(),
+        danos: idx === 2
+          ? [{ parte_id: 5, tipo_dano_id: 1, comentario: 'En el filo, lado interno', foto: 'uploads/demo-2.svg' }]
+          : []
+      });
+    });
+  })();
+
+  /** Las solicitudes con lo guardado encima. El servidor real haria el join. */
+  function solicitudesConEstado() {
+    const guardadas = new Map();
+    for (const r of leerPC()) guardadas.set(r.solicitud_id + '|' + r.vin, r);
+
+    return SOLICITUDES.map((s) => ({
+      ...s,
+      unidades: s.unidades.map((u) => {
+        const r = guardadas.get(s.id + '|' + u.vin);
+        return { ...u, inspeccion: r ? {
+          uuid: r.uuid,
+          escaneado_en: r.escaneado_en,
+          registrado_en: r.registrado_en,
+          danos: r.danos || []
+        } : null };
+      })
+    }));
+  }
+
+  /**
+   * Alta de la inspeccion de una unidad, con el mismo contrato que el servidor.
+   *
+   * Tiene que estar por lo mismo que `crear()` mas arriba: sin el, un
+   * `includes('api/precarga')` mas general atraparia tambien el POST y
+   * contestaria 200 con un listado. La cola lo leeria como guardado y la carga
+   * *pareceria* andar sin probar nada.
+   */
+  function crearUnidad(cuerpo) {
+    const b = JSON.parse(cuerpo || '{}');
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(b.uuid || '')) {
+      return json({ error: 'uuid_invalido' }, 400);
+    }
+    if (!b.vin || !b.solicitud_id) return json({ error: 'unidad_requerida' }, 400);
+    if (!b.escaneado_en) return json({ error: 'escaneo_requerido' }, 400);
+
+    const s = SOLICITUDES.find((x) => String(x.id) === String(b.solicitud_id));
+    if (!s || !s.unidades.some((u) => u.vin === b.vin)) return json({ error: 'vin_no_es_de_la_solicitud' }, 409);
+
+    // La foto del daño es obligatoria en el servidor, no solo en el front. Una
+    // regla que vive nada mas que en el cliente no es una regla.
+    for (const d of b.danos || []) {
+      if (!d.foto) return json({ error: 'foto_de_dano_requerida' }, 400);
+    }
+
+    // Idempotencia: reenviar el mismo uuid devuelve 200 con lo que ya existe,
+    // nunca 409. Con un 409 el cliente no sabe si puede sacarlo de la cola.
+    const ya = leerPC().find((x) => x.uuid === b.uuid);
+    if (ya) return json({ inspeccion: ya, duplicada: true }, 200);
+
+    const reg = {
+      uuid: b.uuid,
+      solicitud_id: b.solicitud_id,
+      vin: b.vin,
+      escaneado_en: b.escaneado_en,
+      registrado_en: b.registrado_en || new Date().toISOString(),
+      // Las fotos se guardan como ruta, igual que en produccion. Si el preview
+      // devolviera el base64 que le llego, el front tendria que tratarlas
+      // distinto que a las del servidor y ese camino quedaria sin probar.
+      foto_panoramica: b.foto_panoramica ? 'uploads/demo-1.svg' : null,
+      danos: (b.danos || []).map((d) => ({
+        parte_id: d.parte_id,
+        tipo_dano_id: d.tipo_dano_id,
+        comentario: d.comentario || null,
+        foto: 'uploads/demo-' + entre(1, 4) + '.svg'
+      }))
+    };
+    persistirPC(reg);
+    return json({ inspeccion: reg }, 201);
+  }
+
+  /**
+   * Los botones del lector simulado cuando lo que se pide es un VIN.
+   *
+   * Los casos malos van a proposito: una unidad ya bajada y un VIN que no esta
+   * en ninguna solicitud. **El mock no puede portarse mejor que produccion** --
+   * si solo ofreciera VINs validos, los cuatro rechazos del lector no se
+   * probarian nunca y el aviso podria estar roto sin que nadie lo notara.
+   *
+   * Ademas hay un campo para escribir: la pantalla de la solicitud muestra sus
+   * VINs, asi que se puede copiar uno y probar el gate de una unidad puntual,
+   * que es donde el lector exige ese VIN y no otro.
+   */
+  function opcionesVin() {
+    const sols = solicitudesConEstado();
+    const todas = sols.flatMap((s) => s.unidades.map((u) => ({ u, s })));
+
+    const libres = todas.filter((x) => !x.u.inspeccion).slice(0, 5)
+      .map((x) => ({ vin: x.u.vin, txt: `${x.u.vin} · ${x.s.codigo}` }));
+
+    const bajada = todas.find((x) => x.u.inspeccion);
+    if (bajada) libres.push({ vin: bajada.u.vin, txt: bajada.u.vin + ' · ya bajada' });
+    libres.push({ vin: '8AJZZ99ZZ99999999', txt: 'Un VIN de otra playa' });
+
+    return libres.map((b) =>
+      `<button type="button" class="btn sec" data-sim="${b.vin}">${b.txt}</button>`).join('')
+      + '<input id="sim-vin" placeholder="…o pegá un VIN" style="padding:9px;border-radius:4px;border:1px solid #555;background:#111;color:#fff;font-family:monospace">'
+      + '<button type="button" class="btn sec" data-sim="">Usar el VIN escrito</button>';
   }
 
   const real = window.fetch.bind(window);
@@ -627,6 +867,7 @@
     const metodo = ((opts && opts.method) || 'GET').toUpperCase();
     if (metodo === 'POST' && s.includes('api/bahias/control')) return crearBahia(opts && opts.body);
     if (metodo === 'POST' && s.includes('api/bahias/auditoria')) return crearAuditoria(opts && opts.body);
+    if (metodo === 'POST' && s.includes('api/precarga/inspecciones')) return crearUnidad(opts && opts.body);
     if (metodo === 'POST' && s.includes('api/inspecciones')) return crear(opts && opts.body);
 
     if (s.includes('api/bahias/dia')) {
@@ -648,6 +889,13 @@
         items: ITEMS_BAHIA,
         bahias: BAHIAS
       });
+    }
+
+    if (s.includes('api/precarga/catalogos')) return json(CATALOGOS_PC);
+
+    if (s.includes('api/precarga/solicitudes')) {
+      const q = new URLSearchParams(s.split('?')[1] || '');
+      return json({ jornada: q.get('jornada') || 'sin-jornada', solicitudes: solicitudesConEstado() });
     }
 
     if (s.includes('api/catalogos')) return json(CATALOGOS);

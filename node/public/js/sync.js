@@ -34,7 +34,8 @@ const Sync = (() => {
   const RUTAS = {
     inspeccion: 'api/inspecciones',
     bahia:      'api/bahias/control',
-    auditoria:  'api/bahias/auditoria'
+    auditoria:  'api/bahias/auditoria',
+    unidad:     'api/precarga/inspecciones'
   };
 
   /**
@@ -47,6 +48,7 @@ const Sync = (() => {
   async function armarPayload(item) {
     if (tipoDe(item) === 'bahia') return payloadBahia(item);
     if (tipoDe(item) === 'auditoria') return payloadAuditoria(item);
+    if (tipoDe(item) === 'unidad') return payloadUnidad(item);
 
     const fotos = [];
     for (const f of item.fotos || []) {
@@ -105,6 +107,40 @@ const Sync = (() => {
       coincide: item.coincide,
       observacion: item.observacion || null,
       foto: item.foto ? await Camara.aBase64(item.foto) : null
+    };
+  }
+
+  /**
+   * La inspeccion de una unidad en precarga, con sus daños adentro.
+   *
+   * Va todo en un registro y no un POST por daño: los daños de una unidad son
+   * un hecho solo, y partirlo dejaria la unidad guardada a medias si la señal se
+   * corta en el medio -- que es lo normal en la playa, no el caso raro.
+   *
+   * `escaneado_en` es el momento en que se leyo la etiqueta de VIN, y de ahi
+   * sale el orden real de bajada. Lo manda el dispositivo y el servidor NO lo
+   * recalcula con la hora de llegada, por lo mismo que `turno_clave`: una unidad
+   * bajada sin señal a las 10:05 puede sincronizar a las 14:00, y el orden en
+   * que se bajo es el de cuando se bajo.
+   */
+  async function payloadUnidad(item) {
+    const danos = [];
+    for (const d of item.danos || []) {
+      danos.push({
+        parte_id: d.parte_id,
+        tipo_dano_id: d.tipo_dano_id,
+        comentario: d.comentario || null,
+        foto: d.foto ? await Camara.aBase64(d.foto) : null
+      });
+    }
+    return {
+      uuid: item.uuid,
+      registrado_en: item.registrado_en,
+      solicitud_id: item.solicitud_id,
+      vin: item.vin,
+      escaneado_en: item.escaneado_en,
+      foto_panoramica: item.foto_panoramica ? await Camara.aBase64(item.foto_panoramica) : null,
+      danos
     };
   }
 

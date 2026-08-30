@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * Lector de QR con la camara, dentro de la app.
+ * Lector de codigos con la camara, dentro de la app.
  *
  * Usa `BarcodeDetector`, que Chrome en Android trae nativo. **No hay libreria
  * empaquetada a proposito**: los inspectores usan Android, y meter un lector JS
@@ -13,6 +13,18 @@
  * lleva **solo el token**, no una URL. Escanearlo por fuera de la app no lleva a
  * ningun lado, asi que la unica puerta para cargar un control es esta.
  *
+ * Lee dos familias de codigo y por eso el formato es un parametro:
+ *
+ * | Modulo | Formatos | De donde sale el codigo |
+ * |---|---|---|
+ * | Bahias | `qr_code` | Un cartel que imprimimos nosotros |
+ * | Precarga | `code_128`, `code_39`, `data_matrix` | La etiqueta de VIN que el auto trae de fabrica |
+ *
+ * El default sigue siendo QR para que sumar precarga no toque a bahias. Y el
+ * chequeo de formato va aparte de `soportado()`: un navegador puede traer
+ * `BarcodeDetector` con QR y sin Code 128, asi que preguntar solo si existe el
+ * lector diria que si y despues no leeria nada.
+ *
  * La camara se apaga siempre al salir. Un `getUserMedia` sin `stop()` deja la
  * luz prendida y el telefono caliente en el bolsillo del inspector.
  */
@@ -22,11 +34,34 @@ const Escaner = (() => {
   let corriendo = false;
   let timer = null;
 
+  /** Los codigos de las bahias. Es el default para no tocar a quien ya llamaba. */
+  const FORMATOS_QR = ['qr_code'];
+
   const soportado = () => 'BarcodeDetector' in window
     && !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
 
   /**
-   * Abre la camara y resuelve cuando lee un QR que `validar` acepta.
+   * Si el navegador sabe leer TODOS estos formatos.
+   *
+   * Es asincrona porque `getSupportedFormats()` lo es, y por eso no se pudo
+   * meter dentro de `soportado()`, que bahias usa como funcion comun. Quien la
+   * llama la consulta una vez y pinta el aviso; nunca abre la camara para
+   * descubrir ahi que no puede leer.
+   */
+  async function soportaFormatos(lista) {
+    if (!soportado()) return false;
+    try {
+      const hay = await BarcodeDetector.getSupportedFormats();
+      return (lista || FORMATOS_QR).every((f) => hay.includes(f));
+    } catch (e) {
+      return false;   // si ni siquiera se puede preguntar, no se promete que si
+    }
+  }
+
+  /**
+   * Abre la camara y resuelve cuando lee un codigo que `validar` acepta.
+   *
+   * `formatos` es opcional y por defecto lee QR, que es lo que pide bahias.
    *
    * `validar(texto)` devuelve `true` para aceptar, o un **texto de error** para
    * rechazarlo y seguir leyendo. Eso es lo que hace que escanear el QR de la
@@ -37,12 +72,12 @@ const Escaner = (() => {
    * 'cancelado'. El que llama decide que decirle al inspector -- aca no se
    * inventan mensajes de pantalla.
    */
-  function abrir(titulo, validar) {
+  function abrir(titulo, validar, formatos) {
     if (!soportado()) return Promise.reject(new Error('sin_soporte'));
 
     const caja = $('#escaner');
     const video = $('#escaner-video');
-    $('#escaner-titulo').textContent = titulo || 'Escaneá el QR';
+    $('#escaner-titulo').textContent = titulo || 'Escaneá el código';
     $('#escaner-error').hidden = true;
     caja.hidden = false;
     corriendo = true;
@@ -64,7 +99,7 @@ const Escaner = (() => {
         return video.play();
       }).then(() => {
         if (!corriendo) return;
-        const detector = new BarcodeDetector({ formats: ['qr_code'] });
+        const detector = new BarcodeDetector({ formats: formatos || FORMATOS_QR });
 
         // Un intento cada 250 ms y no en cada cuadro: `detect()` es caro y a
         // 60 fps calienta el telefono sin leer mas rapido.
@@ -114,5 +149,5 @@ const Escaner = (() => {
     el.hidden = false;
   }
 
-  return { soportado, abrir, cerrar, avisar };
+  return { soportado, soportaFormatos, abrir, cerrar, avisar, FORMATOS_QR };
 })();
