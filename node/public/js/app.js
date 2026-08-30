@@ -945,7 +945,9 @@ const MODULOS = {
     // Dos niveles de detalle: solicitud -> unidad. Sin esto, volver desde una
     // unidad cae en la pestaña y se saltea la solicitud, o sea que el
     // inspector que abre un VIN para mirarlo sale del camion entero.
-    atras: (v) => (v === 'unidad' ? 'solicitud' : v === 'hoja' ? 'unidad' : null)
+    atras: (v) => (v === 'unidad' ? 'solicitud'
+      : v === 'hoja' ? Precarga.vueltaDeHoja()   // la unidad, o la solicitud si es el legajo
+      : null)
   }
 };
 

@@ -554,6 +554,23 @@ señal. Los carteles necesitan red para traer los tokens; esto no.
 destino tiene que reconocer el papel de siempre. Recuadros, etiquetas chicas en
 mayuscula y reticula visible; el molde es el del impreso.
 
+**Son dos hojas, y ahi esta la diferencia con el papel:**
+
+| Hoja | Cuantas |
+|---|---|
+| El registro de un VIN | una por unidad |
+| La referencia: grilla de partes y leyendas | **una por camion** |
+
+En el impreso las dos cosas viven juntas, y eso hacia que la grilla --164 mm, el
+58% de una carilla-- se repitiera identica ocho veces por camion, empujando cada
+unidad a una segunda carilla casi vacia. Medido: la hoja daba **387 mm, 1,38
+carillas**. Separadas, la unidad queda en **200 mm** y un camion de ocho pasa de
+16 carillas a 9.
+
+Desde la solicitud se imprime el **legajo** entero --la referencia adelante y una
+hoja por unidad bajada--, que es lo que pasa de verdad: el papel viaja con el
+equipo, no con cada auto suelto.
+
 | Del papel | En la hoja |
 |---|---|
 | Cabecera, chasis, modelo, motor, lugar de carga, FC | Salen cargados, mas el orden real de bajada y si fue fuera de orden |

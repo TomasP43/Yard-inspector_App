@@ -306,8 +306,14 @@ const Precarga = (() => {
       .map((u) => filaUnidad(u, r.orden))
       .join('');
 
+    // El legajo solo tiene sentido con algo cargado: sin unidades bajadas es
+    // una hoja de referencia sola.
+    const legajo = r.bajadas
+      ? `<button type="button" class="btn sec" id="pc-legajo">${ico('file-text', 16)} Legajo del camión</button>`
+      : '';
+
     cuerpo.innerHTML = ficha
-      + `<div class="acciones-full">${boton}</div>`
+      + `<div class="acciones-full">${boton}${legajo}</div>`
       + `<div class="cab-lista"><span class="eq-label">Unidades solicitadas</span><span class="mono">${r.total}</span></div>`
       + `<div class="pc-lista">${lista}</div>`;
   }
@@ -798,8 +804,25 @@ const Precarga = (() => {
    * --al reves que los carteles de bahia-- porque los datos ya estan en memoria:
    * asi sale sin señal, que es la mitad del sentido de esta app.
    */
+  /** Que se esta mirando en la vista de la hoja: una unidad o el legajo entero. */
+  let hojaTipo = 'unidad';
+
   function verHoja(vin) {
     vinAbierto = vin;
+    hojaTipo = 'unidad';
+    irA('hoja');
+    pintarHoja();
+  }
+
+  /**
+   * El legajo del camion: la referencia adelante y una hoja por unidad bajada.
+   *
+   * Es lo que se imprime de verdad. El papel viaja con el equipo, no con cada
+   * auto suelto, y la grilla de partes es identica para todas las unidades --
+   * repetirla en cada hoja era imprimir ocho veces lo mismo.
+   */
+  function verLegajo() {
+    hojaTipo = 'legajo';
     irA('hoja');
     pintarHoja();
   }
@@ -808,6 +831,21 @@ const Precarga = (() => {
     const cuerpo = $('#hj-cuerpo');
     if (!cuerpo) return;
     const s = solPorId(solAbierta);
+    if (!s) { cuerpo.innerHTML = '<p class="nota centro">No se encontró la solicitud.</p>'; return; }
+    const orden = ordenReal(s);
+
+    const barra = `
+      <div class="hj-acciones">
+        <button type="button" class="btn" id="hj-imprimir">${ico('file-text', 16)} Imprimir</button>
+      </div>`;
+
+    if (hojaTipo === 'legajo') {
+      $('#titulo').textContent = 'Legajo del camión';
+      $('#eyebrow').textContent = (s.codigo || '') + ' · equipo ' + (s.equipo || '');
+      cuerpo.innerHTML = barra + Hoja.legajo(s, orden);
+      return;
+    }
+
     const u = unidadDe(s, vinAbierto);
     if (!u || !u.inspeccion) {
       cuerpo.innerHTML = '<p class="nota centro">Esta unidad todavía no se cargó.</p>';
@@ -816,12 +854,7 @@ const Precarga = (() => {
 
     $('#titulo').textContent = 'Hoja de la unidad';
     $('#eyebrow').textContent = u.vin;
-
-    cuerpo.innerHTML = `
-      <div class="hj-acciones">
-        <button type="button" class="btn" id="hj-imprimir">${ico('file-text', 16)} Imprimir</button>
-      </div>
-      ${Hoja.unidad(s, u, ordenReal(s).get(u.vin))}`;
+    cuerpo.innerHTML = barra + Hoja.unidad(s, u, orden.get(u.vin));
   }
 
   // ----------------------------------------------------------- historial
@@ -943,6 +976,7 @@ const Precarga = (() => {
     if (t.closest('#ph-volver')) { hist.clave = null; hist.solicitudes = null; pintarJornadas(); return; }
 
     if (t.closest('#pc-hoja')) { verHoja(vinAbierto); return; }
+    if (t.closest('#pc-legajo')) { verLegajo(); return; }
     if (t.closest('#hj-imprimir')) { window.print(); return; }
 
     const uni = t.closest('[data-vin]');
@@ -1066,5 +1100,8 @@ const Precarga = (() => {
            pintarSolicitud, tomarFoto, verHoja, pintarHoja,
            // Los usa js/hoja.js para escribir los nombres en el documento.
            parte: parteDe, nombreParte, nombreDano,
-           catalogo: () => CATA || { partes: [], tipos_dano: [] } };
+           catalogo: () => CATA || { partes: [], tipos_dano: [] },
+           // A donde vuelve la hoja: depende de si se abrio desde una unidad o
+           // desde la solicitud. Lo consulta `atras` en app.js.
+           vueltaDeHoja: () => (hojaTipo === 'legajo' ? 'solicitud' : 'unidad') };
 })();

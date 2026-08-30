@@ -1,32 +1,27 @@
 'use strict';
 
 /**
- * La hoja por unidad, para imprimir.
+ * Las hojas para imprimir del legajo de precarga.
  *
  * Es el `LOGISTIC'S CHECKLIST` de `Checklist control de precarga y
  * recepcion.xlsx` (hojas UNID1..UNID8) **con su mismo diseño**: hoy se imprime
  * en blanco y se llena a mano, y esto sale con lo que la app ya registro. Quien
  * lo recibe en destino tiene que reconocer el papel de siempre, no uno nuevo.
  *
- * El molde del formulario, tal cual, es:
+ * **Son dos hojas distintas, y esa es la diferencia con el impreso:**
  *
- * ```
- * LOGISTIC'S CHECKLIST                    | FECHA
- * FURLONG FLOTA | n | CHASIS | vin        | SECTOR DAÑADO
- * MODELO | ...  | MOTOR N°: | ...         |
- * LUGAR DE CARGA | ... | FC | ...         |   [dibujo del vehiculo]
- * ---------------------------------------- |
- * OBSERVACION DE ORIGEN                   | MARCAR CON UN CIRCULO
- *   AREA / DAÑO / GRAVEDAD                |   LA ZONA DAÑADA
- * RECEPCION DE DESTINO                    |
- *   FECHA / HORA / OBSERVACION            |   [recuadros de firma]
- * ---------------------------------------------------------------
- * SECT. | Nº | DAÑO | DETALLE   (la grilla de partes, en 3 columnas)
- * ---------------------------------------------------------------
- * TIPOS DE DAÑO                           | GRAVEDAD
- * ```
+ * | Hoja | Cuantas |
+ * |---|---|
+ * | `unidad()` — el registro de un VIN | una por unidad |
+ * | `referencia()` — la grilla de partes y las leyendas | **una por camion** |
  *
- * **Tres cosas cambian, y las tres estan forzadas por el dato:**
+ * En el formulario impreso las dos cosas viven en la misma hoja, y eso hacia que
+ * la grilla --164 mm, el 58% de una carilla-- se repitiera identica ocho veces
+ * por camion, empujando cada unidad a una segunda carilla que quedaba casi
+ * vacia. Separadas, un camion de ocho unidades pasa de 16 carillas a 9.
+ *
+ * **Tres cosas cambian respecto del papel, y las tres estan forzadas por el
+ * dato:**
  *
  * 1. `OBSERVACION DE ORIGEN` son tres renglones sueltos --area, daño,
  *    gravedad-- porque el papel asume un daño por hoja. Una unidad puede tener
@@ -34,13 +29,14 @@
  * 2. La leyenda de codigos es la de los **14 tipos que la operacion usa**, no la
  *    de los 28 codigos numerados del impreso. Imprimir codigos que ya nadie
  *    carga es imprimir un fosil.
- * 3. Los recuadros de firma llevan **las fotos del daño**. En precarga quedaban
- *    vacios y la foto es la prueba que si existe en ese momento. ⚠ Si en destino
- *    igual hay que firmar sobre el papel, vuelven los recuadros. Ver YI-013.
+ * 3. La grilla lleva **las 110 partes**, no las 95 del impreso. Las 16 que se
+ *    sumaron del catalogo de AppSheet --opticas, airbags, cinturones-- no tienen
+ *    numero Furlong y van con el Nº vacio.
  *
- * `RECEPCION DE DESTINO` queda en blanco: no lo llena precarga, lo va a llenar
- * el modulo de descarga. Y la grilla de partes se conserva aunque la app ya
- * escriba el nombre, porque en destino se marca a mano sobre ella.
+ * `RECEPCION DE DESTINO` queda en blanco y **compacto**: no lo llena precarga ni
+ * una lapicera, lo va a llenar la app de descarga. Por eso el lugar que se
+ * libero no fue a renglones para escribir a mano sino a **las fotos**, que son
+ * la prueba de lo que se encontro y hasta ahora eran miniaturas.
  */
 const Hoja = (() => {
 
@@ -53,88 +49,24 @@ const Hoja = (() => {
 
   const val = (v) => esc(v == null || v === '' ? '' : v);
 
-  /** Una celda del encabezado: etiqueta a la izquierda, valor en su recuadro. */
+  /** Una celda del formulario: etiqueta sobre franja, valor en su recuadro. */
   const par = (etiqueta, valor) => `
     <div class="hj-par">
       <span>${esc(etiqueta)}</span>
       <b>${val(valor)}</b>
     </div>`;
 
+  const SECTORES = ['Frente', 'Lateral izquierdo', 'Lateral derecho',
+                    'Extremo trasero', 'Tren inferior, techo y varios', 'Interior'];
+
+  // ------------------------------------------------------ hoja de la unidad
+
   /**
-   * La grilla de partes del formulario, en tres columnas.
+   * El registro de una unidad, en **una sola carilla**.
    *
-   * Se conserva aunque la app ya escriba el nombre del daño: **en destino se
-   * marca a mano sobre esta grilla**, que es para lo que esta. Va agrupada por
-   * sector y ordenada por numero adentro de cada uno -- el impreso las tiene en
-   * un orden anatomico que no se puede buscar.
+   * `orden` es el numero real de bajada; se calcula afuera porque depende de las
+   * otras unidades de la solicitud.
    */
-  function grillaPartes() {
-    // Van TODAS, no solo las que tienen numero Furlong. Las 16 que se sumaron
-    // del catalogo de AppSheet --opticas, airbags, cinturones-- no lo tienen, y
-    // dejarlas afuera significaria que en destino no se puede marcar un airbag
-    // dañado porque no figura en la lista. Se imprimen con el Nº vacio.
-    const partes = (Precarga.catalogo().partes || []);
-    const orden = ['Frente', 'Lateral izquierdo', 'Lateral derecho',
-                   'Extremo trasero', 'Tren inferior, techo y varios', 'Interior'];
-
-    const filas = [];
-    for (const sector of orden) {
-      const del = partes.filter((p) => p.grupo === sector)
-        .sort((a, b) => (a.id >= 1000) - (b.id >= 1000) || a.id - b.id);
-      del.forEach((p, i) => filas.push({
-        sector: i === 0 ? sector : '',
-        num: p.id < 1000 ? p.id : '',
-        nombre: p.nombre
-      }));
-    }
-
-    const porCol = Math.ceil(filas.length / 3);
-    const cols = [filas.slice(0, porCol), filas.slice(porCol, porCol * 2), filas.slice(porCol * 2)];
-
-    const cuerpo = (col) => col.map((f) => `
-      <tr>
-        <td class="sect">${esc(f.sector)}</td>
-        <td class="num">${f.num}</td>
-        <td class="cod"></td>
-        <td class="det">${esc(f.nombre)}</td>
-      </tr>`).join('');
-
-    return `
-      <div class="hj-grilla">
-        ${cols.map((col) => `
-          <table>
-            <thead><tr><th>SECT.</th><th>Nº</th><th>DAÑO</th><th>DETALLE</th></tr></thead>
-            <tbody>${cuerpo(col)}</tbody>
-          </table>`).join('')}
-      </div>`;
-  }
-
-  /** Las dos leyendas del pie, como en el impreso. */
-  function leyendas() {
-    const tipos = (Precarga.catalogo().tipos_dano || []);
-    return `
-      <div class="hj-leyendas">
-        <section>
-          <h3>Tipos de daño</h3>
-          <ul>${tipos.map((t) => `<li><i>${String(t.id).padStart(2, '0')}</i>${esc(t.nombre)}</li>`).join('')}</ul>
-        </section>
-        <section>
-          <h3>Código de gravedad <small>· no se registra en precarga</small></h3>
-          <ul class="grav">
-            <li><i>0</i>Sin excepción</li>
-            <li><i>1</i>Hasta 2,5 cm</li>
-            <li><i>2</i>Más de 2,5 y hasta 7,5 cm</li>
-            <li><i>3</i>Más de 7,5 y hasta 15 cm</li>
-            <li><i>4</i>Más de 15 y hasta 30 cm</li>
-            <li><i>5</i>Más de 30 cm</li>
-            <li><i>6</i>Sustitución / daño severo</li>
-            <li><i>7</i>Faltante</li>
-          </ul>
-        </section>
-      </div>`;
-  }
-
-  /** La hoja de una unidad. `orden` es el numero real de bajada. */
   function unidad(s, u, orden) {
     const insp = u.inspeccion || {};
     const danos = insp.danos || [];
@@ -155,25 +87,8 @@ const Hoja = (() => {
          </table>`
       : `<p class="hj-sin">SIN EXCEPCIONES · la unidad se revisó y no tenía daños</p>`;
 
-    // Donde el impreso tiene los cuatro recuadros de firma. Si no hay fotos,
-    // quedan los recuadros: la hoja tiene que servir igual para firmarla.
-    const firmas = conFoto.length
-      ? `<div class="hj-fotos">
-           ${conFoto.map((d, i) => `
-             <figure>
-               <img src="${esc(d.foto)}" alt="">
-               <figcaption>${i + 1} · ${esc(Precarga.nombreParte(d.parte_id))}</figcaption>
-             </figure>`).join('')}
-         </div>`
-      : `<div class="hj-firmas">
-           <div><span>Firma y sello de Toyota</span></div>
-           <div><span>Firma y sello del receptor</span></div>
-           <div><span>Firma y aclaración del inspector de Furlong</span></div>
-           <div><span>Firma y aclaración del chofer</span></div>
-         </div>`;
-
     return `
-      <article class="hoja">
+      <article class="hoja hoja-unidad">
 
         <header class="hj-cab">
           <b>LOGISTIC'S CHECKLIST</b>
@@ -194,16 +109,15 @@ const Hoja = (() => {
         </section>
 
         <div class="hj-medio">
-
           <div class="hj-izq">
             <section class="hj-caja">
               <h2>Observación de origen</h2>
               ${observacion}
             </section>
 
-            <section class="hj-caja">
+            <section class="hj-caja hj-recepcion">
               <h2>Recepción de destino</h2>
-              <p class="hj-nota">La completa quien recibe. Precarga no la llena.</p>
+              <p class="hj-nota">La completa la app de descarga.</p>
               <div class="hj-blanco">
                 <div><span>Fecha</span><i></i></div>
                 <div><span>Hora</span><i></i></div>
@@ -218,17 +132,20 @@ const Hoja = (() => {
               ${Vehiculo.marcado(u.modelo, danos.map((d) => ({ grupo: (Precarga.parte(d.parte_id) || {}).grupo })))}
               <p class="hj-pie-dibujo">Marcar con un círculo la zona dañada</p>
             </section>
-            ${firmas}
           </div>
-
         </div>
 
-        <section class="hj-caja hj-ref">
-          <h2>Partes</h2>
-          ${grillaPartes()}
-        </section>
-
-        ${leyendas()}
+        ${conFoto.length ? `
+        <section class="hj-caja hj-caja-fotos">
+          <h2>Fotos del daño</h2>
+          <div class="hj-fotos">
+            ${conFoto.map((d, i) => `
+              <figure>
+                <img src="${esc(d.foto)}" alt="">
+                <figcaption><b>${i + 1}</b> ${esc(Precarga.nombreParte(d.parte_id))} · ${esc(Precarga.nombreDano(d.tipo_dano_id))}</figcaption>
+              </figure>`).join('')}
+          </div>
+        </section>` : ''}
 
         <footer class="hj-pie">
           <span>${esc(s.codigo || '')} · ${esc(u.vin)}</span>
@@ -238,5 +155,107 @@ const Hoja = (() => {
       </article>`;
   }
 
-  return { unidad };
+  // -------------------------------------------------- hoja de referencia
+
+  /**
+   * La grilla de partes y las leyendas. **Una sola por camion.**
+   *
+   * Es identica para todas las unidades, asi que repetirla en cada hoja era
+   * imprimir ocho veces lo mismo. Va adelante del legajo.
+   */
+  function referencia(s) {
+    const partes = Precarga.catalogo().partes || [];
+    const tipos = Precarga.catalogo().tipos_dano || [];
+
+    const filas = [];
+    for (const sector of SECTORES) {
+      // Las 16 que vinieron del catalogo de AppSheet no tienen numero Furlong y
+      // van al final de su sector, con el Nº vacio.
+      const del = partes.filter((p) => p.grupo === sector)
+        .sort((a, b) => (a.id >= 1000) - (b.id >= 1000) || a.id - b.id);
+      del.forEach((p, i) => filas.push({
+        sector: i === 0 ? sector : '',
+        num: p.id < 1000 ? p.id : '',
+        nombre: p.nombre
+      }));
+    }
+
+    const porCol = Math.ceil(filas.length / 3);
+    const cols = [filas.slice(0, porCol), filas.slice(porCol, porCol * 2), filas.slice(porCol * 2)];
+
+    return `
+      <article class="hoja hoja-ref">
+
+        <header class="hj-cab">
+          <b>REFERENCIA DE PARTES Y DAÑOS</b>
+          <div class="hj-par"><span>Equipo</span><b>${val(s.equipo)}</b></div>
+        </header>
+
+        <p class="hj-nota hj-ref-nota">
+          Una por camión: es la misma para todas las unidades del viaje.
+          ${esc(s.codigo || '')} · bahía ${esc(s.bahia || '—')} · ${esc(s.destino || '')}
+        </p>
+
+        <div class="hj-grilla">
+          ${cols.map((col) => `
+            <table>
+              <thead><tr><th>SECT.</th><th>Nº</th><th>DAÑO</th><th>DETALLE</th></tr></thead>
+              <tbody>${col.map((f) => `
+                <tr>
+                  <td class="sect">${esc(f.sector)}</td>
+                  <td class="num">${f.num}</td>
+                  <td class="cod"></td>
+                  <td class="det">${esc(f.nombre)}</td>
+                </tr>`).join('')}</tbody>
+            </table>`).join('')}
+        </div>
+
+        <div class="hj-leyendas">
+          <section>
+            <h3>Tipos de daño</h3>
+            <ul>${tipos.map((t) => `<li><i>${String(t.id).padStart(2, '0')}</i>${esc(t.nombre)}</li>`).join('')}</ul>
+          </section>
+          <section>
+            <h3>Código de gravedad <small>· no se registra en precarga</small></h3>
+            <ul class="grav">
+              <li><i>0</i>Sin excepción</li>
+              <li><i>1</i>Hasta 2,5 cm</li>
+              <li><i>2</i>Más de 2,5 y hasta 7,5 cm</li>
+              <li><i>3</i>Más de 7,5 y hasta 15 cm</li>
+              <li><i>4</i>Más de 15 y hasta 30 cm</li>
+              <li><i>5</i>Más de 30 cm</li>
+              <li><i>6</i>Sustitución / daño severo</li>
+              <li><i>7</i>Faltante</li>
+            </ul>
+          </section>
+        </div>
+
+        <footer class="hj-pie">
+          <span>${esc(s.codigo || '')}</span>
+          <span>Yard Inspector · TTFA</span>
+        </footer>
+
+      </article>`;
+  }
+
+  // ------------------------------------------------------------- legajo
+
+  /**
+   * El legajo del camion: la referencia adelante y una hoja por unidad bajada.
+   *
+   * Es lo que se imprime de verdad -- el papel viaja con el equipo, no con cada
+   * auto suelto. Las unidades sin bajar no tienen hoja: no hay nada que
+   * registrar de ellas todavia.
+   */
+  function legajo(s, orden) {
+    const bajadas = (s.unidades || [])
+      .filter((u) => u.inspeccion)
+      .sort((a, b) => (orden.get(a.vin) || 0) - (orden.get(b.vin) || 0));
+
+    if (!bajadas.length) return '<p class="nota centro">Todavía no se bajó ninguna unidad de esta solicitud.</p>';
+
+    return referencia(s) + bajadas.map((u) => unidad(s, u, orden.get(u.vin))).join('');
+  }
+
+  return { unidad, referencia, legajo };
 })();

@@ -1516,6 +1516,7 @@ details.ficha[open] .ver-obs .ico { transform: rotate(90deg); }
 
 .acciones-full { margin: 16px 0 4px; }
 .acciones-full .nota { margin-top: 8px; }
+.acciones-full .btn + .btn { margin-top: 8px; }
 
 /* Un daño cargado: la foto, que parte y de que tipo, y la cruz para sacarlo. */
 .pc-danos { display: grid; gap: 8px; }

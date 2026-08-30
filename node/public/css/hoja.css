@@ -84,7 +84,7 @@
 /* --- las dos columnas del medio --- */
 .hj-medio {
   display: grid;
-  grid-template-columns: 1fr 62mm;
+  grid-template-columns: 1fr 58mm;
   gap: 8px;
   margin-top: 8px;
   align-items: start;
@@ -143,7 +143,9 @@
   text-transform: uppercase;
   color: var(--gris);
 }
-.hj-blanco i { display: block; height: 16px; border-bottom: 1px solid var(--linea); }
+.hj-blanco i { display: block; height: 13px; border-bottom: 1px solid var(--linea); }
+/* Compacta a proposito: la llena la app de descarga, no una lapicera. */
+.hj-recepcion { align-self: start; }
 
 /* --- el dibujo --- */
 .hj-der .veh { gap: 5px; }
@@ -164,19 +166,14 @@
   color: var(--gris);
 }
 
-/* --- donde el impreso tiene los recuadros de firma --- */
-.hj-firmas { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
-.hj-firmas > div {
-  height: 20mm;
-  border: 1px solid var(--linea);
-  display: flex;
-  align-items: flex-end;
-  padding: 3px 4px;
-}
-.hj-firmas span { font-size: 7px; letter-spacing: .05em; text-transform: uppercase; color: var(--tenue); }
-
-.hj-fotos { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
-.hj-fotos figure { margin: 0; display: grid; gap: 2px; }
+/* Las fotos, a ancho completo y en serio.
+   El lugar que libero sacar la grilla de la hoja de la unidad NO fue a
+   renglones para escribir a mano: en destino va a haber una app que completa el
+   documento. Fue aca, que es la prueba de lo que se encontro -- y hasta ahora
+   eran miniaturas en media columna. */
+.hj-caja-fotos { margin-top: 8px; }
+.hj-fotos { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.hj-fotos figure { margin: 0; display: grid; gap: 3px; }
 .hj-fotos img {
   width: 100%;
   aspect-ratio: 4 / 3;
@@ -184,7 +181,19 @@
   border: 1px solid var(--linea);
   background: #F2F3F4;
 }
-.hj-fotos figcaption { font-size: 7px; color: var(--gris); line-height: 1.25; }
+.hj-fotos figcaption { font-size: 8px; color: var(--gris); line-height: 1.3; }
+.hj-fotos figcaption b {
+  display: inline-grid;
+  place-items: center;
+  width: 12px; height: 12px;
+  margin-right: 3px;
+  border-radius: 999px;
+  background: var(--rojo);
+  color: #fff;
+  font-family: var(--font-mono);
+  font-size: 7.5px;
+  vertical-align: -2px;
+}
 
 /* --- la grilla de partes, en tres columnas como el impreso --- */
 .hj-ref { margin-top: 8px; }
@@ -237,6 +246,14 @@
 }
 .hj-pie span:first-child { font-family: var(--font-mono); }
 
+/* --- la hoja de referencia, una por camion --- */
+.hj-ref-nota { margin: 6px 0 8px; font-size: 8.5px; }
+.hoja-ref .hj-grilla { margin-top: 0; }
+
+/* Entre hojas del legajo hay un salto. En pantalla se ven una abajo de la otra
+   con aire; en papel cada una arranca en su carilla. */
+.hoja + .hoja { margin-top: 18px; }
+
 /* --- barra de la vista, no se imprime --- */
 .hj-acciones { display: flex; gap: 8px; margin-bottom: 12px; }
 .hj-acciones .btn { width: auto; padding: 0 16px; }
@@ -264,6 +281,7 @@
   .vista { padding: 0 !important; }
 
   .hoja { max-width: none; margin: 0; padding: 0; border: 0; border-radius: 0; }
+  .hoja + .hoja { margin-top: 0; break-before: page; }
 
   /* Que un bloque no quede partido entre dos carillas por la mitad. */
   .hj-caja, .hj-fotos figure, .hj-leyendas section, .hj-grilla table { break-inside: avoid; }
