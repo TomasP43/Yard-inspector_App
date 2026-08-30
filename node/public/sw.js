@@ -32,8 +32,11 @@
  * v34: entra el modulo de precarga (precarga.js). escaner.js e iconos.js
  *     tambien cambiaron, asi que la version tiene que subir igual: el
  *     navegador solo reinstala el SW si el archivo sw.js cambio.
+ * v35: entra el esquema del vehiculo (vehiculo.js + el blueprint). El PNG va
+ *     al SHELL: si el diagrama solo saliera con señal, la revision previa a
+ *     cerrar la unidad se veria vacia justo en la playa.
  */
-const VERSION = 'v34';
+const VERSION = 'v35';
 const CACHE = `yard-${VERSION}`;
 
 // El app shell tiene que alcanzar para abrir la app sin conexion. Rutas
@@ -58,7 +61,9 @@ const SHELL = [
   './js/escaner.js',
   './js/sync.js',
   './js/bahias.js',
+  './js/vehiculo.js',
   './js/precarga.js',
+  './img/vehiculos/hilux.png',
   './js/app.js'
 ];
 

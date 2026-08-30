@@ -1711,3 +1711,67 @@ details.ficha[open] .ver-obs .ico { transform: rotate(90deg); }
   cursor: pointer;
 }
 .pc-atajo:active { background: var(--surface-hover); }
+
+/* --- precarga: el esquema del vehiculo -----------------------------------
+
+   El mismo blueprint que la planilla trae impresa, con los sectores dañados
+   marcados. Se marca la ZONA, no el punto: es lo que el circulo a mano logra. */
+
+.veh { display: grid; gap: 10px; }
+.veh-lienzo {
+  position: relative;
+  border: 1px solid var(--line-hairline);
+  border-radius: var(--radius-md);
+  background: var(--white);        /* el blueprint es negro sobre blanco */
+  overflow: hidden;
+}
+.veh-lienzo img { display: block; width: 100%; height: auto; }
+
+.veh-zona {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--ttfa-red);
+  border-radius: var(--radius-md);
+  background: var(--ttfa-red-16);
+}
+.veh-zona b {
+  display: grid;
+  place-items: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 5px;
+  border-radius: var(--radius-pill);
+  background: var(--ttfa-red);
+  color: var(--white);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: var(--weight-bold);
+}
+
+.veh-refs { display: flex; flex-wrap: wrap; gap: 6px; }
+.veh-ref {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 9px 4px 4px;
+  border: 1px solid var(--line-hairline);
+  border-radius: var(--radius-pill);
+  background: var(--surface-card);
+  font-size: 12px;
+  color: var(--text-body);
+}
+.veh-ref b {
+  display: grid;
+  place-items: center;
+  min-width: 19px;
+  height: 19px;
+  border-radius: var(--radius-pill);
+  background: var(--ttfa-red);
+  color: var(--white);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+/* El interior no tiene vista en el blueprint: su chip lo dice con el borde. */
+.veh-ref.suelto { border-style: dashed; border-color: var(--line-strong); }
+.veh-ref.suelto b { background: var(--graphite-500); }

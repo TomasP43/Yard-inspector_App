@@ -448,6 +448,16 @@ const Precarga = (() => {
       : !form.danos.length ? 'Cargá al menos un daño'
       : `Guardar con ${form.danos.length} ${form.danos.length === 1 ? 'daño' : 'daños'}`;
 
+    // El esquema con lo cargado, antes de cerrar. Es el ultimo momento en que el
+    // inspector puede ver que se le escapo un lado del auto, y es la misma
+    // lectura que hace hoy mirando el circulo en el papel.
+    const revision = form.resultado === 'NG' && form.danos.length && !form.nuevo
+      ? `<section class="paso">
+           <div class="cab"><span class="eq-label">Antes de cerrar</span><span class="mono">${form.danos.length}</span></div>
+           ${Vehiculo.marcado(u.modelo, form.danos.map((d) => ({ grupo: (parteDe(d.parte_id) || {}).grupo })))}
+         </section>`
+      : '';
+
     // Con un daño a medio componer el boton de guardar no va: eran dos botones
     // grandes uno arriba del otro diciendo cosas distintas, y el de abajo no
     // sirve hasta terminar el de arriba. Para volver esta la cruz del paso.
@@ -456,7 +466,7 @@ const Precarga = (() => {
         <button type="button" class="btn" id="pc-guardar"${listo ? '' : ' disabled'}>${etiqueta}</button>
       </div>`;
 
-    return cabecera + resultado + danos + guardar;
+    return cabecera + resultado + danos + revision + guardar;
   }
 
   function filaDano(d, i) {
@@ -619,6 +629,8 @@ const Precarga = (() => {
         ${insp.enCola ? '<p class="nota">Guardada en el teléfono, todavía sin sincronizar.</p>' : ''}
         ${insp.rechazada ? `<p class="nota alerta">El servidor la rechazó: ${esc(insp.motivo || 'sin motivo')}. No se borró.</p>` : ''}
       </section>
+
+      ${danos.length ? Vehiculo.marcado(u.modelo, danos.map((d) => ({ grupo: (parteDe(d.parte_id) || {}).grupo }))) : ''}
 
       <div class="cab-lista"><span class="eq-label">Daños</span><span class="mono">${danos.length}</span></div>
       ${danos.length

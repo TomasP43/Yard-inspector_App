@@ -496,6 +496,41 @@ medido sobre el historico, **Abollado y Rayado son el 77% de los daños** y hoy
 quedan cuarto y noveno. Ordenarlos por uso ahorraria un barrido de la lista en
 tres de cada cuatro cargas — es cambiar el orden de un array.
 
+### El esquema del vehiculo, antes de cerrar
+
+Cargado el ultimo daño y antes de guardar, la unidad muestra **el blueprint con
+los sectores dañados marcados**. Es el ultimo momento en que el inspector puede
+ver que se le escapo un lado del auto, y es la misma lectura que hace hoy
+mirando el circulo en el papel.
+
+**El dibujo es el de la planilla, no uno nuevo.** Salio de
+`Checklist control de precarga y recepcion.xlsx`: el que lo mira en papel y el
+que lo mira en la pantalla tienen que ver la misma cosa. Son cuatro vistas, y
+cada una cubre un sector sin superponerse:
+
+| Sector | Vista |
+|---|---|
+| Frente | frontal, arriba a la derecha |
+| Extremo trasero | trasera, abajo a la derecha |
+| Lateral izquierdo | planta, flanco de arriba |
+| Lateral derecho | planta, flanco de abajo |
+| Tren inferior, techo y varios | perfil, arriba a la izquierda |
+| Interior | ninguna — no se ve desde afuera, va como nota al pie |
+
+**Se marca la zona, no el punto exacto**, por ahora. Son 110 partes y ubicar
+cada una sobre cuatro vistas es un mapeo largo y facil de errar; la zona ya es
+lo que el circulo a mano logra. Las coordenadas por parte entran despues sin
+tocar la pantalla.
+
+**Hay un dibujo por modelo, y hoy solo esta el Hilux** -- es el unico que la
+planilla trae. Los demas **no** se dibujan como Hilux: un Corolla con silueta de
+pick-up hace dudar del resto del papel. Cae un aviso que dice de que modelo
+falta el esquema, y los daños quedan en la lista. Faltan los blueprints de
+Corolla, Corolla Cross, Yaris, Hiace y SW4.
+
+El PNG va al `SHELL` del service worker: si el diagrama solo saliera con señal,
+la revision previa a cerrar se veria vacia justo en la playa.
+
 ### La jornada cierra el viaje
 
 Una solicitud de una jornada cerrada **no ofrece escanear**: el camion ya salio, y
