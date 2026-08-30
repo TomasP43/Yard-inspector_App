@@ -588,11 +588,14 @@ con borde solido, que es mas duro que todo lo que hay alrededor.
 **Reversibilidad:** total. Son seis tokens y las 16 lineas estan listadas en el
 script; volver es cambiar `--accento` por `--ttfa-red`.
 
-**⚠ Lo que no pude verificar:** la app de TTFA vive en la intranet detras del
-`auth_request` y no se alcanza desde el entorno de desarrollo. La paleta salio de
-**cuatro capturas** --Inicio, PRs, Fichadas y Cargas-- asi que los hex son los
-que se leen ahi (#2563EB y la familia verde/ambar/rojo estandar). Si la intranet
-tiene tokens propios, conviene copiarlos y no aproximarlos.
+**⚠ Corregido al dia siguiente.** La paleta de esta decision salio de cuatro
+capturas porque se dio por hecho que la app de TTFA no se alcanzaba desde el
+entorno de desarrollo. **Se alcanza**: `appttfa.com.ar` esta en internet publica
+y su CSS no necesita sesion. Se leyo de ahi y se reemplazaron las
+aproximaciones.
+
+El **azul estaba bien** --`#2563EB`, blue-600 de Tailwind--. Los radios y los
+colores de estado no. Ver D-022.
 
 ---
 
@@ -604,19 +607,27 @@ tiene tokens propios, conviene copiarlos y no aproximarlos.
 que decia que si no llegaban la app usaba la de respaldo. El comentario asumia
 que el caso malo era «sin señal».
 
-**El caso malo es siempre.** La linea 159 de `CLAUDE.md` ya lo tenia escrito para
-otra cosa: los iconos van inline y no contra el CDN de Lucide porque **«un pedido
-a un dominio de afuera no pasa la politica de la intranet»**. La misma regla
-aplica a las fuentes, y nadie la habia cruzado: en TTFA esas dos familias no
-cargan **nunca**, y la app renderiza siempre con la pila de respaldo.
+**⚠ Correccion, del dia siguiente.** Esta decision se tomo razonando que «un
+pedido a un dominio de afuera no pasa la politica de la intranet» --la linea 159
+de `CLAUDE.md`, escrita para el CDN de Lucide--. **Eso era falso para las
+fuentes.** Abriendo `appttfa.com.ar` se ve que la intranet **no es una red
+aislada**: esta en internet publica y hace ese mismo pedido a Google Fonts.
 
-O sea que **lo que se veia en desarrollo no era lo que se veia en produccion**, y
-todo el trabajo de tipografia se estaba haciendo contra una fuente que el
-inspector no ve. El tablero de gerencia tenia el mismo pedido.
+La conclusion se sostiene igual, por otro motivo, y es mejor que el que le puse:
+**la intranet declara Archivo y despues no la usa.** Su `--font-sans` es
+`"Inter", ui-sans-serif, system-ui, sans-serif`, y en su CSS **no hay un solo
+`@font-face`**: Inter no viene empaquetada ni pedida a ningun lado. O sea que en
+la maquina que no la tenga instalada, la intranet renderiza con la del sistema.
+El pedido de Archivo es un resto de copiar y pegar el mismo design system del que
+salio esta app, y las familias figuran como `unloaded` porque nada las usa.
 
-**Decision:** se deja de pedir lo que no puede llegar. La pila pasa a ser la del
-sistema --Roboto en el Android del inspector, Segoe UI en el escritorio de
-gerencia-- que ademas es lo que se ve en la intranet.
+Asi que pedirlas era peso muerto y un agujero de offline, no un pedido imposible.
+El tablero de gerencia tenia el mismo.
+
+**Decision:** no se pide ninguna fuente afuera, y la pila es **la de la intranet,
+copiada de su CSS**: `"Inter", ui-sans-serif, system-ui, sans-serif`. Nombrar
+Inter primero es lo que hace que se vea igual en las maquinas donde esta
+instalada; donde no, las dos caen a la del sistema y siguen coincidiendo.
 
 **Lo que se pierde:** el caracter propio de Archivo. Se acepta: una fuente que no
 carga no tiene caracter, y esta app vive **adentro** de otra, donde parecerse es
@@ -629,6 +640,23 @@ esquemas de vehiculo (D-013) y no en el `SHELL`.
 
 **Verificado corriendo:** `performance.getEntriesByType('resource')` filtrado por
 origen distinto devuelve **cero** en las tres pantallas.
+
+**Y de paso se dejaron de estimar los tokens.** El CSS de la intranet
+(`assets/index-*.css`) es publico y no necesita sesion. Es **Tailwind v4**, asi
+que los valores salieron de ahi en vez de leerse de una captura:
+
+| | Lo que estime | Lo que dice su CSS |
+|---|---|---|
+| Acento | `#2563EB` | `#2563EB` — blue-600, **acerte** |
+| Radios | 4 / 8 / 12 | **4 / 6 / 8 / 16** (`.25/.375/.5/1rem`) |
+| Verde | `#2FBF71` | **`#22C55E`** — green-500 |
+| Ambar | `#F0A21C` | **`#F59E0B`** — amber-500 |
+| Rojo | `#EB0A1E` | **`#EF4444`** — red-500 |
+
+La paleta de estado de la intranet es **la estandar de Tailwind**, no una elegida
+a mano. Los nuestros eran parecidos y no iguales, que en dos apps que se ven una
+al lado de la otra se nota mas que si fueran distintos a proposito. El radio de
+tarjeta se confirmo midiendo la suya: **16 px**.
 
 **De paso, dos cosas del mismo molde:**
 

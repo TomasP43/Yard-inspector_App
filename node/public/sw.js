@@ -47,8 +47,10 @@
  *     sobre el canvas que la compresion ya dibuja: 2 ms.
  * v42: el acento pasa a ser el azul de la intranet TTFA. Cambian tokens.css y
  *     app.css, que son del SHELL.
+ * v43: los tokens salen del CSS real de appttfa.com.ar y no de una captura.
+ *     Cambia la tipografia, los radios y los colores de estado.
  */
-const VERSION = 'v42';
+const VERSION = 'v43';
 const CACHE = `yard-${VERSION}`;
 
 // El app shell tiene que alcanzar para abrir la app sin conexion. Rutas
