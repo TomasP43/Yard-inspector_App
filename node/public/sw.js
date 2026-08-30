@@ -45,8 +45,10 @@
  *     y no siete-- asi que el catalogo viejo cacheado no sirve.
  * v41: la foto avisa si se ve movida, oscura o quemada (camera.js). Se mide
  *     sobre el canvas que la compresion ya dibuja: 2 ms.
+ * v42: el acento pasa a ser el azul de la intranet TTFA. Cambian tokens.css y
+ *     app.css, que son del SHELL.
  */
-const VERSION = 'v41';
+const VERSION = 'v42';
 const CACHE = `yard-${VERSION}`;
 
 // El app shell tiene que alcanzar para abrir la app sin conexion. Rutas

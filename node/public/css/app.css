@@ -126,7 +126,7 @@ main {
   padding: var(--space-4);
 }
 .card + .card, .card + .rejilla, .rejilla + .card { margin-top: 14px; }
-.card.acento { border-left: 3px solid var(--ttfa-red); }
+.card.acento { border-left: 3px solid var(--accento); }
 .card > header { display: grid; gap: 3px; margin-bottom: 12px; }
 .card > header b {
   font-size: 16px;
@@ -181,21 +181,19 @@ main {
   gap: 6px;
   height: 22px;
   padding: 0 8px;
-  border-radius: var(--radius-sm);
-  font-size: 11px;
-  font-weight: var(--weight-semibold);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  border-radius: var(--radius-pill);
+  font-size: 11.5px;
+  font-weight: var(--weight-medium);
   white-space: nowrap;
   background: var(--status-idle-bg);
   color: var(--status-idle);
-  border: 1px solid var(--status-idle);
+  border: 1px solid transparent;
 }
 .badge::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
 .badge.sin-punto::before { display: none; }
-.badge.ok   { background: var(--status-ok-bg);   color: var(--status-ok);   border-color: var(--status-ok); }
-.badge.warn { background: var(--status-warn-bg); color: var(--status-warn); border-color: var(--status-warn); }
-.badge.risk { background: var(--status-risk-bg); color: var(--status-risk); border-color: var(--status-risk); }
+.badge.ok   { background: var(--status-ok-bg);   color: var(--status-ok); }
+.badge.warn { background: var(--status-warn-bg); color: var(--status-warn); }
+.badge.risk { background: var(--status-risk-bg); color: var(--status-risk); }
 .badge.info { background: var(--status-info-bg); color: var(--status-info); border-color: var(--status-info); }
 
 /* --------------------------------------------------------------------- tags */
@@ -215,8 +213,8 @@ main {
   cursor: pointer;
 }
 .tag.sel {
-  background: var(--ttfa-red-16);
-  border-color: var(--ttfa-red-40);
+  background: var(--accento-16);
+  border-color: var(--accento-40);
   color: var(--text-strong);
   font-weight: var(--weight-medium);
 }
@@ -433,7 +431,7 @@ main {
 .campo textarea { height: auto; padding: 10px 12px; resize: none; font-size: 15px; line-height: 1.4; }
 .campo input:focus, .campo select:focus, .campo textarea:focus {
   border-color: var(--gray-300);
-  box-shadow: 0 0 0 3px var(--ttfa-red-16);
+  box-shadow: 0 0 0 3px var(--accento-16);
 }
 .campo.mono input { font-family: var(--font-mono); font-weight: var(--weight-bold); letter-spacing: .04em; }
 .dos { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
@@ -532,8 +530,8 @@ main {
   place-items: center;
   color: var(--white);
 }
-.checks button.sel { background: var(--ttfa-red-08); color: var(--text-strong); }
-.checks button.sel .caja { background: var(--ttfa-red); border-color: var(--ttfa-red); }
+.checks button.sel { background: var(--accento-08); color: var(--text-strong); }
+.checks button.sel .caja { background: var(--accento); border-color: var(--accento); }
 
 /* resolucion de un NG anterior */
 .resol { display: grid; gap: 0; }
@@ -583,8 +581,8 @@ main {
   height: 84px;
   border-radius: var(--radius-md);
   overflow: hidden;
-  background: var(--ttfa-red-08);
-  border: 1px solid var(--ttfa-red-40);
+  background: var(--accento-08);
+  border: 1px solid var(--accento-40);
 }
 .foto img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .foto .quitar {
@@ -626,9 +624,9 @@ main {
   gap: 8px;
   width: 100%;
   height: 48px;
-  border: 1px solid var(--ttfa-red);
+  border: 1px solid var(--accento);
   border-radius: var(--radius-md);
-  background: var(--ttfa-red);
+  background: var(--accento);
   color: var(--white);
   font-size: 15px;
   font-weight: var(--weight-semibold);
@@ -669,7 +667,7 @@ main {
   font-size: 10.5px;
   cursor: pointer;
 }
-.tab.activo { color: var(--ttfa-red); border-top-color: var(--ttfa-red); font-weight: var(--weight-semibold); }
+.tab.activo { color: var(--accento); border-top-color: var(--accento); font-weight: var(--weight-semibold); }
 
 /* ---------------------------------------------------------------- menu lateral */
 
@@ -701,7 +699,7 @@ main {
   height: 30px;
   flex: 0 0 30px;
   border-radius: var(--radius-sm);
-  background: var(--ttfa-red);
+  background: var(--accento);
 }
 .drawer .marca b { display: block; font-size: 15px; color: var(--text-strong); line-height: 1.1; }
 .drawer .marca small {
@@ -726,9 +724,9 @@ main {
   cursor: pointer;
 }
 .drawer .it.activo {
-  color: var(--ttfa-red);
-  background: var(--ttfa-red-08);
-  border-left-color: var(--ttfa-red);
+  color: var(--text-strong);
+  background: var(--surface-raised);
+  border-left-color: var(--accento);
   font-weight: var(--weight-semibold);
 }
 .drawer .it.tenue { color: var(--text-faint); }
@@ -745,7 +743,7 @@ main {
   height: 30px;
   flex: 0 0 30px;
   border-radius: var(--radius-pill);
-  background: var(--ttfa-red);
+  background: var(--accento);
   color: var(--white);
   display: grid;
   place-items: center;
@@ -839,7 +837,7 @@ details.ficha > summary::-webkit-details-marker { display: none; }
   padding-top: 10px;
   border-top: 1px solid var(--line-hairline);
   font-size: 12.5px;
-  color: var(--ttfa-red);
+  color: var(--accento);
 }
 /* El chevron apunta hacia abajo cerrado y hacia arriba abierto: es el unico
    glifo de flecha que hay en iconos.js, asi que se rota. */
@@ -959,7 +957,7 @@ details.ficha[open] .ver-obs .ico { transform: rotate(90deg); }
   background: var(--surface-raised);
 }
 /* Se marca la caja entera, no el input: el borde visible es el de la caja. */
-.buscador:focus-within { border-color: var(--ttfa-red-40); box-shadow: 0 0 0 2px var(--ttfa-red-16); }
+.buscador:focus-within { border-color: var(--accento-40); box-shadow: 0 0 0 2px var(--accento-16); }
 .buscador .lupa { display: flex; color: var(--text-faint); flex: 0 0 auto; }
 .buscador input {
   flex: 1;
@@ -1300,7 +1298,7 @@ details.ficha[open] .ver-obs .ico { transform: rotate(90deg); }
   border: 1px solid var(--text-faint);
 }
 .dia.sel-a, .dia.sel-b {
-  outline: 2px solid var(--ttfa-red);
+  outline: 2px solid var(--accento);
   outline-offset: 1px;
 }
 

@@ -540,3 +540,56 @@ generica de un modelo que no es el auto que se esta mirando.
 quiere, las coordenadas entran sin tocar la pantalla, que es como estaba pensado.
 
 **Reversibilidad:** total, no se saco nada.
+
+---
+
+## D-021 — El acento es el azul de la intranet, no el rojo de Toyota
+
+**Fecha:** 30-08-2026 · **Ambito:** los tres modulos, `tokens.css` y `app.css`
+
+Esta app arranco con `--ttfa-red: #EB0A1E` de **acento primario**, por venir del
+design system de marca. Mirando capturas de **TTFA Intranet**, que es donde esto
+vive, la definicion real es otra:
+
+| En la intranet | Color |
+|---|---|
+| Acciones: «Cargar hs», «+ Nuevo PR», «Solo extras» | **azul** |
+| Filtros y pestañas activas | **azul** |
+| Navegacion activa | pastilla neutra clara |
+| Aprobado | verde |
+| Pendiente | ambar |
+| **Rechazado, e icono de borrar** | **rojo, y nada mas** |
+
+**El problema no era estetico.** Con el rojo de acento, un chip de filtro
+seleccionado --«Todos», «Batea»-- se pintaba **igual que un chip NG**. El mismo
+color decia «esto esta seleccionado» y «esto esta mal», y cuando el acento de
+marca y el de alerta son el mismo, **el rojo deja de significar peligro**. En una
+app cuyo trabajo es marcar lo que esta mal, eso es perder la herramienta
+principal.
+
+**Decision:** entra `--accento` (#2563EB oscuro, #1D4ED8 claro) para **accion,
+seleccion, foco y marca de UI**. El rojo se queda **solo** para lo que esta mal:
+NG, novedades, alertas, rechazos, el error del escaner.
+
+Repartido: 16 lineas de CSS pasaron a azul, 36 quedaron rojas. Verificado
+recorriendo las ocho pantallas de los tres modulos y midiendo el color
+computado, no leyendo el CSS.
+
+**Se toco tambien patrullas, y no es desprolijidad.** `.tag.sel`, `.btn` y
+`.tab.activo` son componentes compartidos por los tres modulos. Hacerlo «solo en
+bahias y precarga» obligaba a bifurcarlos, y dejaba una app donde el mismo chip
+es rojo en una pantalla y azul en la otra -- peor que cualquiera de las dos
+opciones enteras.
+
+**De paso, los badges pasan al molde de la intranet:** pastilla redonda
+(`999px`), sin aro de color, en minuscula y peso medio. Antes eran versalitas
+con borde solido, que es mas duro que todo lo que hay alrededor.
+
+**Reversibilidad:** total. Son seis tokens y las 16 lineas estan listadas en el
+script; volver es cambiar `--accento` por `--ttfa-red`.
+
+**⚠ Lo que no pude verificar:** la app de TTFA vive en la intranet detras del
+`auth_request` y no se alcanza desde el entorno de desarrollo. La paleta salio de
+**cuatro capturas** --Inicio, PRs, Fichadas y Cargas-- asi que los hex son los
+que se leen ahi (#2563EB y la familia verde/ambar/rojo estandar). Si la intranet
+tiene tokens propios, conviene copiarlos y no aproximarlos.

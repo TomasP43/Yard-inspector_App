@@ -8,8 +8,27 @@
    =========================================================================== */
 
 /* --- Marca --------------------------------------------------------------- */
+
+/* El acento de accion es AZUL, no el rojo de Toyota, y eso sale de mirar la
+   intranet donde esto vive: en TTFA Intranet los botones de accion --«Cargar
+   hs», «+ Nuevo PR», «Solo extras»-- y los filtros activos son azules, y el
+   rojo aparece en exactamente dos lugares, «Rechazado» y el icono de borrar.
+
+   Esta app arrancaba con el rojo Toyota de acento primario, asi que un chip
+   seleccionado se pintaba igual que un NG. **El rojo dejaba de significar que
+   algo estaba mal**, que es lo unico para lo que sirve un color de alerta. Ver
+   D-021.
+
+   El rojo de marca no se va: pasa a decir una sola cosa. */
 :root {
-  --ttfa-red:        #EB0A1E;   /* rojo Toyota, acento primario */
+  --accento:        #2563EB;   /* azul TTFA, acento de accion */
+  --accento-bright: #3B82F6;   /* hover / foco */
+  --accento-deep:   #1D4ED8;   /* presionado */
+  --accento-08:     rgba(37, 99, 235, .10);
+  --accento-16:     rgba(37, 99, 235, .18);
+  --accento-40:     rgba(37, 99, 235, .45);
+
+  --ttfa-red:        #EB0A1E;   /* rojo Toyota, SOLO para lo que esta mal */
   --ttfa-red-bright: #FF2233;   /* hover / foco */
   --ttfa-red-deep:   #A6060F;   /* presionado */
   --ttfa-red-08:     rgba(235, 10, 30, .08);
@@ -126,6 +145,13 @@
   --line-hairline: rgba(0, 0, 0, .10);
   --line-rule:     rgba(0, 0, 0, .16);
   --line-strong:   #C6CBD1;
+
+  --accento:        #1D4ED8;   /* mas oscuro: el mismo azul sobre blanco no contrasta */
+  --accento-bright: #2563EB;
+  --accento-deep:   #1E3A8A;
+  --accento-08:     rgba(29, 78, 216, .08);
+  --accento-16:     rgba(29, 78, 216, .14);
+  --accento-40:     rgba(29, 78, 216, .40);
 
   --ttfa-red-08: rgba(235, 10, 30, .06);
   --ttfa-red-16: rgba(235, 10, 30, .12);
