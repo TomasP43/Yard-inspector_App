@@ -941,7 +941,11 @@ const MODULOS = {
     pantallas: {
       bajadas:        { titulo: 'Bajadas de hoy',    eyebrow: 'Solicitudes por bahía', icono: 'car',       corto: 'Bajadas' },
       'precarga-hist': { titulo: 'Bajadas anteriores', eyebrow: 'Jornadas cerradas',    icono: 'file-text', corto: 'Historial' }
-    }
+    },
+    // Dos niveles de detalle: solicitud -> unidad. Sin esto, volver desde una
+    // unidad cae en la pestaña y se saltea la solicitud, o sea que el
+    // inspector que abre un VIN para mirarlo sale del camion entero.
+    atras: (v) => (v === 'unidad' ? 'solicitud' : null)
   }
 };
 
@@ -990,6 +994,9 @@ function irA(nombre) {
   if (nombre === 'rondas') Bahias.verRondas();
   if (nombre === 'bajadas') Precarga.verBajadas();
   if (nombre === 'precarga-hist') Precarga.verHistorial();
+  // Vista de detalle: no se recarga, se repinta. Volver desde la unidad entra
+  // aca, y sin esto el encabezado se queda con el VIN de la unidad.
+  if (nombre === 'solicitud') Precarga.pintarSolicitud();
 }
 
 function abrirDrawer() { $('#drawer').hidden = false; $('#scrim').hidden = false; }
@@ -1118,7 +1125,12 @@ $('#visor').addEventListener('click', () => {
   $('#visor').hidden = true;
   $('#visor-img').src = '';   // que no quede la imagen cargada por atras
 });
-$('#volver').addEventListener('click', () => irA(vistaPrevia));
+$('#volver').addEventListener('click', () => {
+  // Por defecto se vuelve a la pestaña desde donde se entro. Un modulo con mas
+  // de un nivel de detalle puede decir otra cosa con `atras`.
+  const m = MODULOS[moduloDe(vista)];
+  irA((m && m.atras && m.atras(vista)) || vistaPrevia);
+});
 $('#tema').addEventListener('click', () =>
   aplicarTema(document.documentElement.getAttribute('data-tema') !== 'claro'));
 

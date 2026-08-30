@@ -48,6 +48,15 @@ const Precarga = (() => {
 
   const vacio = (vin) => ({ vin, pano: null, danos: [], nuevo: null });
 
+  /**
+   * Estado del historial, aparte del de la jornada en curso.
+   *
+   * `clave` distinta de null significa que se entro a una jornada y se estan
+   * viendo sus solicitudes. Se guarda para que volver desde el detalle de una
+   * solicitud caiga donde estabas y no en la lista de arriba de todo.
+   */
+  const hist = { jornadas: null, clave: null, solicitudes: null, cargando: false };
+
   // --------------------------------------------------------------- datos
 
   /**
@@ -109,7 +118,9 @@ const Precarga = (() => {
     }
   }
 
-  const solPorId = (id) => ((DATOS && DATOS.solicitudes) || []).find((s) => String(s.id) === String(id));
+  /** Busca en la jornada en curso y despues en la del historial que este abierta. */
+  const solPorId = (id) => ((DATOS && DATOS.solicitudes) || []).find((s) => String(s.id) === String(id))
+    || (hist.solicitudes || []).find((s) => String(s.id) === String(id));
   const unidadDe = (s, vin) => ((s && s.unidades) || []).find((u) => u.vin === vin);
 
   const parteDe = (id) => ((CATA && CATA.partes) || []).find((p) => String(p.id) === String(id));
@@ -267,8 +278,16 @@ const Precarga = (() => {
         <div class="kpi${r.desviadas ? ' warn' : ''}"><b class="k-val">${r.desviadas}</b><span class="k-pie">Fuera de orden</span></div>
       </div>`;
 
+    // En una jornada cerrada no se ofrece escanear. El camion ya salio: sumarle
+    // una unidad despues seria decir que se vio lo que no se vio. Es la misma
+    // regla que en patrullas, donde el boton de agregar observacion solo esta en
+    // los controles de hoy.
     const pendientes = r.total - r.bajadas;
-    const boton = pendientes
+    const boton = s.cerrada
+      ? `<p class="nota cerrado">La jornada cerró. ${pendientes
+          ? `Quedaron ${pendientes} ${pendientes === 1 ? 'unidad sin bajar' : 'unidades sin bajar'}.`
+          : 'Se bajaron todas.'}</p>`
+      : pendientes
       ? `<button type="button" class="btn" id="pc-escanear">${ico('scan-line', 18)} Escanear unidad</button>
          <p class="nota qr">La unidad se abre escaneando su etiqueta de VIN, parado al lado del auto. De ahí sale el orden real de bajada.</p>`
       : `<p class="nota">Las ${r.total} unidades de esta solicitud ya se bajaron.</p>`;
@@ -333,6 +352,8 @@ const Precarga = (() => {
     $('#eyebrow').textContent = (s.codigo || '') + ' · orden solicitado ' + (u.orden_solicitado || '—');
 
     cuerpo.innerHTML = u.inspeccion ? fichaUnidad(s, u)
+      : s.cerrada ? `<section class="card gate">${ico('clock', 30)}<b>No se bajó</b>
+          <p class="nota cerrado">La jornada cerró sin que esta unidad se registrara. No se puede cargar después.</p></section>`
       : escaneadas.has(u.vin) && form && form.vin === u.vin ? formulario(s, u)
       : gate(u);
   }
@@ -647,9 +668,91 @@ const Precarga = (() => {
 
   // ----------------------------------------------------------- historial
 
+  /**
+   * Jornadas cerradas.
+   *
+   * Repinta lo que diga `hist`, no siempre la lista de arriba: si se habia
+   * entrado a una jornada y despues a una solicitud, el boton de volver tiene
+   * que caer en esa jornada y no mandarte al principio.
+   */
   function verHistorial() {
+    if (hist.clave) { pintarJornada(); return; }
+    if (!hist.jornadas && !hist.cargando) {
+      hist.cargando = true;
+      pedir('api/precarga/jornadas?limite=14')
+        .then((d) => { hist.jornadas = d.jornadas || []; })
+        .catch(() => { hist.jornadas = []; })
+        .then(() => { hist.cargando = false; pintarJornadas(); });
+    }
+    pintarJornadas();
+  }
+
+  /** Fecha y turno de una clave de jornada: '2026-08-27-tarde'. */
+  function rotulo(clave) {
+    const p = String(clave).split('-');
+    const d = new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2]), 12);
+    return { dia: fmtDia(d), turno: p[3] === 'tarde' ? 'Segundo turno' : 'Primer turno' };
+  }
+
+  function pintarJornadas() {
     const cuerpo = $('#ph-cuerpo');
-    if (cuerpo) cuerpo.innerHTML = '<p class="nota centro">El historial de precarga todavía no está.</p>';
+    if (!cuerpo) return;
+
+    if (!hist.jornadas) { cuerpo.innerHTML = '<p class="nota centro">Cargando…</p>'; return; }
+    if (!hist.jornadas.length) { cuerpo.innerHTML = '<p class="nota centro">Todavía no hay jornadas cerradas.</p>'; return; }
+
+    // Los cuatro numeros por jornada, y no un renglon que diga "Completa": seis
+    // filas iguales no informan nada. Lo que se viene a buscar aca es en que
+    // jornada paso algo -- daños o bajadas fuera de orden.
+    cuerpo.innerHTML = `<div class="pc-lista">${hist.jornadas.map((j) => {
+      const r = rotulo(j.clave);
+      return `
+        <button type="button" class="fila pc-jornada${j.desviadas ? ' desvio' : ''}" data-jornada="${esc(j.clave)}">
+          <span class="txt">
+            <b>${esc(r.dia)}</b>
+            <small>${esc(r.turno)} · ${j.solicitudes} ${j.solicitudes === 1 ? 'solicitud' : 'solicitudes'}</small>
+          </span>
+          <span class="pc-nums">
+            <span><b class="mono">${j.unidades}</b><small>unid.</small></span>
+            <span class="${j.con_dano ? 'malo' : ''}"><b class="mono">${j.con_dano}</b><small>daño</small></span>
+            <span class="${j.desviadas ? 'aviso' : ''}"><b class="mono">${j.desviadas}</b><small>orden</small></span>
+          </span>
+        </button>`;
+    }).join('')}</div>`;
+  }
+
+  function verJornada(clave) {
+    hist.clave = clave;
+    hist.solicitudes = null;
+    pintarJornada();
+    pedir('api/precarga/solicitudes?jornada=' + encodeURIComponent(clave))
+      .then((d) => { hist.solicitudes = d.solicitudes || []; })
+      .catch(() => { hist.solicitudes = []; })
+      .then(pintarJornada);
+  }
+
+  function pintarJornada() {
+    const cuerpo = $('#ph-cuerpo');
+    if (!cuerpo) return;
+    const r = rotulo(hist.clave);
+
+    const cab = `
+      <button type="button" class="btn sec chico" id="ph-volver">${ico('chevron-left', 15)} Todas las jornadas</button>
+      <div class="cab-lista"><span class="eq-label">${esc(r.dia)} · ${esc(r.turno)}</span></div>`;
+
+    if (!hist.solicitudes) { cuerpo.innerHTML = cab + '<p class="nota centro">Cargando…</p>'; return; }
+    if (!hist.solicitudes.length) { cuerpo.innerHTML = cab + '<p class="nota centro">Esa jornada no tuvo bajadas.</p>'; return; }
+
+    const porBahia = new Map();
+    for (const s of hist.solicitudes) {
+      const b = s.bahia || '—';
+      if (!porBahia.has(b)) porBahia.set(b, []);
+      porBahia.get(b).push(s);
+    }
+
+    cuerpo.innerHTML = cab + `<div class="pc-lista">${Array.from(porBahia.keys()).sort().map((b) => `
+      <div class="grupo-cab"><span class="mono">${esc(b)}</span></div>
+      ${porBahia.get(b).map(filaSolicitud).join('')}`).join('')}</div>`;
   }
 
   // ------------------------------------------------------------- eventos
@@ -673,6 +776,11 @@ const Precarga = (() => {
 
     const sol = t.closest('[data-sol]');
     if (sol) { verSolicitud(sol.dataset.sol); return; }
+
+    const jor = t.closest('[data-jornada]');
+    if (jor) { verJornada(jor.dataset.jornada); return; }
+
+    if (t.closest('#ph-volver')) { hist.clave = null; hist.solicitudes = null; pintarJornadas(); return; }
 
     const uni = t.closest('[data-vin]');
     if (uni) { verUnidad(uni.dataset.vin); return; }
@@ -758,5 +866,5 @@ const Precarga = (() => {
     });
   }
 
-  return { cargar, refrescar, verBajadas, verSolicitud, verUnidad, verHistorial, tomarFoto };
+  return { cargar, refrescar, verBajadas, verSolicitud, verUnidad, verHistorial, pintarSolicitud, tomarFoto };
 })();

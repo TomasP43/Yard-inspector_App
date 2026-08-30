@@ -1589,3 +1589,18 @@ details.ficha[open] .ver-obs .ico { transform: rotate(90deg); }
   letter-spacing: var(--track-label);
   color: var(--ttfa-red);
 }
+
+/* Historial: una fila por jornada, con sus numeros a la derecha.
+
+   Van los tres numeros y no un "Completa": seis renglones iguales no informan
+   nada, y lo que se viene a buscar aca es en que jornada paso algo. Es la misma
+   leccion que dejo el historial de bahias cuando era una lista. */
+.fila.pc-jornada.desvio { border-left-color: var(--status-warn); }
+.pc-nums { flex: 0 0 auto; display: flex; gap: 12px; text-align: center; }
+.pc-nums > span { display: grid; gap: 1px; }
+.pc-nums b { font-size: 14px; font-weight: var(--weight-bold); color: var(--text-strong); }
+.pc-nums small { font-size: 9.5px; color: var(--text-faint); }
+.pc-nums .malo b { color: var(--ttfa-red); }
+.pc-nums .aviso b { color: var(--status-warn); }
+
+#ph-volver { width: auto; margin-bottom: 4px; }

@@ -831,6 +831,134 @@
   }
 
   /**
+   * Las solicitudes de una jornada pasada.
+   *
+   * Se generan a partir de la clave, no se guardan: con una semilla derivada del
+   * texto de la clave, la misma jornada devuelve siempre lo mismo y dos corridas
+   * muestran igual. Es el mismo criterio que `sembrarRonda` en bahias.
+   *
+   * Las de jornadas viejas vienen `cerrada: true`. El front usa eso para no
+   * ofrecer el escaneo: el camion ya salio, y sumarle una unidad despues seria
+   * decir que se vio lo que no se vio.
+   */
+  const CACHE_JORNADAS = new Map();
+
+  function solicitudesDeJornada(clave) {
+    if (CACHE_JORNADAS.has(clave)) return CACHE_JORNADAS.get(clave);
+
+    // Semilla propia, derivada del texto: no se toca la del resto del mock, que
+    // ya consumio su secuencia y quedaria distinta segun que pantalla se abrio
+    // primero.
+    let s = 7;
+    for (let i = 0; i < clave.length; i++) s = (s * 31 + clave.charCodeAt(i)) % 2147483647;
+    const r = () => (s = (s * 1103515245 + 12345) % 2147483648) / 2147483648;
+    const ent = (a, b) => a + Math.floor(r() * (b - a + 1));
+    const un = (a) => a[Math.floor(r() * a.length)];
+
+    const [anio, mes, dia, turnoId] = clave.split('-');
+    const base = new Date(Number(anio), Number(mes) - 1, Number(dia), turnoId === 'tarde' ? 16 : 6, 0, 0);
+
+    const out = [];
+    const n = ent(3, 6);
+    for (let i = 0; i < n; i++) {
+      const destino = un(DESTINOS_PC);
+      const cuantas = ent(4, 9);
+      const unidades = [];
+
+      // El orden real: se baja casi siempre en orden y de vez en cuando no. Si
+      // fuera al azar, el desvio dejaria de ser la excepcion que es.
+      const bajadas = [...Array(cuantas).keys()];
+      if (r() < 0.35) {
+        const k = ent(0, cuantas - 2);
+        [bajadas[k], bajadas[k + 1]] = [bajadas[k + 1], bajadas[k]];
+      }
+      const momento = new Map();
+      bajadas.forEach((idx, pos) => momento.set(idx, new Date(base.getTime() + (i * 40 + pos * 5) * 60000).toISOString()));
+
+      for (let k = 0; k < cuantas; k++) {
+        let vin = '8AJ';
+        for (let j = 0; j < 6; j++) vin += (LETRAS_VIN + '0123456789')[Math.floor(r() * 33)];
+        for (let j = 0; j < 8; j++) vin += String(ent(0, 9));
+
+        const conDano = r() < 0.22;
+        unidades.push({
+          vin,
+          orden_solicitado: k + 1,
+          so: 'SO-' + ent(10000, 99999),
+          katashiki: 'GUN' + ent(120, 145) + 'L',
+          modelo: un(MODELOS),
+          destino,
+          linea_txt: 'L' + ent(1, 9),
+          inspeccion: {
+            uuid: 'hist-' + clave + '-' + i + '-' + k,
+            escaneado_en: momento.get(k),
+            registrado_en: momento.get(k),
+            danos: conDano ? [{
+              parte_id: un(PARTES).id,
+              tipo_dano_id: un(TIPOS_DANO).id,
+              comentario: null,
+              foto: 'uploads/demo-' + ent(1, 4) + '.svg'
+            }] : []
+          }
+        });
+      }
+
+      const h = new Date(base.getTime() + i * 40 * 60000);
+      out.push({
+        id: clave + '-' + (i + 1),
+        codigo: 'SOL-9014' + String(1000 + ent(0, 8999)),
+        hora: h.toISOString(),
+        transportista: un(TRANSPORTISTAS),
+        equipo: String(ent(120, 7999)),
+        bahia: BAHIAS_PC[i % BAHIAS_PC.length],
+        destino,
+        cerrada: true,
+        unidades
+      });
+    }
+
+    CACHE_JORNADAS.set(clave, out);
+    return out;
+  }
+
+  /** Las jornadas cerradas, ya agregadas. El servidor real haria los COUNT. */
+  function jornadasCerradas(cuantas) {
+    const hoy = new Date();
+    const actual = Turnos.de(hoy).clave;
+    const out = [];
+
+    for (let d = 0; d < 10 && out.length < (cuantas || 14); d++) {
+      const dia = new Date(hoy);
+      dia.setDate(dia.getDate() - d);
+      const y = dia.getFullYear();
+      const m = String(dia.getMonth() + 1).padStart(2, '0');
+      const dd = String(dia.getDate()).padStart(2, '0');
+
+      for (const t of ['tarde', 'manana']) {
+        const clave = `${y}-${m}-${dd}-${t}`;
+        if (clave === actual) continue;   // la jornada en curso no es historial
+        if (new Date(y, dia.getMonth(), Number(dd)) > hoy) continue;
+
+        const sols = solicitudesDeJornada(clave);
+        let unidades = 0, conDano = 0, desviadas = 0;
+        for (const s of sols) {
+          const orden = new Map();
+          s.unidades.slice()
+            .sort((a, b) => String(a.inspeccion.escaneado_en).localeCompare(String(b.inspeccion.escaneado_en)))
+            .forEach((u, i) => orden.set(u.vin, i + 1));
+          for (const u of s.unidades) {
+            unidades++;
+            if (u.inspeccion.danos.length) conDano++;
+            if (orden.get(u.vin) !== u.orden_solicitado) desviadas++;
+          }
+        }
+        out.push({ clave, solicitudes: sols.length, unidades, con_dano: conDano, desviadas });
+      }
+    }
+    return out;
+  }
+
+  /**
    * Los botones del lector simulado cuando lo que se pide es un VIN.
    *
    * Los casos malos van a proposito: una unidad ya bajada y un VIN que no esta
@@ -893,9 +1021,20 @@
 
     if (s.includes('api/precarga/catalogos')) return json(CATALOGOS_PC);
 
+    if (s.includes('api/precarga/jornadas')) {
+      const q = new URLSearchParams(s.split('?')[1] || '');
+      return json({ jornadas: jornadasCerradas(Number(q.get('limite') || 14)) });
+    }
+
     if (s.includes('api/precarga/solicitudes')) {
       const q = new URLSearchParams(s.split('?')[1] || '');
-      return json({ jornada: q.get('jornada') || 'sin-jornada', solicitudes: solicitudesConEstado() });
+      const clave = q.get('jornada') || 'sin-jornada';
+      // La jornada en curso sale de lo que se cargo; las anteriores se generan.
+      const actual = Turnos.de(new Date()).clave;
+      return json({
+        jornada: clave,
+        solicitudes: clave === actual ? solicitudesConEstado() : solicitudesDeJornada(clave)
+      });
     }
 
     if (s.includes('api/catalogos')) return json(CATALOGOS);
