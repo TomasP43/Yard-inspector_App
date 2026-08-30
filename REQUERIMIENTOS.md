@@ -38,7 +38,7 @@ ahi arranca el siguiente.**
 | 1 | ~~El borrador sobrevive a que se cierre la app~~ | front | **hecho** |
 | 2 | ~~Buscar un VIN y ver todo su historial~~ | front + `YI-016` | **front hecho**, falta el endpoint |
 | 3 | **Codigos AIAG y gravedad** | datos + front + `YI-015` | **hecho en el front** |
-| 4 | **PDF del legajo** y envio | front + decision | pendiente |
+| 4 | ~~**PDF del legajo**~~ | front | **hecho**: imprimir → guardar PDF |
 | 5 | **Punto exacto** sobre el esquema, no sector | front | pendiente |
 | 6 | **Captura guiada** de fotos | front | pendiente |
 | 7 | **Descarga en destino** | modulo nuevo | se planifica aparte |
@@ -1003,7 +1003,7 @@ evita que vuelvan a aparecer en cada conversacion.
 ---
 
 ### YI-015 — Los códigos de daño son un estándar global, no un formulario interno
-- **Estado:** **hecho en el front** · falta el backend · descubierto haciendo el benchmark
+- **Estado:** **hecho en el front** contra M-22 v4 oficial · falta el backend
 - **Prioridad:** alta
 - **Tipo:** modelo de datos
 
@@ -1046,51 +1046,78 @@ evita que vuelvan a aparecer en cada conversacion.
   filas 62–73) y las 8 gravedades también. Falta mapear las 16 partes agregadas y
   volver a poner el paso de gravedad en el formulario.
 
-#### Lo que ya está hecho (front, contra el mock)
+#### El documento apareció, y cambió el resultado
 
-**El código se arma solo con lo que el inspector ya eligió.** No se le pide: el
-área es el número de la parte que tocó, el tipo es el daño que tocó, y lo único
-que se sumó es un paso de **tamaño**, un toque, siete opciones, nada
-preseleccionado. En AppSheet ese código se tipeaba a mano.
+**M-22 no hay que comprarlo:** el [ECG](https://www.ecgassociation.eu/publications-and-reports/aiag-damage-codes/)
+—la asociación europea de logística de vehículos, que lo desarrolla junto con
+AIAG— publica la versión 4.1 completa y gratis. Está guardado en el scratchpad
+como `M-22-v4.1.pdf` y su texto extraído en `M-22-texto.txt`.
 
-- `precarga_parte.aiag` = su número Furlong, verificado uno por uno contra las
-  tablas públicas: 1 Antenna, 3 Bumper Front, 10–13 Doors, 14/16 Fenders,
-  15 Quarter Panel, 30/31 Mirror Outside, 37 Roof, 40 Spare Tire, 44 Gas Tank,
-  52 Deck Lid, 53 Sunroof, 57 Wheel Covers, 64 Spoiler, 99 Engine Compartment.
-- `precarga_tipo_dano.aiag`, los 14 que la operación carga.
-- Las 7 gravedades del impreso, que son las del estándar convertidas a métrico:
-  `1` ≤2,5 cm · `2` 2,5–7,5 · `3` 7,5–15 · `4` 15–30 · `5` >30 · `6` severo ·
-  `7` faltante. Confirmado: AIAG dice ≤1", >1–3", >3–6", >6–12", >12". El `0`
-  («sin excepción») no se ofrece, porque solo se cargan daños que existen.
-- La hoja imprime la columna **CÓDIGO** y explica de qué se arma.
+Con el documento a la vista, la premisa de la que partimos era **medio falsa**.
+La planilla de Furlong es M-22, sí, pero **una revisión distinta y extendida**, y
+las diferencias no son cosméticas:
 
-#### Tres cosas que decide la operación, no el código
-
-| Qué | Cómo quedó | Por qué hay que mirarlo |
+| | Planilla Furlong | M-22 v4 oficial |
 |---|---|---|
-| **`Fallo de pintura` no tiene código** | se carga igual, la hoja dice «sin código» | AIAG codifica daño de **transporte**; un defecto de pintura viene de planta. Es el **3.º tipo más cargado (347 usos)**: o se reporta como otra cosa, o se acepta que ese hallazgo no entra en un reclamo de transporte |
-| **`Derrame de fluido` toma `33`** | como dice el impreso | El estándar publicado usa `30` para lo mismo. Son dos revisiones; si el reclamo va contra un tercero, gana la de él |
-| **19 partes sin *area code*** | se cargan igual, sin código | 16 vinieron del catálogo de AppSheet (ópticas, tapizados, airbags, llantas…) y 3 son los «Otros» de cada sector. El estándar tiene números para varias —24 Headlight, 45 Tail Light, 93 Steering Wheel— pero de **otra revisión**, donde 41 y 93 significan cosas distintas que en el impreso. Importarlos mezclaría revisiones y daría un código que no dice lo que parece |
+| `Derrame de fluido` | 33 | **30** |
+| Gravedad | 8 códigos (0–7) | **6** (1–6) |
+| Corte de gravedad 1 | hasta 2,5 cm | **menos de 3 cm** |
+| Corte de gravedad 2 | 2,5 a 7,5 | **3 a 8** |
+| Corte de gravedad 3 | 7,5 a 15 | **8 a 15** |
+| «Faltante» | gravedad 7 *y* tipo 08 | **gravedad 6**, no hay tipo |
+| Área 72–79 | pilares y paneles de cabina | **neumáticos y llantas por esquina** |
+| Área 93 | sistema de suspensión | **volante / airbag** |
 
-Dos más, elegidas sin poder consultar: `Contaminado (No daño)` toma **29**
-(*Contamination - Exterior*), que el impreso no lista pero es exactamente el
-concepto — el `10` es *Stained or Soiled* y es de interior. Y `Desprendido` toma
-**38** (*Hardware - Loose, Missing*), que es el más cercano.
+**El corte de gravedad importa más de lo que parece.** El estándar redondea las
+pulgadas a 3 y 8 cm; la planilla las convirtió exacto a 2,5 y 7,6. Un daño de
+2,8 cm es gravedad **2** para nosotros y **1** para el estándar — y la gravedad
+es lo que fija cuánto se reclama.
+
+**Y lo de 72–79 es lo grave.** Un reclamo con `75043` le dice al otro «llanta
+trasera izquierda abollada» cuando quisimos decir «panel de cabina lateral
+izquierdo». Todo el punto de usar un estándar es que eso no pase.
+
+#### Cómo quedó
+
+Decidido: **manda el M-22 oficial**. El inspector sigue viendo los nombres de
+siempre; lo que cambia es el número que viaja.
+
+- Se cruzaron las 91 partes numeradas contra la lista oficial. **72 coinciden** y
+  usan su número. Las otras 19 y las 16 de AppSheet van en `AREA_PROPIA`,
+  explícitas y comentadas una por una.
+- **84 de 110 partes tienen código oficial** (antes eran 91, con 13 mal).
+- Los tipos salieron del documento, no del impreso. Confirmados: `29`
+  contaminación exterior, `34` filo de panel. Corregido: derrame `33 → 30`.
+- Las 6 gravedades oficiales, con los cortes del estándar.
+
+**Seis partes comparten código con otra**, porque el estándar es más grueso ahí:
+las dos ópticas delanteras van a `24`, las traseras a `45`, volante y airbags a
+`93`. El nombre local distingue izquierda de derecha; **el código no**.
+
+**26 partes quedan sin código**, y no es un agujero: la planilla extendió el
+estándar con piezas de cabina de camión —cuchetas, paneles, largueros— más el
+suplemento de paragolpe, el convertidor y la suspensión, que M-22 no contempla.
+Se cargan igual y la hoja dice «sin código». Mejor eso que un número que en la
+otra punta significa otra cosa.
+
+#### Lo que hay que confirmar con la operación
+
+| Qué | Por qué |
+|---|---|
+| **Las 26 sin código** | ¿Se reclaman contra alguien? Si sí, hay que ver qué código usa esa contraparte para una cuchueta o un panel de cabina |
+| **El corner post 71** | El estándar tiene uno solo y se lo lleva el pilar delantero **derecho**, que es arbitrario: el izquierdo queda sin código |
+| **`Fallo de pintura` sin código** | Confirmado contra el documento: M-22 codifica daño de **transporte**, y un defecto de pintura sale de planta. Es el 3.º tipo más cargado (347 usos) |
+| **`Faltante` y `Desprendido` comparten el 38** | El estándar los junta en «Hardware - Loose, Missing», que es su cajón de sastre. Nosotros los separamos |
+| **La regla de los daños múltiples** | El documento dice: varios daños en el mismo panel, sea cual sea su tamaño, se codifican **gravedad 3 o mayor**. No está implementada |
 
 #### Lo que falta del backend
 
-- Columna `aiag` en `precarga_parte` y `precarga_tipo_dano`, y columna
-  `gravedad` (TINYINT, 1–7, nullable) en `precarga_dano`. **Nullable a
-  propósito:** el histórico de AppSheet no la tiene, y un daño sin gravedad
-  tiene que seguir mostrándose sin código en vez de romper la hoja — ya está
-  probado en el front.
+- Columna `aiag` en `precarga_parte` y `precarga_tipo_dano` (nullable), y
+  `gravedad` TINYINT 1–6 nullable en `precarga_dano`. **Nullable a propósito:**
+  el histórico de AppSheet no la tiene, y un daño sin gravedad tiene que seguir
+  mostrándose sin código en vez de romper la hoja — ya está probado en el front.
 - `POST api/precarga/inspecciones` acepta `gravedad` por daño.
 - Migración 009.
-
-- **⚠ No se pudieron verificar las tablas completas.** M-14/M-22 se compran; las
-  tablas de tipo y gravedad salieron de un documento público de ACERTUS que las
-  reproduce, y el área salió del impreso de Furlong. Coinciden entre sí, que es
-  la mejor evidencia disponible sin comprar la norma.
 
 ---
 
@@ -1151,3 +1178,39 @@ No es un requerimiento, es para que nadie los tome por carga viva:
 Los dos están marcados con un comentario en su router.
 
 ---
+
+---
+
+### YI-017 — El PDF del legajo por mail, desde el servidor
+- **Estado:** pendiente
+- **Prioridad:** menor
+- **Tipo:** endpoint
+
+- **Qué necesito:** `GET api/precarga/solicitudes/:id/legajo.pdf`, y que el
+  servidor pueda mandarlo por mail a las partes.
+
+- **Para qué:** hoy el legajo sale por el diálogo de impresión, que en Android es
+  también «Guardar como PDF». Eso alcanza para que el papel viaje con el camión,
+  que es lo que pasa de verdad. Lo que **no** puede hacer es que la app agarre el
+  archivo: el usuario elige dónde guardarlo y la app nunca lo ve. Mandarlo por
+  mail necesita que el PDF exista del lado del servidor.
+
+- **Cómo:** con **[Gotenberg](https://gotenberg.dev/)** —MIT, Docker, envuelve
+  Chromium y expone un REST—, que renderiza **el mismo HTML y CSS que ya tiene el
+  front**. Es como lo resuelve la categoría ([PAVE](https://pave.ai/),
+  [DAMAGE iD](https://www.damageid.com/),
+  [Inspectly360](https://www.inspectly360.com/apps/transport-logistics-warehousing/driver-vehicle-inspection-report-app)):
+  todas generan el PDF del lado del servidor y lo mandan por mail o WhatsApp.
+
+- **⚠ Lo que NO hay que hacer, y es la parte que importa:** empaquetar un
+  generador de PDF en la PWA. jsPDF o pdf-lib son 350 KB a 1 MB en el shell —que
+  se instala por 3G— y ninguno renderiza CSS de verdad: o rasteriza la página, o
+  hay que **escribir el documento una segunda vez** en primitivas de PDF. Eso
+  deja dos implementaciones de la misma hoja, una en CSS y otra en JS, que se van
+  despegando en cada cambio. El navegador ya sabe hacer esto bien.
+
+- **Mientras tanto:** el botón dice «Guardar PDF o imprimir» y el archivo sale
+  con nombre (`legajo-SOL-90148411-equipo-5566`, `unidad-<VIN>`), porque el
+  diálogo usa `document.title` y sin eso los ocho legajos de una jornada salían
+  todos como «Yard Inspector.pdf». Funciona sin señal: el CSS de impresión, las
+  fotos de la cola y el esquema cacheado están todos del lado del cliente.

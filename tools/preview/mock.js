@@ -861,56 +861,153 @@
   };
 
   /**
-   * El codigo AIAG de cada tipo de daño.
+   * El codigo de AREA de cada parte, segun **M-22 v4 oficial**.
    *
-   * **La planilla Furlong ES el estandar AIAG M-14 / M-22**, traducida. Se
-   * verifico codigo por codigo contra las tablas publicas: 01 Bent = Doblado,
-   * 04 Dented = Abollado, 12 Scratched = Rayado, y las gravedades 1/2/3 son
-   * "hasta 1 pulgada / hasta 3 / hasta 6" -- los 2,5 / 7,5 / 15 cm del impreso.
+   * ⚠ **Esto NO es el numero de la planilla de Furlong.** Se creia que si --el
+   * impreso ES el estandar traducido-- hasta que se consiguio el documento: el
+   * ECG lo publica gratis (`M22-version-4-1.pdf`) y cruzando las dos listas
+   * aparecen **13 numeros que significan cosas distintas**.
    *
-   * El codigo de AREA no esta aca: **sale de la parte que el inspector ya
-   * eligio**, que es su numero en la planilla. No se le pide dos veces lo mismo.
+   * Los peores son **72 a 79**: para la planilla son pilares y paneles de
+   * cabina, y para el estandar son **neumaticos y llantas por esquina**. Un
+   * reclamo con `75043` le dice al otro «llanta trasera izquierda abollada»
+   * cuando quisimos decir «panel de cabina lateral izquierdo». Todo el punto de
+   * usar un estandar es que eso no pase.
    *
-   * ⚠ Tres que conviene mirar con la operacion:
-   * - `Contaminado` toma **29** (Contamination - Exterior) del estandar. La
-   *   leyenda del impreso no lo lista, pero es exactamente el concepto; el 10 es
-   *   "Stained or Soiled" y es de interior.
-   * - `Derrame de fluido` toma **33**, que es lo que dice el impreso. El
-   *   estandar publicado usa **30** para lo mismo: son dos revisiones.
-   * - `Desprendido` toma **38** (Hardware - Loose, Missing), que es el mas
-   *   cercano, pero el impreso no lo dice.
+   * De los 91 numerados, **72 coinciden** y usan su numero. Los otros 19 y las
+   * 16 partes que vinieron de AppSheet estan aca abajo, explicitos.
    *
-   * ⚠ **`Fallo de pintura` se queda sin codigo, y no es un olvido.** AIAG es un
-   * estandar de daño de TRANSPORTE y un defecto de pintura viene de planta. Es
-   * el tercer tipo mas cargado del historico (347 usos), asi que decidir que se
-   * hace con el no es menor: o se reporta como otra cosa, o se acepta que ese
-   * hallazgo no viaja en un reclamo de transporte.
+   * **`null` significa «el estandar no tiene donde poner esto»**, y no es un
+   * agujero: la planilla de Furlong extendio el estandar con piezas de cabina de
+   * camion --cuchetas, paneles, largueros-- que M-22 no contempla, y el
+   * suplemento de paragolpe, el convertidor y la suspension tampoco existen ahi.
+   * Se cargan igual y la hoja dice «sin codigo»: mejor eso que un numero que en
+   * la otra punta significa otra cosa.
    */
-  const AIAG_TIPO = {
-    'Doblado': 1, 'Roto': 2, 'Cortado': 3, 'Abollado': 4, 'Mellado': 5,
-    'Faltante': 8, 'Contaminado (No daño)': 29, 'Perforado': 11, 'Rayado': 12,
-    'Vidrio roto': 21, 'Derrame de fluido': 33, 'Filo de panel': 34,
-    'Desprendido': 38, 'Fallo de pintura': null
+  const AREA_PROPIA = {
+    // --- choca con el oficial: la planilla puso otra pieza en ese numero
+    23: null,   // oficial: sin asignar
+    29: null,   // Espejo interior      · oficial 29 = keyless remote
+    34: null,   // Panel extremo trasero · oficial 34 = pantalla TV/DVD
+    41: null,   // Suplem. paragolpe    · oficial: sin asignar
+    43: null,   // Panel salpicadura tras. · oficial: sin asignar
+    47: null,   // Neumaticos           · el oficial los parte por esquina (72/74/76/78)
+    62: null,   // Convertidor catalitico · el oficial no lo tiene
+    72: null,   // Pilar delantero izq. · oficial 72 = neumatico del. izq.
+    73: null,   // Pilar trasero der.   · oficial 73 = llanta del. izq.
+    74: null,   // Pilar trasero izq.   · oficial 74 = neumatico tras. izq.
+    75: null,   // Panel cabina lat. izq. · oficial 75 = llanta tras. izq.
+    76: null,   // Panel cabina lat. der. · oficial 76 = neumatico tras. der.
+    77: null,   // Panel cabina trasero · oficial 77 = llanta tras. der.
+    78: null,   // Ext. cuarto tras. izq. · oficial 78 = neumatico del. der.
+    79: null,   // Ext. cuarto tras. der. · oficial 79 = llanta del. der.
+    86: null,   // Filtro de aire       · oficial 86 = sensores de estacionamiento
+    87: null,   // Panel frontal compartim. · oficial 87 = reservado
+    88: null,   // Puerta cabina cucheta · oficial 88 = reservado
+    89: null,   // Puerta cabina cucheta der. · oficial 89 = enganche de trailer
+    93: null,   // Sistema de suspension · oficial 93 = volante / airbag
+
+
+    // --- las 16 que vinieron de AppSheet, que ahora si tienen codigo
+    1001: 24, 1002: 24,   // opticas delanteras  → HEADLIGHT / COVER / TURN SIGNAL
+    1003: 45, 1004: 45,   // opticas traseras    → TAIL LIGHT / HARDWARE
+    1005: 86,             // sensores de estacionamiento → PARKING SONAR SYSTEM
+    1009: 93, 1010: 93,   // airbags y volante   → STEERING WHEEL / AIRBAG
+    1012: 34,             // pantalla multimedia → TV / DVD SCREEN
+    1013: 85,             // camara / sensores   → COMMUNICATION / GPS UNIT
+    1008: 98, 1011: 98,   // cinturones y palanca de cambios → INTERIOR - OTHER
+    1014: 55,             // interior de carga (Hiace) → CARGO AREA - OTHER
+    1015: 99,             // radiador visible    → ENGINE COMPARTMENT - OTHER
+
+    // sin lugar en el estandar: el oficial es mas fino que nosotros y no hay a
+    // cual de sus codigos mandarlas sin inventar el detalle que les falta
+    1000: null,           // vidrios laterales: solo existen 20 parabrisas y 21 luneta
+    1006: null,           // llantas: el oficial las parte por esquina (73/75/77/79)
+    1007: null            // tapizados: el oficial los parte (48/50 paneles, 94/95/96 asientos)
   };
 
   /**
-   * Los codigos de gravedad, el quinto digito.
+   * ⚠ Las opticas y los airbags **comparten codigo con su par**: el estandar
+   * no distingue izquierda de derecha ahi. El nombre local si, y es el que ve
+   * el inspector; lo que se pierde es en el codigo que viaja.
    *
-   * Salen del impreso y coinciden con el estandar convertido a metrico. El 0
-   * --"sin excepcion"-- no se ofrece: solo se cargan daños que existen.
+   * ⚠ El **71** (Corner Post) es uno solo y se lo lleva el pilar delantero
+   * DERECHO, que es arbitrario: el izquierdo queda sin codigo. Los pilares
+   * medios si estan bien, la matriz de similitud del documento los desambigua
+   * (69 derecho, 70 izquierdo).
+   */
+
+  /**
+   * El codigo AIAG de cada tipo de daño.
+   *
+   * Sale del documento, no de la planilla. Ver el comentario de AREA_PROPIA
+   * sobre por que las dos cosas no son lo mismo.
+   *
+   * El codigo de AREA no esta aca: **sale de la parte que el inspector ya
+   * eligio**. No se le pide dos veces lo mismo.
+   */
+  const AIAG_TIPO = {
+    'Doblado': 1,                  // 01 Bent
+    'Roto': 2,                     // 02 Broken
+    'Cortado': 3,                  // 03 Cut
+    'Abollado': 4,                 // 04 Dented (con la pintura dañada; el 14 es sin dañarla)
+    'Mellado': 5,                  // 05 Chipped
+    'Perforado': 11,               // 11 Punctured
+    'Rayado': 12,                  // 12 Scratched
+    'Vidrio roto': 21,             // 21 Glass Broken
+    'Contaminado (No daño)': 29,   // 29 Contamination, Exterior
+    'Derrame de fluido': 30,       // 30 Fluid Spillage, Exterior
+    'Filo de panel': 34,           // 34 Chipped Panel Edge
+    // El 38 dice literalmente «damage type not described by other codes», con
+    // ejemplos de manijas y cerraduras: es el cajon de sastre de lo aflojado o
+    // faltante. Los dos nuestros caen ahi, y el estandar no los separa.
+    'Desprendido': 38,             // 38 Hardware - Loose, Missing
+    'Faltante': 38,                // idem
+    // ⚠ No tiene codigo, y ahora esta confirmado contra el documento: M-22 es un
+    // estandar de daño de TRANSPORTE, y un defecto de pintura sale de planta.
+    // Los unicos codigos de pintura del estandar son el 04 y el 14, que son
+    // abolladuras. Es el 3.er tipo mas cargado (347 usos).
+    'Fallo de pintura': null
+  };
+
+  /**
+   * Los codigos de gravedad, el quinto digito. **Son seis, no ocho.**
+   *
+   * La planilla de Furlong trae ocho (0 a 7) y no coinciden con el estandar:
+   *
+   * | | Planilla | M-22 v4 |
+   * |---|---|---|
+   * | 1 | hasta 2,5 cm | **menos de 3 cm** |
+   * | 2 | 2,5 a 7,5 | **3 a 8** |
+   * | 3 | 7,5 a 15 | **8 a 15** |
+   * | 4 | 15 a 30 | 15 a 30 |
+   * | 5 | mas de 30 | mas de 30 |
+   * | 6 | sustitucion / severo | **faltante O daño mayor** |
+   * | 7 | faltante | *no existe* |
+   * | 0 | sin excepcion | *no existe* |
+   *
+   * El estandar redondea las pulgadas a 3 y 8 cm; la planilla las convirtio
+   * exacto a 2,5 y 7,6. Parece un detalle y no lo es: un daño de 2,8 cm es
+   * gravedad **2** para nosotros y **1** para el estandar, y la gravedad es lo
+   * que fija cuanto se reclama.
+   *
+   * El `0` no se ofrece porque solo se cargan daños que existen, y el `7` se
+   * fue: en AIAG «faltante» es este 6, no un codigo aparte.
+   *
+   * ⚠ **Regla del estandar que todavia no implementamos:** varios daños en el
+   * mismo panel, sea cual sea su tamaño, se codifican como gravedad 3 o mayor.
    */
   const GRAVEDADES = [
-    // `nombre` es el del impreso y va en el formulario, donde hay ancho. `corto`
-    // es para la tabla de la hoja, que comparte el renglon con cinco columnas
-    // mas: ahi "Mas de 7,5 y hasta 15 cm" se parte en tres lineas.
-    { id: 1, nombre: 'Hasta 2,5 cm', corto: '≤ 2,5 cm' },
-    { id: 2, nombre: 'Más de 2,5 y hasta 7,5 cm', corto: '2,5–7,5 cm' },
-    { id: 3, nombre: 'Más de 7,5 y hasta 15 cm', corto: '7,5–15 cm' },
-    { id: 4, nombre: 'Más de 15 y hasta 30 cm', corto: '15–30 cm' },
+    // `nombre` va en el formulario, donde hay ancho. `corto` es para la tabla de
+    // la hoja, que comparte el renglon con cinco columnas mas.
+    { id: 1, nombre: 'Menos de 3 cm', corto: '< 3 cm' },
+    { id: 2, nombre: 'De 3 a 8 cm', corto: '3–8 cm' },
+    { id: 3, nombre: 'De 8 a 15 cm', corto: '8–15 cm' },
+    { id: 4, nombre: 'De 15 a 30 cm', corto: '15–30 cm' },
     { id: 5, nombre: 'Más de 30 cm', corto: '> 30 cm' },
-    { id: 6, nombre: 'Sustitución / daño severo', corto: 'Severo' },
-    { id: 7, nombre: 'Faltante', corto: 'Faltante' }
+    { id: 6, nombre: 'Faltante o daño mayor', corto: 'Faltante / mayor' }
   ];
+
 
   const USOS_TIPO = {
     'Abollado': 1203, 'Rayado': 1041, 'Fallo de pintura': 347, 'Filo de panel': 81,
@@ -920,14 +1017,15 @@
   };
 
   const CATALOGOS_PC = {
-    // `aiag` de la parte ES su numero en la planilla: los 1-99 son los area
-    // codes del estandar, verificado uno por uno. Las que se sumaron del
-    // catalogo de AppSheet no tienen numero, y van en null -- inventarles uno
-    // desde otra revision daria un codigo que no significa lo que dice.
+    // `aiag` sale de AREA_PROPIA cuando la parte esta ahi, y del numero de la
+    // planilla cuando no: esos 72 coinciden con el oficial, verificado uno por
+    // uno contra M-22 v4.
     partes: PARTES.map((p) => ({
       ...p,
       usos: USOS_PARTE[p.nombre] || 0,
-      aiag: p.id < 1000 ? p.id : null
+      aiag: Object.prototype.hasOwnProperty.call(AREA_PROPIA, p.id)
+        ? AREA_PROPIA[p.id]
+        : (p.id < 1000 ? p.id : null)
     })),
     tipos_dano: TIPOS_DANO.map((d) => ({
       ...d,

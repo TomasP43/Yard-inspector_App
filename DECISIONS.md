@@ -396,3 +396,60 @@ codigos elegidos sin poder consultar (`29` para contaminado, `33` para derrame,
 `38` para desprendido): esos ya viajan en los registros, y cambiarlos despues
 obliga a migrar lo cargado. Estan marcados en YI-015 para que los confirme la
 operacion antes de que haya volumen.
+
+---
+
+## D-018 — Manda el M-22 oficial, no el impreso que tenemos a mano
+
+**Fecha:** 30-08-2026 · **Ambito:** precarga, codigos de daño
+
+D-016 dijo que el impreso de Furlong ES la norma AIAG. Buscando el documento
+para completar el punto 3 aparecio que **el ECG lo publica gratis**: la version
+4.1 completa, que YI-015 daba por inaccesible porque "M-14/M-22 se compran".
+
+Con el documento al lado, la premisa era **medio falsa**. El impreso es M-22,
+pero una **revision distinta y extendida**. Las diferencias medidas:
+
+| | El impreso | M-22 v4 |
+|---|---|---|
+| Derrame de fluido | 33 | 30 |
+| Gravedad | 8 codigos | 6 |
+| Corte de gravedad 1 y 2 | 2,5 y 7,5 cm | 3 y 8 cm |
+| Areas 72 a 79 | pilares y paneles de cabina | neumaticos y llantas |
+| Area 93 | suspension | volante / airbag |
+
+**Decision:** el codigo que se guarda sale del **documento oficial**. El
+inspector sigue viendo los nombres del impreso; lo que cambia es el numero que
+viaja. Las 91 partes numeradas se cruzaron una por una: 72 coinciden y usan su
+numero, las otras 19 van explicitas en `AREA_PROPIA`.
+
+**Motivo:** un codigo existe para que signifique lo mismo en las dos puntas. Un
+reclamo con `75043` le dice al otro «llanta trasera izquierda abollada» cuando
+quisimos decir «panel de cabina lateral izquierdo». Si el numero no viaja bien,
+no estamos usando un estandar: estamos usando una numeracion propia que **parece**
+un estandar, que es peor que no tener ninguno --nadie la revisa porque parece
+oficial--.
+
+El corte de gravedad es el mismo problema en chico: el estandar redondea las
+pulgadas a 3 y 8 cm y el impreso las convirtio exacto a 2,5 y 7,6. Un daño de
+2,8 cm es gravedad 2 para nosotros y 1 para ellos, y la gravedad fija cuanto se
+reclama.
+
+**Costo, y es real:** **26 de 110 partes quedan sin codigo**. El impreso extendio
+el estandar con piezas de cabina de camion --cuchetas, paneles, largueros-- mas
+el suplemento de paragolpe, el convertidor y la suspension, que M-22 no tiene. Se
+cargan igual y la hoja dice «sin codigo». Y el papel que el inspector tiene
+pegado en la playa sigue diciendo los numeros viejos, asi que hay que avisarle a
+la gente antes de que empiece a conciliar a mano.
+
+**Lo que NO se hizo, a proposito:** no se les invento un codigo desde la otra
+revision. Eso es lo que produjo el problema: numeros que parecen del estandar y
+no lo son. Sin codigo se ve; con un codigo equivocado, no.
+
+**Reversibilidad:** media. `AREA_PROPIA` y `AIAG_TIPO` son dos objetos y cambiar
+uno es una linea. Lo que no vuelve gratis son los registros ya cargados con la
+escala vieja de gravedad: si se revierte, hay que migrarlos.
+
+**Como se descubrio:** preguntando como resuelven esto los que venden el mismo
+software, que es D-016 aplicado una segunda vez. La primera encontro que el papel
+era una norma; la segunda, que nuestra copia de la norma estaba vencida.

@@ -41,8 +41,10 @@
  *     (hoja.js) y sus estilos.
  * v39: la hoja de una unidad sin sincronizar sale con sus fotos (precarga.js),
  *     el esquema avisa si no cargo (vehiculo.js) y el PDF sale con nombre.
+ * v40: los codigos pasan a M-22 v4 oficial. Cambia la escala de gravedad --seis
+ *     y no siete-- asi que el catalogo viejo cacheado no sirve.
  */
-const VERSION = 'v39';
+const VERSION = 'v40';
 const CACHE = `yard-${VERSION}`;
 
 // El app shell tiene que alcanzar para abrir la app sin conexion. Rutas

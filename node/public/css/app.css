@@ -1796,9 +1796,8 @@ details.ficha[open] .ver-obs .ico { transform: rotate(90deg); }
   background: var(--surface-inset); color: var(--text-strong);
 }
 .pc-gravedad .tag.sel i { background: var(--ttfa-red-40); color: var(--text-strong); }
-/* Los dos ultimos son cualitativos, no una medida: van solos abajo. */
-.pc-gravedad .tag:nth-child(6),
-.pc-gravedad .tag:nth-child(7) { grid-column: 1 / -1; min-height: 30px; }
+/* El ultimo no es una medida sino una condicion: va solo abajo. */
+.pc-gravedad .tag:nth-child(6) { grid-column: 1 / -1; min-height: 30px; }
 
 /* El codigo va monoespaciado y chico: es una referencia para el reclamo, no
    algo que el inspector tenga que leer mientras carga. */
