@@ -1580,7 +1580,9 @@ details.ficha[open] .ver-obs .ico { transform: rotate(90deg); }
 }
 .pc-nuevo .tags { margin-top: 6px; }
 .pc-nuevo .btn { margin-top: 14px; }
-.pc-nuevo .btn[disabled] { opacity: .45; cursor: default; }
+/* El de guardar tambien se bloquea, hasta decir si la unidad tiene daños. */
+.pc-nuevo .btn[disabled],
+.acciones-full .btn[disabled] { opacity: .45; cursor: default; }
 
 .pc-sep { display: block; margin-top: 14px; }
 .pc-req {

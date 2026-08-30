@@ -790,6 +790,14 @@ deduplicación del catálogo, las trampas de los datos— está en
 - **La foto del daño es obligatoria en el servidor, no solo en el front.** Si la
   exigiera solo la pantalla, alcanzaría un POST a mano para saltearla.
 
+- **⚠ La unidad se cierra con una afirmación, no por omisión.** El formulario
+  pide «Sin daños» o «Con daños» sin nada preseleccionado, y hasta contestar no
+  deja guardar; «Con daños» exige al menos un daño cargado. En el payload eso no
+  agrega ningún campo — `danos: []` después de esa elección **es** la
+  declaración — pero el servidor debería rechazar una inspección con `danos: []`
+  que llegue sin `escaneado_en`, que es la única forma de que aparezca una unidad
+  cerrada sin que nadie la haya mirado.
+
 - **`cerrada` en la solicitud.** Una jornada cerrada no acepta inspecciones
   nuevas: el camión ya salió, y sumarle una unidad después sería decir que se vio
   lo que no se vio. Mismo criterio que el botón de agregar observación en
@@ -814,15 +822,15 @@ deduplicación del catálogo, las trampas de los datos— está en
   Los seis: Frente, Lateral izquierdo, Lateral derecho, Extremo derecho, Tren
   inferior/techo/varios, Interior.
 
-- **⚠ Dos cosas del catálogo para confirmar con la operación:**
-  - El sector **"Extremo derecho"** agrupa en realidad el extremo **trasero** —
-    lo dicen sus propias filas (luneta trasera, tapa de baúl, faro trasero). Se
-    dejó el nombre impreso en el formulario en vez de corregirlo por cuenta
-    propia.
-  - Cinco entradas de la planilla **no son piezas sino cajones de sastre**:
-    `Informacion especial` (32), `Interior` (98), `Tren inferior - otros` (54),
-    `Area de carga - otros` (55) y `Compar. motor/otros` (99). Se dejaron porque
-    están en el formulario, pero conviene decidir si se quedan.
+- **Dos cosas del catálogo que decidió la operación, no los documentos:**
+  - El sector **"Extremo derecho"** del formulario se llama **"Extremo trasero"**:
+    es lo que tiene adentro (luneta trasera, tapa de baúl, faro trasero, rueda de
+    auxilio). El nombre impreso queda en el papel; en la app manda el contenido.
+  - Los **cajones de sastre se unificaron en uno por sector**, llamado `Otros` en
+    los seis. Donde la planilla ya tenía uno se conserva su código Furlong (54,
+    55, 98) para poder reconciliar con el papel; Frente, Lateral izquierdo y
+    Lateral derecho no tenían y van con id propio (2001–2003). Salieron
+    `Informacion especial` (32) y `Compar. motor/otros` (99).
 
 - **Las gravedades Furlong están disponibles y no se usan.** La misma planilla
   trae los 8 códigos por tamaño del daño (0 sin excepción, 1 hasta 2,5 cm, …,
@@ -836,8 +844,7 @@ deduplicación del catálogo, las trampas de los datos— está en
   | **Firmas** (inspector y TASA) | No van por ahora. El inspector queda identificado por la sesión de ttfa, más la hora y la foto — más fuerte que una firma dibujada con el dedo. Si auditoría las exige, es un pad en canvas |
   | **Cuadrante** | Queda para después. En AppSheet es un número suelto y obligatorio; sin saber qué significa cada número el dato termina midiendo a quien lo carga. La salida natural es una grilla de 3×3 sobre la parte, con `cantidad_cuadrantes` por parte |
   | **Gravedad** | No se registra, igual que en AppSheet, aunque los 8 códigos ya salieron de la planilla. Es el tercer código del estándar Furlong (`AREA - TIPO - GRAVEDAD`) |
-  | **Unidad sin daño** | Guardar con cero daños es «la miré y no tenía nada»; el escaneo prueba que se la miró. Queda como punto a revisar si hace falta distinguirlo más explícitamente |
-
+  
 ---
 
 ### YI-014 — Endpoint del tablero de precarga

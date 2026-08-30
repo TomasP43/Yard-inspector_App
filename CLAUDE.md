@@ -397,9 +397,18 @@ toques en vez de un scroll de cien nombres, igual que las zonas del equipo),
 **tipo de daño**, comentario opcional y **foto obligatoria**. Nada arranca preseleccionado, por lo mismo que
 el checklist de bahias.
 
-Guardar con cero daños es «la mire y no tenia nada»: el escaneo ya prueba que se
-la miro, asi que no hace falta un paso mas para distinguirla de una que nadie
-toco.
+**Antes de todo eso hay que decir como esta la unidad: "Sin daños" o "Con
+daños", sin nada preseleccionado.** Solo "Con daños" despliega la carga, y hasta
+contestar no se puede guardar — igual que el checklist de bahias.
+
+No es una formalidad. Sin ese paso el formulario abria con "Guardar sin daños"
+listo para tocar, y una unidad se podia cerrar sin haberla mirado. El escaneo
+prueba que el inspector estuvo al lado del auto; esto prueba que ademas lo miro.
+"La mire y estaba bien" tiene que ser algo que alguien **afirmo**, no lo que
+queda si no se toca nada.
+
+Pasar a "Sin daños" con daños ya cargados los borra: decir que no tiene y tener
+tres es contradictorio, y el boton dice exactamente eso.
 
 **Lo que quedo afuera a proposito:** las dos firmas (el inspector sale de la
 sesion de ttfa, mas la hora y la foto — mas fuerte que un garabato con el dedo),
@@ -423,21 +432,24 @@ la planilla no trae.
 El `grupo` es el **sector Furlong**, que es como el inspector recorre el auto.
 No es un invento nuestro: es la division del formulario que ya usa.
 
-**Tres cosas no salen de los documentos y las decidio una persona** — que es la
-unica forma admitida de fusionar (ver D-004):
+**Lo que no salio de los documentos lo decidio una persona** — que es la unica
+forma admitida de fusionar (ver D-004):
 
+- El sector **"Extremo derecho"** del formulario se llama **"Extremo trasero"**.
+  Es lo que tiene adentro: luneta trasera, tapa de baul, faro trasero, rueda de
+  auxilio. El inspector elige el sector antes que la parte, asi que un nombre que
+  no describe su contenido le cuesta un rodeo en cada carga.
 - El **sector de las 16 partes agregadas**: la planilla no las trae, asi que se
   asignaron a ojo.
+- **Los cajones de sastre se unificaron**: uno solo por sector, con el mismo
+  nombre (`Otros`) en los seis. Donde la planilla ya tenia uno se conserva su
+  codigo Furlong (54, 55, 98), que es como se reconcilia con el papel. Con el
+  comentario al lado funcionan como el "Faltante sin clasificar" de patrullas.
 - **Tres piezas listadas dos veces** en la planilla: el Nº 41 (en dos sectores) y
   las alfombras 18/19, que repiten a las 68/97. Quedan una sola vez; las
   alfombras en Interior, que es donde va un tapete.
 - **`Protector paragolpe / fleje` queda dos veces a proposito**: son el delantero
   y el trasero, y el sector los distingue.
-
-**Lo que hay que confirmar con la operacion:** el sector **"Extremo derecho"**
-agrupa en realidad el extremo **trasero** — son sus propias filas las que lo
-dicen (luneta trasera, tapa de baul, faro trasero, rueda de auxilio). Se dejo el
-nombre que el formulario tiene impreso en vez de corregirlo por cuenta propia.
 
 Las **gravedades Furlong** (los 8 codigos por tamaño del daño) estan en la misma
 planilla y **no se registran todavia**. Ver YI-013.

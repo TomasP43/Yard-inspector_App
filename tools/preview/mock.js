@@ -647,6 +647,17 @@
    * El `grupo` es el **sector de la planilla Furlong**, que es como el inspector
    * recorre el auto: dos toques en vez de un scroll de cien nombres.
    *
+   * Los cajones de sastre se unificaron: **uno solo por sector y con el mismo
+   * nombre en los seis**. Donde la planilla ya tenia uno se conserva SU codigo
+   * Furlong (54, 55, 98), que es como se reconcilia con el papel; los tres que
+   * faltaban van con id propio. Con el comentario obligatorio al lado funcionan
+   * como el "Faltante sin clasificar" de patrullas: lo que no esta en la lista se
+   * carga ahi y se describe, y despues alguien decide si merece ser una parte.
+   *
+   * El sector "Extremo derecho" del formulario se renombro a "Extremo trasero",
+   * que es lo que tiene adentro. El inspector elige el sector antes que la parte,
+   * asi que un nombre que no describe su contenido le cuesta un rodeo por carga.
+   *
    * Tres partes se dejaron una sola vez: el Nº 41 esta dos veces en la planilla,
    * y las alfombras 18/19 repiten a las 68/97 -- quedan en Interior, que es
    * donde va un tapete.
@@ -673,6 +684,7 @@
     { id: 80, nombre: 'Cubretablero', grupo: 'Frente' },
     { id: 1001, nombre: 'Optica delantera derecha', grupo: 'Frente' },
     { id: 1002, nombre: 'Optica delantera izquierda', grupo: 'Frente' },
+    { id: 2001, nombre: 'Otros', grupo: 'Frente' },
     // Lateral izquierdo
     { id: 10, nombre: 'Puerta delantera izquierda', grupo: 'Lateral izquierdo' },
     { id: 11, nombre: 'Puerta trasera izquierda', grupo: 'Lateral izquierdo' },
@@ -688,6 +700,7 @@
     { id: 78, nombre: 'Ext. cuarto trasero izq.', grupo: 'Lateral izquierdo' },
     { id: 82, nombre: 'Guardabarro trasero izquierdo', grupo: 'Lateral izquierdo' },
     { id: 88, nombre: 'Puerta de cabina de cucheta', grupo: 'Lateral izquierdo' },
+    { id: 2002, nombre: 'Otros', grupo: 'Lateral izquierdo' },
     // Lateral derecho
     { id: 9, nombre: 'Puerta carga derecha', grupo: 'Lateral derecho' },
     { id: 12, nombre: 'Puerta delantera derecha', grupo: 'Lateral derecho' },
@@ -704,34 +717,35 @@
     { id: 79, nombre: 'Ext. cuarto trasero der.', grupo: 'Lateral derecho' },
     { id: 83, nombre: 'Guardabarro trasero derecho', grupo: 'Lateral derecho' },
     { id: 89, nombre: 'Puerta cabina cucheta derecha (si aplica)', grupo: 'Lateral derecho' },
-    // Extremo derecho
-    { id: 4, nombre: 'Paragolpe trasero', grupo: 'Extremo derecho' },
-    { id: 6, nombre: 'Protector paragolpe / fleje', grupo: 'Extremo derecho' },
-    { id: 7, nombre: 'Puerta carga tras. der.', grupo: 'Extremo derecho' },
-    { id: 8, nombre: 'Puerta carga tras. izq.', grupo: 'Extremo derecho' },
-    { id: 21, nombre: 'Luneta trasera', grupo: 'Extremo derecho' },
-    { id: 34, nombre: 'Panel extremo trasero', grupo: 'Extremo derecho' },
-    { id: 40, nombre: 'Neumático / Rueda auxiliar', grupo: 'Extremo derecho' },
-    { id: 43, nombre: 'Panel salpicadura tras.', grupo: 'Extremo derecho' },
-    { id: 45, nombre: 'Faro trasero / aro', grupo: 'Extremo derecho' },
-    { id: 52, nombre: 'Tapa baul / puerta de cola', grupo: 'Extremo derecho' },
-    { id: 55, nombre: 'Area de carga - otros', grupo: 'Extremo derecho' },
-    { id: 57, nombre: 'Tazas de ruedas', grupo: 'Extremo derecho' },
-    { id: 61, nombre: 'Interior caja pick-up (Hilux)', grupo: 'Extremo derecho' },
-    { id: 64, nombre: 'Deflector viento / spoiler', grupo: 'Extremo derecho' },
-    { id: 77, nombre: 'Panel cabina trasero', grupo: 'Extremo derecho' },
-    { id: 84, nombre: 'Herramientas / Gato / Kit / Traba auxiliar', grupo: 'Extremo derecho' },
-    { id: 87, nombre: 'Panel frontal compartim.', grupo: 'Extremo derecho' },
-    { id: 92, nombre: 'Soporte chapa patente', grupo: 'Extremo derecho' },
-    { id: 1003, nombre: 'Optica trasera derecha', grupo: 'Extremo derecho' },
-    { id: 1004, nombre: 'Optica trasera izquierda', grupo: 'Extremo derecho' },
+    { id: 2003, nombre: 'Otros', grupo: 'Lateral derecho' },
+    // Extremo trasero
+    { id: 4, nombre: 'Paragolpe trasero', grupo: 'Extremo trasero' },
+    { id: 6, nombre: 'Protector paragolpe / fleje', grupo: 'Extremo trasero' },
+    { id: 7, nombre: 'Puerta carga tras. der.', grupo: 'Extremo trasero' },
+    { id: 8, nombre: 'Puerta carga tras. izq.', grupo: 'Extremo trasero' },
+    { id: 21, nombre: 'Luneta trasera', grupo: 'Extremo trasero' },
+    { id: 34, nombre: 'Panel extremo trasero', grupo: 'Extremo trasero' },
+    { id: 40, nombre: 'Neumático / Rueda auxiliar', grupo: 'Extremo trasero' },
+    { id: 43, nombre: 'Panel salpicadura tras.', grupo: 'Extremo trasero' },
+    { id: 45, nombre: 'Faro trasero / aro', grupo: 'Extremo trasero' },
+    { id: 52, nombre: 'Tapa baul / puerta de cola', grupo: 'Extremo trasero' },
+    { id: 55, nombre: 'Otros', grupo: 'Extremo trasero' },
+    { id: 57, nombre: 'Tazas de ruedas', grupo: 'Extremo trasero' },
+    { id: 61, nombre: 'Interior caja pick-up (Hilux)', grupo: 'Extremo trasero' },
+    { id: 64, nombre: 'Deflector viento / spoiler', grupo: 'Extremo trasero' },
+    { id: 77, nombre: 'Panel cabina trasero', grupo: 'Extremo trasero' },
+    { id: 84, nombre: 'Herramientas / Gato / Kit / Traba auxiliar', grupo: 'Extremo trasero' },
+    { id: 87, nombre: 'Panel frontal compartim.', grupo: 'Extremo trasero' },
+    { id: 92, nombre: 'Soporte chapa patente', grupo: 'Extremo trasero' },
+    { id: 1003, nombre: 'Optica trasera derecha', grupo: 'Extremo trasero' },
+    { id: 1004, nombre: 'Optica trasera izquierda', grupo: 'Extremo trasero' },
     // Tren inferior, techo y varios
     { id: 2, nombre: 'Batería (visible)', grupo: 'Tren inferior, techo y varios' },
     { id: 37, nombre: 'Techo', grupo: 'Tren inferior, techo y varios' },
     { id: 44, nombre: 'Tanque de nafta', grupo: 'Tren inferior, techo y varios' },
     { id: 47, nombre: 'Neumáticos (no de auxilio)', grupo: 'Tren inferior, techo y varios' },
     { id: 53, nombre: 'Techo corredizo / Capota textil', grupo: 'Tren inferior, techo y varios' },
-    { id: 54, nombre: 'Tren inferior - otros', grupo: 'Tren inferior, techo y varios' },
+    { id: 54, nombre: 'Otros', grupo: 'Tren inferior, techo y varios' },
     { id: 56, nombre: 'Cub. techo conv. / vinilico', grupo: 'Tren inferior, techo y varios' },
     { id: 62, nombre: 'Convertidor catalítico', grupo: 'Tren inferior, techo y varios' },
     { id: 63, nombre: 'Largueros - bancada camion', grupo: 'Tren inferior, techo y varios' },
@@ -741,7 +755,6 @@
     { id: 90, nombre: 'Bastidor', grupo: 'Tren inferior, techo y varios' },
     { id: 91, nombre: 'Sistema de escape', grupo: 'Tren inferior, techo y varios' },
     { id: 93, nombre: 'Sistema de suspension', grupo: 'Tren inferior, techo y varios' },
-    { id: 99, nombre: 'Compar. motor/otros', grupo: 'Tren inferior, techo y varios' },
     { id: 1000, nombre: 'Vidrios laterales (delanteros y traseros)', grupo: 'Tren inferior, techo y varios' },
     { id: 1005, nombre: 'Sensores de estacionamiento', grupo: 'Tren inferior, techo y varios' },
     { id: 1006, nombre: 'Llantas', grupo: 'Tren inferior, techo y varios' },
@@ -750,7 +763,6 @@
     { id: 26, nombre: 'Forro de techo', grupo: 'Interior' },
     { id: 28, nombre: 'Llaves', grupo: 'Interior' },
     { id: 29, nombre: 'Espejo interior', grupo: 'Interior' },
-    { id: 32, nombre: 'Informacion especial', grupo: 'Interior' },
     { id: 33, nombre: 'Sistema de audio', grupo: 'Interior' },
     { id: 48, nombre: 'Panel tapizado del. izq.', grupo: 'Interior' },
     { id: 50, nombre: 'Panel tapizado del. der.', grupo: 'Interior' },
@@ -763,7 +775,7 @@
     { id: 95, nombre: 'Asiento delantero derecho', grupo: 'Interior' },
     { id: 96, nombre: 'Asiento trasero', grupo: 'Interior' },
     { id: 97, nombre: 'Alfombra trasera', grupo: 'Interior' },
-    { id: 98, nombre: 'Interior', grupo: 'Interior' },
+    { id: 98, nombre: 'Otros', grupo: 'Interior' },
     { id: 1007, nombre: 'Tapizados (asientos y puertas)', grupo: 'Interior' },
     { id: 1008, nombre: 'Cinturones de seguridad (todos)', grupo: 'Interior' },
     { id: 1009, nombre: 'Airbags (conductor, acompañante, laterales, cortina)', grupo: 'Interior' },

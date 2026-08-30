@@ -473,10 +473,10 @@
     ['Puerta delantera izquierda', 'Lateral izquierdo'], ['Paragolpe delantero', 'Frente'],
     ['Puerta trasera derecha', 'Lateral derecho'], ['Guardabarro trasero izquierdo', 'Lateral izquierdo'],
     ['Zócalo lateral izquierdo', 'Lateral izquierdo'], ['Guardabarro trasero derecho', 'Lateral derecho'],
-    ['Paragolpe trasero', 'Extremo derecho'], ['Capot', 'Frente'],
+    ['Paragolpe trasero', 'Extremo trasero'], ['Capot', 'Frente'],
     ['Guardabarro delantero izquierdo', 'Lateral izquierdo'], ['Guardabarro delantero derecho', 'Lateral derecho'],
     ['Pilar medio izquierdo', 'Lateral izquierdo'], ['Techo', 'Tren inferior, techo y varios'],
-    ['Espejo exterior izquierdo', 'Lateral izquierdo'], ['Luneta trasera', 'Extremo derecho'],
+    ['Espejo exterior izquierdo', 'Lateral izquierdo'], ['Luneta trasera', 'Extremo trasero'],
     ['Alfombra delantera', 'Interior'], ['Asiento trasero', 'Interior'],
     ['Tablero digital / velocímetro', 'Interior'], ['Neumáticos (no de auxilio)', 'Tren inferior, techo y varios']
   ];

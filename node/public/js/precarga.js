@@ -46,7 +46,16 @@ const Precarga = (() => {
    */
   const escaneadas = new Map();
 
-  const vacio = (vin) => ({ vin, pano: null, danos: [], nuevo: null });
+  /**
+   * El borrador arranca **sin resultado elegido**.
+   *
+   * `resultado` es null hasta que el inspector toca "Sin daños" o "Con daños", y
+   * hasta entonces no se puede guardar. Nada preseleccionado, por lo mismo que
+   * el checklist de bahias: con un valor por defecto, guardar sin mirar vuelve a
+   * ser posible -- y "la mire y estaba bien" tiene que ser algo que alguien
+   * afirmo, no lo que queda si no se toca nada.
+   */
+  const vacio = (vin) => ({ vin, resultado: null, pano: null, danos: [], nuevo: null });
 
   /**
    * Estado del historial, aparte del de la jornada en curso.
@@ -414,7 +423,25 @@ const Precarga = (() => {
         </div>
       </section>`;
 
-    const danos = `
+    // Nada preseleccionado: el inspector tiene que decir que encontro. Sin esto,
+    // el formulario abria con "Guardar sin daños" listo para tocar y se podia
+    // cerrar la unidad sin haberla mirado -- que es justo lo que el escaneo vino
+    // a evitar del lado de la bajada.
+    const resultado = `
+      <section class="paso">
+        <div class="cab"><span class="eq-label">¿Cómo está la unidad?</span></div>
+        <div class="seg">
+          <button type="button" data-res="OK" data-v="OK"${form.resultado === 'OK' ? ' class="sel"' : ''}>
+            ${ico('circle-check', 16)} Sin daños
+          </button>
+          <button type="button" data-res="NG" data-v="NG"${form.resultado === 'NG' ? ' class="sel"' : ''}>
+            ${ico('octagon-alert', 16)} Con daños
+          </button>
+        </div>
+      </section>`;
+
+    // Solo "Con daños" despliega, igual que solo "Novedad" despliega en bahias.
+    const danos = form.resultado !== 'NG' ? '' : `
       <section class="paso">
         <div class="cab">
           <span class="eq-label">Daños</span>
@@ -422,18 +449,22 @@ const Precarga = (() => {
         </div>
         ${form.danos.length
           ? `<div class="pc-danos">${form.danos.map(filaDano).join('')}</div>`
-          : '<p class="nota">Todavía no se cargó ningún daño. Si la unidad está bien, se guarda así.</p>'}
+          : '<p class="nota">Cargá el primero: qué parte, de qué tipo y una foto.</p>'}
         ${form.nuevo ? subformDano() : `<button type="button" class="btn sec chico" id="pc-add-dano">${ico('plus', 15)} Agregar daño</button>`}
       </section>`;
 
+    const listo = form.resultado === 'OK' || (form.resultado === 'NG' && form.danos.length);
+    const etiqueta = !form.resultado ? 'Decí si tiene daños'
+      : form.resultado === 'OK' ? 'Guardar sin daños'
+      : !form.danos.length ? 'Cargá al menos un daño'
+      : `Guardar con ${form.danos.length} ${form.danos.length === 1 ? 'daño' : 'daños'}`;
+
     const guardar = `
       <div class="acciones-full">
-        <button type="button" class="btn" id="pc-guardar">
-          ${form.danos.length ? `Guardar con ${form.danos.length} ${form.danos.length === 1 ? 'daño' : 'daños'}` : 'Guardar sin daños'}
-        </button>
+        <button type="button" class="btn" id="pc-guardar"${listo ? '' : ' disabled'}>${etiqueta}</button>
       </div>`;
 
-    return cabecera + pano + danos + guardar;
+    return cabecera + resultado + pano + danos + guardar;
   }
 
   function filaDano(d, i) {
@@ -630,6 +661,9 @@ const Precarga = (() => {
     const u = unidadDe(s, form && form.vin);
     if (!s || !u) return;
 
+    // La pantalla ya lo bloquea; esto es para que no entre por otro lado.
+    if (!form.resultado || (form.resultado === 'NG' && !form.danos.length)) return;
+
     const btn = $('#pc-guardar');
     const etiqueta = btn ? btn.textContent : '';
     if (btn) { btn.disabled = true; btn.textContent = 'Guardando…'; }
@@ -794,6 +828,17 @@ const Precarga = (() => {
     }
 
     if (!form) return;   // de acá para abajo todo toca el borrador
+
+    const res = t.closest('[data-res]');
+    if (res) {
+      capturar();
+      form.resultado = res.dataset.res;
+      // Pasar a "Sin daños" con daños cargados los borra: decir que no tiene y
+      // tener tres es contradictorio, y el boton dice exactamente eso.
+      if (form.resultado === 'OK') { form.danos = []; form.nuevo = null; }
+      pintarUnidad();
+      return;
+    }
 
     if (t.closest('#pc-add-dano')) {
       capturar();
