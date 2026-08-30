@@ -198,7 +198,7 @@ const Bahias = (() => {
           <span style="width:${bahias.length ? Math.round((hechas.length / bahias.length) * 100) : 0}%"></span>
         </div>
         <p class="mono turno-pie">
-          ${ico('clock', 13)}
+          ${ico('clock', 14)}
           ${t.activo
             ? (restan > 0
                 ? `Vence ${hhmm(t.fin)} · faltan ${esc(Turnos.falta(restan))}`
@@ -306,7 +306,7 @@ const Bahias = (() => {
         ${sinLector
           ? `<p class="nota alerta">${ico('alert-triangle', 14)}
                <span>Este teléfono no puede leer QR desde la app.</span></p>`
-          : `<button type="button" id="b-escanear" class="btn">${ico('camera', 17)} Escanear</button>`}
+          : `<button type="button" id="b-escanear" class="btn">${ico('camera', 16)} Escanear</button>`}
       </section>`;
   }
 
@@ -398,7 +398,7 @@ const Bahias = (() => {
         <div class="fotos una">
           ${form.foto
             ? `<div class="foto"><img src="${form.foto.url}" alt="">
-                 <button type="button" class="quitar" data-quitar-foto aria-label="Quitar la foto">${ico('x', 13)}</button>
+                 <button type="button" class="quitar" data-quitar-foto aria-label="Quitar la foto">${ico('x', 14)}</button>
                </div>`
             : `<button type="button" class="foto-add" data-foto>${ico('camera', 20)}<span>Sacar foto</span></button>`}
         </div>

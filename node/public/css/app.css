@@ -148,7 +148,18 @@ main {
   overflow: hidden;
 }
 .rejilla.tres { grid-template-columns: 1fr 1fr 1fr; }
-.kpi { background: var(--surface-card); padding: 14px 13px; display: grid; gap: 8px; }
+/* Al molde de las tarjetas del Inicio de la intranet: borde propio, esquina
+   blanda, y **el estado lo lleva el borde** ademas del numero. Ahi la tarjeta
+   que necesita atencion se reconoce de reojo sin leer la cifra, que es para lo
+   que sirve una fila de tarjetas. */
+.kpi {
+  background: var(--surface-card);
+  padding: 14px 13px;
+  display: grid;
+  gap: 8px;
+  border: 1px solid var(--line-hairline);
+  border-radius: var(--radius-lg);
+}
 .kpi .k-val { display: flex; align-items: baseline; gap: 6px; }
 .kpi .k-val b {
   font-size: 34px;
@@ -167,7 +178,10 @@ main {
   font-size: 11.5px;
   color: var(--text-muted);
 }
+.kpi.negative { border-color: var(--status-risk); }
 .kpi.negative .k-val b, .kpi.negative .k-pie .ico { color: var(--ttfa-red); }
+.kpi.warn { border-color: var(--status-warn); }
+.kpi.warn .k-val b, .kpi.warn .k-pie .ico { color: var(--status-warn); }
 .kpi.warn     .k-val b, .kpi.warn     .k-pie .ico { color: var(--status-warn); }
 .kpi.positive .k-val b, .kpi.positive .k-pie .ico { color: var(--status-ok); }
 .rejilla.tres .kpi { padding: 12px 10px; }
@@ -625,7 +639,7 @@ main {
   width: 100%;
   height: 48px;
   border: 1px solid var(--accento);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-pill);
   background: var(--accento);
   color: var(--white);
   font-size: 15px;

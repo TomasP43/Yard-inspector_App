@@ -642,7 +642,7 @@ const Precarga = (() => {
         ${form.danos.length
           ? `<div class="pc-danos">${form.danos.map(filaDano).join('')}</div>`
           : '<p class="nota">Cargá el primero: qué parte, de qué tipo y una foto.</p>'}
-        ${form.nuevo ? subformDano() : `<button type="button" class="btn sec chico" id="pc-add-dano">${ico('plus', 15)} Agregar daño</button>`}
+        ${form.nuevo ? subformDano() : `<button type="button" class="btn sec chico" id="pc-add-dano">${ico('plus', 14)} Agregar daño</button>`}
       </section>`;
 
     const listo = form.resultado === 'OK' || (form.resultado === 'NG' && form.danos.length);
@@ -726,7 +726,7 @@ const Precarga = (() => {
           <b>${esc(p.nombre)}</b>
           ${buscando ? `<small>${esc(p.grupo)}</small>` : ''}
         </span>
-        ${ico('chevron-left', 15)}
+        ${ico('chevron-left', 14)}
       </button>`).join('');
   }
 
@@ -758,13 +758,13 @@ const Precarga = (() => {
 
     const paso1 = n.parte_id
       ? `<div class="pc-elegida">
-           ${ico('check', 15)}
+           ${ico('check', 14)}
            <span class="txt"><b>${esc(nombreParte(n.parte_id))}</b><small>${esc(parteDe(n.parte_id).grupo)}</small></span>
            <button type="button" class="btn sec chico" id="pc-cambiar-parte">Cambiar</button>
          </div>`
       : `${atajo}
          <div class="buscador">
-           ${ico('search', 15)}
+           ${ico('search', 14)}
            <input type="search" id="pc-busca" value="${esc(n.busca || '')}"
                   placeholder="Buscar parte…" autocomplete="off" enterkeyhint="search">
          </div>
@@ -849,7 +849,7 @@ const Precarga = (() => {
     const q = foto.calidad.aviso;
     return `
       <p class="nota alerta pc-foto-aviso">
-        ${ico('octagon-alert', 15)}
+        ${ico('octagon-alert', 14)}
         <span>${esc(Camara.TEXTO_AVISO[q] || 'Puede no servir')}. Si es la única que se puede sacar, va igual.</span>
       </p>`;
   }
@@ -1204,7 +1204,7 @@ const Precarga = (() => {
     const r = rotulo(hist.clave);
 
     const cab = `
-      <button type="button" class="btn sec chico" id="ph-volver">${ico('chevron-left', 15)} Todas las jornadas</button>
+      <button type="button" class="btn sec chico" id="ph-volver">${ico('chevron-left', 14)} Todas las jornadas</button>
       <div class="cab-lista"><span class="eq-label">${esc(r.dia)} · ${esc(r.turno)}</span></div>`;
 
     if (!hist.solicitudes) { cuerpo.innerHTML = cab + '<p class="nota centro">Cargando…</p>'; return; }
@@ -1369,7 +1369,7 @@ const Precarga = (() => {
             <b class="mono">${esc(vin)}</b>
             <small>${esc(viajes[0].modelo || '—')} · ${viajes.length} ${viajes.length === 1 ? 'viaje' : 'viajes'}${danos ? ' · ' + danos + (danos === 1 ? ' daño' : ' daños') : ''}</small>
           </span>
-          ${ico('chevron-left', 15)}
+          ${ico('chevron-left', 14)}
         </button>`;
     }).join('')}</div>`;
   }

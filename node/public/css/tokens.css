@@ -78,8 +78,11 @@
   --line-rule:     rgba(255, 255, 255, .14);
   --line-strong:   var(--graphite-600);
 
-  --font-core: "Archivo", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  /* La pila del sistema, sin pedir nada afuera. En el Android del inspector
+     resuelve a Roboto y en el escritorio de gerencia a Segoe UI, que es lo
+     que se ve en la intranet. Ver D-022. */
+  --font-core: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "Cascadia Mono", Consolas, "Roboto Mono", monospace;
 
   --weight-regular: 400;
   --weight-medium: 500;
@@ -92,9 +95,12 @@
   --space-1: 4px;  --space-2: 8px;  --space-3: 12px;
   --space-4: 16px; --space-5: 24px; --space-6: 32px;
 
-  --radius-sm: 2px;
-  --radius-md: 4px;
-  --radius-lg: 8px;
+  /* Mas redondo que antes, al molde de la intranet: ahi las tarjetas y los
+     paneles tienen esquina blanda y los botones y chips son pastillas. Con
+     2/4/8 px la app se veia mas dura que todo lo que la rodea. */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
   --radius-pill: 999px;
 
   --shadow-1: 0 1px 2px rgba(0, 0, 0, .5);

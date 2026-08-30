@@ -1158,7 +1158,7 @@ $('#refrescar').addEventListener('click', () => {
 function cablearBuscador(id, espera, alCambiar, limpiarTexto) {
   const caja = $('#' + id + '-buscar');
   const limpiar = $('#' + id + '-limpiar');
-  $('#' + id + '-lupa').innerHTML = ico('search', 15);
+  $('#' + id + '-lupa').innerHTML = ico('search', 14);
   limpiar.innerHTML = ico('x', 14);
 
   let t;

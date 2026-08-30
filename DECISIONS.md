@@ -593,3 +593,52 @@ script; volver es cambiar `--accento` por `--ttfa-red`.
 **cuatro capturas** --Inicio, PRs, Fichadas y Cargas-- asi que los hex son los
 que se leen ahi (#2563EB y la familia verde/ambar/rojo estandar). Si la intranet
 tiene tokens propios, conviene copiarlos y no aproximarlos.
+
+---
+
+## D-022 — Las fuentes que pediamos afuera nunca llegaban
+
+**Fecha:** 30-08-2026 · **Ambito:** `index.html`, `gerencia/index.html`, `tokens.css`
+
+`index.html` pedia **Archivo e IBM Plex Mono a Google Fonts**, con un comentario
+que decia que si no llegaban la app usaba la de respaldo. El comentario asumia
+que el caso malo era «sin señal».
+
+**El caso malo es siempre.** La linea 159 de `CLAUDE.md` ya lo tenia escrito para
+otra cosa: los iconos van inline y no contra el CDN de Lucide porque **«un pedido
+a un dominio de afuera no pasa la politica de la intranet»**. La misma regla
+aplica a las fuentes, y nadie la habia cruzado: en TTFA esas dos familias no
+cargan **nunca**, y la app renderiza siempre con la pila de respaldo.
+
+O sea que **lo que se veia en desarrollo no era lo que se veia en produccion**, y
+todo el trabajo de tipografia se estaba haciendo contra una fuente que el
+inspector no ve. El tablero de gerencia tenia el mismo pedido.
+
+**Decision:** se deja de pedir lo que no puede llegar. La pila pasa a ser la del
+sistema --Roboto en el Android del inspector, Segoe UI en el escritorio de
+gerencia-- que ademas es lo que se ve en la intranet.
+
+**Lo que se pierde:** el caracter propio de Archivo. Se acepta: una fuente que no
+carga no tiene caracter, y esta app vive **adentro** de otra, donde parecerse es
+mejor que distinguirse.
+
+**Lo que NO se hizo:** empaquetar las woff2 en el repo. Son ~175 KB entre las
+siete variantes, en un shell que se instala por 3G, para una diferencia
+tipografica que nadie pidio. Si algun dia se quiere, entran cache-first como los
+esquemas de vehiculo (D-013) y no en el `SHELL`.
+
+**Verificado corriendo:** `performance.getEntriesByType('resource')` filtrado por
+origen distinto devuelve **cero** en las tres pantallas.
+
+**De paso, dos cosas del mismo molde:**
+
+- **Las esquinas se redondearon**: 2/4/8 px pasan a **4/8/12**, y el boton
+  primario a pastilla, como el «Cargar hs» de la intranet. Con las anteriores la
+  app se veia mas dura que todo lo que la rodea.
+- **Los iconos tenian diez tamaños** --12, 13, 14, 15, 16, 17, 18, 20, 30, 34--
+  que no es una escala sino lo que fue quedando. Quedan cinco: 12 adentro de un
+  chip, 14 en linea con el texto, 16 en filas y botones chicos, 18 en el primario,
+  20+ en los estados vacios.
+- **Las tarjetas KPI** llevan borde y esquina propia, y **el estado va en el
+  borde** ademas del numero -- como las de Inicio, donde la que necesita atencion
+  se reconoce de reojo sin leer la cifra.

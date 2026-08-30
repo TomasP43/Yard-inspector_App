@@ -110,7 +110,7 @@ const Vehiculo = (() => {
                 onerror="this.closest('.veh').classList.add('sin-dibujo')">
            ${marcas}
          </div>`
-      : `<p class="nota alerta">${ico('octagon-alert', 15)} No tenemos el esquema de ${esc(modelo || 'este modelo')}. Los daños quedan en la lista.</p>`;
+      : `<p class="nota alerta">${ico('octagon-alert', 14)} No tenemos el esquema de ${esc(modelo || 'este modelo')}. Los daños quedan en la lista.</p>`;
 
     const leyenda = Array.from(cuenta.entries())
       .sort((a, b) => b[1] - a[1])
@@ -121,7 +121,7 @@ const Vehiculo = (() => {
 
     return `
       <div class="veh">
-        ${dibujo ? `<p class="nota alerta veh-falta">${ico('octagon-alert', 15)} No se pudo cargar el esquema. Los daños quedan en la lista.</p>` : ''}
+        ${dibujo ? `<p class="nota alerta veh-falta">${ico('octagon-alert', 14)} No se pudo cargar el esquema. Los daños quedan en la lista.</p>` : ''}
         ${cuerpo}
         <div class="veh-refs">${leyenda}</div>
         ${interior && dibujo

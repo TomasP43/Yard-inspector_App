@@ -8,12 +8,12 @@
 <title>Yard Inspector</title>
 <link rel="manifest" href="./manifest.json">
 
-<!-- Tipografias del design system TTFA. Con `display=swap` y una pila de
-     respaldo del sistema: sin senal no llegan y la app tiene que seguir
-     legible, no quedarse en blanco esperandolas. -->
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<!-- No se piden fuentes afuera. La intranet de TTFA no sale a internet --es la
+     misma razon por la que los iconos van inline en vez de contra el CDN de
+     Lucide-- asi que ese pedido no llegaba NUNCA, no solo sin señal: la app
+     renderizaba siempre con la de respaldo. Se dejo de pedir lo que no puede
+     llegar y se adopto la pila del sistema, que ademas es lo que usa la
+     intranet. Ver D-022. -->
 
 <link rel="stylesheet" href="./css/tokens.css">
 <link rel="stylesheet" href="./css/app.css">
