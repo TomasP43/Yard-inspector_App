@@ -722,8 +722,8 @@ deduplicación del catálogo, las trampas de los datos— está en
   precarga_inspeccion  (id, uuid UNIQUE, unidad_id, inspector_id, escaneado_en,
                         registrado_en, sincronizado_en, foto_panoramica)
   precarga_dano        (id, inspeccion_id, parte_id, tipo_dano_id, comentario, foto)
-  precarga_parte       (id, nombre, grupo, orden, activo)
-  precarga_tipo_dano   (id, nombre, orden, activo)
+  precarga_parte       (id, nombre, grupo, usos_historicos, orden, activo)
+  precarga_tipo_dano   (id, nombre, usos_historicos, orden, activo)
   ```
 
   - `UNIQUE (solicitud_id, vin)` en `precarga_unidad`. El VIN **indexado pero no
@@ -777,7 +777,7 @@ deduplicación del catálogo, las trampas de los datos— está en
 
   | Método | Ruta | Qué hace |
   |---|---|---|
-  | GET | `api/precarga/catalogos` | `{partes[], tipos_dano[]}`, con ETag como `api/catalogos` |
+  | GET | `api/precarga/catalogos` | `{partes[], tipos_dano[]}`, con ETag como `api/catalogos`. Cada fila lleva `usos` |
   | GET | `api/precarga/solicitudes?jornada=<clave>` | `{jornada, solicitudes[]}`, **cada solicitud con todas sus unidades adentro** |
   | POST | `api/precarga/inspecciones` | Alta de la inspección de una unidad, con sus daños. Idempotente por `uuid` |
   | GET | `api/precarga/jornadas?limite=` | Jornadas cerradas, ya agregadas |
@@ -849,11 +849,22 @@ deduplicación del catálogo, las trampas de los datos— está en
   están en `Checklist control de precarga y recepcion.xlsx`, hoja UNID1,
   filas 62–73.
 
-- **El orden de los tipos merece una decisión.** Hoy es el que vino de la
-  operación. Medido sobre el histórico, **Abollado y Rayado concentran el 77%**
-  de los daños y quedan cuarto y noveno; ordenar por uso ahorraría un barrido de
-  la lista en tres de cada cuatro cargas. Es la misma razón por la que
-  `desvio_catalogo` y `parte` llevan `usos_historicos`.
+- **⚠ El catálogo tiene que mandar `usos` en cada fila.** Es la cantidad de veces
+  que esa parte o ese tipo aparecen en el histórico, y **el front ordena las dos
+  listas por ahí**: cuatro partes concentran el 55% de los daños y dos tipos
+  —Abollado y Rayado— el 77%. En orden de catálogo quedaban cuarto y noveno, o
+  sea barrer la lista en tres de cada cuatro cargas. Misma idea que
+  `usos_historicos` en `desvio_catalogo` y en `parte`.
+
+  Lo que no figura va en 0 y queda al final, que es lo correcto: son las que casi
+  nunca se cargan. `Otros` va último siempre, sin importar sus usos.
+
+- **Pendiente: varios tipos de daño sobre una misma parte.** Hoy cada daño se
+  carga entero. Marcar dos tipos de una (abollado + rayado en el mismo golpe)
+  sería más rápido, pero la foto es obligatoria por daño: compartir una entre dos
+  filas obliga a decidir si el payload la manda dos veces —duplicando cientos de
+  KB sobre 3G— o si el contrato aprende a referenciarla desde el nivel de la
+  unidad. No se hizo por eso.
 
 - **Las gravedades Furlong están disponibles y no se usan.** La planilla trae los
   8 códigos por tamaño del daño (0 sin excepción, 1 hasta 2,5 cm, …, 5 más de

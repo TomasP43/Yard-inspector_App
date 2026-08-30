@@ -392,9 +392,40 @@ Un registro por unidad con sus daños adentro, no un POST por daño: los daños 
 una unidad son un hecho solo, y partirlo la dejaria guardada a medias si la señal
 se corta en el medio.
 
-Por daño: **parte** (agrupada en los seis sectores de la planilla Furlong, dos
-toques en vez de un scroll de cien nombres, igual que las zonas del equipo),
-**tipo de daño**, comentario opcional y **foto obligatoria**. Nada arranca preseleccionado, por lo mismo que
+Por daño: **parte**, **tipo de daño**, comentario opcional y **foto
+obligatoria**.
+
+**La parte se elige en una lista, no en una grilla de chips.** Eran hasta 25
+chips envueltos en cinco filas, con blancos de 28 px para dedos con guantes.
+Ahora es una fila por parte de 48 px, con un **buscador arriba que cruza los seis
+sectores**: el inspector sabe que se golpeo la puerta trasera izquierda mucho
+antes de tener que decidir en que sector la puso el formulario, y obligarlo a
+elegir sector primero le cobra un paso por una clasificacion que es nuestra, no
+suya. El sector queda como filtro, y se esconde apenas hay texto escrito.
+
+Se busca sin acentos (`Similitud.normalizar`): escribir "optica" encuentra
+"Óptica", que con guantes es la unica forma. **Escribir no repinta la pantalla**,
+solo la lista -- repintar todo le roba el foco al teclado, que es el mismo
+cuidado que ya tenia el comentario.
+
+**Las dos listas van ordenadas por uso**, no por codigo: cuatro partes son el 55%
+de los daños y dos tipos --Abollado y Rayado-- el 77%. En orden de catalogo
+quedaban cuarto y noveno. Sale de `usos` en el catalogo, la misma idea que
+`usos_historicos` en `desvio_catalogo`. "Otros" siempre ultimo: el cajon de
+sastre a mitad de lista invita a usarlo antes de haber buscado.
+
+**Elegida la parte, el paso se pliega** y aparece el tipo. Dejar los cien
+nombres arriba mientras se elige el tipo empuja el resto del formulario abajo del
+pliegue.
+
+**Una unidad puede tener varios daños, y el segundo no arranca de cero.** Un auto
+golpeado suele estarlo en el mismo lugar, asi que el siguiente daño abre en el
+sector del anterior y ofrece un atajo directo a la misma parte. El titulo del
+paso lleva la cuenta ("Nuevo daño · 2.º"). Lo que **no** se hizo es marcar varios
+tipos sobre una misma parte de una vez: la foto es obligatoria por daño, y
+compartir una foto entre dos filas obliga a decidir si el payload la manda dos
+veces o si el contrato aprende a referenciarla. Queda anotado en YI-013.
+ Nada arranca preseleccionado, por lo mismo que
 el checklist de bahias.
 
 **Antes de todo eso hay que decir como esta la unidad: "Sin daños" o "Con

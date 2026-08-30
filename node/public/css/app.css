@@ -1606,3 +1606,83 @@ details.ficha[open] .ver-obs .ico { transform: rotate(90deg); }
 .pc-nums .aviso b { color: var(--status-warn); }
 
 #ph-volver { width: auto; margin-bottom: 4px; }
+
+/* --- precarga: elegir la parte -------------------------------------------
+
+   Era una grilla de hasta 25 chips envuelta en cinco filas. Pasa a lista
+   vertical con buscador: blanco grande para el pulgar con guantes, una parte
+   por renglon, y la busqueda cruza todos los sectores -- el inspector sabe que
+   se golpeo la puerta trasera izquierda mucho antes de tener que decidir en que
+   sector la puso el formulario. */
+
+.pc-nuevo .buscador { margin: 6px 0 10px; }
+
+.pc-partes {
+  max-height: 268px;             /* ~5 filas y media: se ve que hay mas abajo */
+  overflow-y: auto;
+  border: 1px solid var(--line-hairline);
+  border-radius: var(--radius-md);
+  background: var(--surface-card);
+  -webkit-overflow-scrolling: touch;
+}
+.pc-fila-parte {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 48px;              /* blanco comodo, no un chip de 28 */
+  padding: 8px 12px;
+  border: 0;
+  border-bottom: 1px solid var(--line-hairline);
+  background: none;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.pc-fila-parte:last-child { border-bottom: 0; }
+.pc-fila-parte:active { background: var(--surface-hover); }
+.pc-fila-parte .txt { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.pc-fila-parte b {
+  font-size: 14px;
+  font-weight: var(--weight-medium);
+  color: var(--text-strong);
+}
+.pc-fila-parte small { font-size: 11px; color: var(--text-faint); }
+/* La flecha del final: es un chevron-left girado, para no sumar otro glifo. */
+.pc-fila-parte .ico { transform: rotate(180deg); color: var(--text-faint); }
+
+/* La parte ya elegida: el paso se pliega. Dejar los setenta nombres arriba
+   mientras se elige el tipo empuja el resto del formulario abajo del pliegue. */
+.pc-elegida {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--status-ok);
+  border-radius: var(--radius-md);
+  background: var(--status-ok-bg);
+}
+.pc-elegida > .ico { color: var(--status-ok); }
+.pc-elegida .txt { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.pc-elegida b { font-size: 14px; font-weight: var(--weight-semibold); color: var(--text-strong); }
+.pc-elegida small { font-size: 11px; color: var(--text-muted); }
+.pc-elegida .btn { width: auto; flex: 0 0 auto; padding: 0 12px; }
+
+/* Un auto golpeado suele estarlo en el mismo lugar: el segundo daño arranca
+   donde termino el anterior en vez de volver a cero. */
+.pc-atajo {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  min-height: 40px;
+  margin-bottom: 8px;
+  padding: 0 12px;
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius-md);
+  background: none;
+  color: var(--text-body);
+  font-size: 13px;
+  cursor: pointer;
+}
+.pc-atajo:active { background: var(--surface-hover); }

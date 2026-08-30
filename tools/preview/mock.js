@@ -821,7 +821,56 @@
     { id: 14, nombre: 'Fallo de pintura' }
   ];
 
-  const CATALOGOS_PC = { partes: PARTES, tipos_dano: TIPOS_DANO };
+  /**
+   * Cuantas veces se uso cada una en el historico.
+   *
+   * **Ordena la lista del inspector**, que es para lo que sirve: cuatro partes
+   * concentran el 55% de los daños y dos tipos --Abollado y Rayado-- el 77%.
+   * Dejarlas en orden de codigo Furlong obliga a barrer cien nombres para
+   * encontrar el que se usa en tres de cada cuatro cargas.
+   *
+   * Es la misma idea que `usos_historicos` en `parte` y en `desvio_catalogo`.
+   * Las que no figuran van en 0 y quedan al final, que es lo correcto: son las
+   * que casi nunca se cargan.
+   */
+  const USOS_PARTE = {
+    'Puerta trasera izquierda': 514, 'Puerta delantera derecha': 424,
+    'Puerta delantera izquierda': 412, 'Paragolpe delantero': 277,
+    'Puerta trasera derecha': 204, 'Guardabarro trasero izquierdo': 180,
+    'Zócalo lateral izquierdo': 159, 'Guardabarro trasero derecho': 132,
+    'Paragolpe trasero': 92, 'Guardabarro delantero izquierdo': 68,
+    'Guardabarro delantero derecho': 66, 'Pilar medio izquierdo': 40,
+    'Capot': 34, 'Tapa de carga de combustible': 20,
+    'Espejo exterior izquierdo': 20, 'Sensores de estacionamiento': 18,
+    'Portaequipaje / Barras de techo': 18, 'Asiento trasero': 15,
+    'Optica trasera derecha': 14, 'Pilar trasero derecho': 11,
+    'Zócalo lateral derecho': 11, 'Tapizados (asientos y puertas)': 9,
+    'Optica delantera izquierda': 8, 'Estribo lateral izquierdo': 8,
+    'Optica trasera izquierda': 6, 'Optica delantera derecha': 5,
+    'Cámara / sensores (vista interior)': 5, 'Pilar delantero derecho': 4,
+    'Techo': 4, 'Pilar trasero izquierdo': 4, 'Luneta trasera': 4,
+    'Pilar delantero izquierdo': 3, 'Interior caja pick-up (Hilux)': 3,
+    'Pilar medio derecho': 3, 'Neumático / Rueda auxiliar': 3,
+    'Herramientas / Gato / Kit / Traba auxiliar': 2, 'Tazas de ruedas': 2,
+    'Estribo lateral derecho': 2, 'Llantas': 1,
+    'Puerta cabina cucheta derecha (si aplica)': 1,
+    'Interior compartimiento trasero (Hiace)': 1, 'Convertidor catalítico': 1,
+    'Asiento delantero izquierdo': 1, 'Cubretablero': 1,
+    'Espejo exterior derecho': 1, 'Tanque de nafta': 1,
+    'Neumáticos (no de auxilio)': 1, 'Parrilla': 1
+  };
+
+  const USOS_TIPO = {
+    'Abollado': 1203, 'Rayado': 1041, 'Fallo de pintura': 347, 'Filo de panel': 81,
+    'Desprendido': 60, 'Contaminado (No daño)': 55, 'Mellado': 43, 'Roto': 25,
+    'Perforado': 11, 'Faltante': 6, 'Vidrio roto': 3, 'Derrame de fluido': 3,
+    'Doblado': 3, 'Cortado': 1
+  };
+
+  const CATALOGOS_PC = {
+    partes: PARTES.map((p) => ({ ...p, usos: USOS_PARTE[p.nombre] || 0 })),
+    tipos_dano: TIPOS_DANO.map((d) => ({ ...d, usos: USOS_TIPO[d.nombre] || 0 }))
+  };
 
   const MODELOS = ['Hilux', 'Corolla Cross', 'Corolla', 'Yaris', 'Hiace', 'SW4'];
   const DESTINOS_PC = ['TOYOTA DO BRASIL LTDA', 'TOYOTA CHILE S.A.', 'DELTA DOCK', 'TOYOSA S.A.'];

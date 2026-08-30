@@ -480,59 +480,131 @@ const Precarga = (() => {
   }
 
   /**
+   * Las partes del paso, ya filtradas y ordenadas.
+   *
+   * Con texto escrito busca sobre **todos los sectores**: el inspector sabe que
+   * se golpeo la puerta trasera izquierda mucho antes de tener que decidir en
+   * que sector la puso el formulario, y obligarlo a elegir sector primero le
+   * cobra un paso por una clasificacion que es nuestra, no suya.
+   *
+   * Se normaliza con `Similitud.normalizar`, que saca los acentos: escribir
+   * "optica" tiene que encontrar "Óptica" -- con guantes nadie pone la tilde.
+   */
+  function partesDelPaso(n) {
+    const todas = (CATA && CATA.partes) || [];
+    const q = Similitud.normalizar(n.busca || '');
+
+    const base = q
+      ? todas.filter((p) => Similitud.normalizar(p.nombre).includes(q))
+      : todas.filter((p) => p.grupo === (n.grupo || todas[0].grupo));
+
+    // Lo mas usado primero: cuatro partes son el 55% de los daños. "Otros"
+    // siempre ultimo -- el cajon de sastre a mitad de lista invita a usarlo
+    // antes de haber buscado.
+    return base.slice().sort((a, b) =>
+      (a.nombre === 'Otros') - (b.nombre === 'Otros')
+      || (b.usos || 0) - (a.usos || 0)
+      || a.nombre.localeCompare(b.nombre));
+  }
+
+  /** Las filas de la lista. Se repinta sola al escribir, sin tocar el resto. */
+  function filasPartes(n) {
+    const lista = partesDelPaso(n);
+    if (!lista.length) {
+      return `<p class="nota centro">Ninguna parte se llama así. Probá con menos letras, o cargala en <b>Otros</b> y contala en el comentario.</p>`;
+    }
+    const buscando = !!(n.busca || '').trim();
+    return lista.map((p) => `
+      <button type="button" class="pc-fila-parte" data-parte="${esc(p.id)}">
+        <span class="txt">
+          <b>${esc(p.nombre)}</b>
+          ${buscando ? `<small>${esc(p.grupo)}</small>` : ''}
+        </span>
+        ${ico('chevron-left', 15)}
+      </button>`).join('');
+  }
+
+  /**
    * El daño que se esta componiendo.
    *
    * Nada arranca preseleccionado, igual que el checklist de bahias: con un valor
    * por defecto, guardar sin mirar vuelve a ser posible.
+   *
+   * El paso de la parte se **colapsa** cuando ya se eligio una. Antes quedaban
+   * los setenta chips arriba mientras se elegia el tipo, y en un telefono eso
+   * empuja el resto del formulario abajo del pliegue.
    */
   function subformDano() {
     const n = form.nuevo;
+    const todas = (CATA && CATA.partes) || [];
     const grupos = [];
-    for (const p of (CATA && CATA.partes) || []) if (!grupos.includes(p.grupo)) grupos.push(p.grupo);
+    for (const p of todas) if (!grupos.includes(p.grupo)) grupos.push(p.grupo);
     const grupo = n.grupo || grupos[0];
-    // "Otros" va ultimo siempre. Conserva el codigo Furlong del sector (54, 55,
-    // 98), asi que ordenado por id le tocaba el medio de la lista -- y el cajon
-    // de sastre a mitad de camino invita a usarlo antes de haber buscado.
-    const partes = ((CATA && CATA.partes) || [])
-      .filter((p) => p.grupo === grupo)
-      .sort((a, b) => (a.nombre === 'Otros') - (b.nombre === 'Otros'));
+    const buscando = !!(n.busca || '').trim();
+
+    // Un auto golpeado suele estarlo en el mismo lugar, asi que el segundo daño
+    // arranca donde termino el anterior en vez de volver a cero.
+    const atajo = !n.parte_id && form.ultima && form.ultima.parte_id
+      ? `<button type="button" class="pc-atajo" data-parte="${esc(form.ultima.parte_id)}">
+           ${ico('plus', 14)} Otro en ${esc(nombreParte(form.ultima.parte_id))}
+         </button>`
+      : '';
+
+    const paso1 = n.parte_id
+      ? `<div class="pc-elegida">
+           ${ico('check', 15)}
+           <span class="txt"><b>${esc(nombreParte(n.parte_id))}</b><small>${esc(parteDe(n.parte_id).grupo)}</small></span>
+           <button type="button" class="btn sec chico" id="pc-cambiar-parte">Cambiar</button>
+         </div>`
+      : `${atajo}
+         <div class="buscador">
+           ${ico('search', 15)}
+           <input type="search" id="pc-busca" value="${esc(n.busca || '')}"
+                  placeholder="Buscar parte…" autocomplete="off" enterkeyhint="search">
+         </div>
+         <div class="tags fila" id="pc-sectores"${buscando ? ' hidden' : ''}>
+           ${grupos.map((g) => `<button type="button" class="tag${g === grupo ? ' sel' : ''}" data-grupo="${esc(g)}">${esc(g)}</button>`).join('')}
+         </div>
+         <div class="pc-partes" id="pc-lista-partes">${filasPartes(n)}</div>`;
+
+    // Los tipos van ordenados por uso: Abollado y Rayado son el 77% de los
+    // daños, y en el orden del catalogo quedaban cuarto y noveno.
+    const tipos = ((CATA && CATA.tipos_dano) || []).slice()
+      .sort((a, b) => (b.usos || 0) - (a.usos || 0));
+
+    const paso2 = !n.parte_id ? '' : `
+      <span class="eq-label pc-sep">Tipo de daño</span>
+      <div class="tags">
+        ${tipos.map((d) => `<button type="button" class="tag${String(d.id) === String(n.tipo_dano_id) ? ' sel' : ''}" data-tipodano="${esc(d.id)}">${esc(d.nombre)}</button>`).join('')}
+      </div>
+
+      <label class="campo pc-sep">
+        <span>Comentario</span>
+        <input type="text" id="pc-com" value="${esc(n.comentario || '')}" placeholder="Opcional" autocomplete="off">
+      </label>
+
+      <span class="eq-label pc-sep">Foto del daño <b class="pc-req">obligatoria</b></span>
+      <div class="fotos una">
+        ${n.foto
+          ? `<div class="foto"><img src="${n.foto.url}" alt=""><button type="button" class="quitar" data-quitar-foto-dano>${ico('x', 12)}</button></div>`
+          : `<button type="button" class="foto-add" data-foto="dano">${ico('camera', 20)}<span>Foto del daño</span></button>`}
+      </div>`;
+
     const listo = n.parte_id && n.tipo_dano_id && n.foto;
+    const falta = !n.parte_id ? 'Elegí la parte'
+      : !n.tipo_dano_id ? 'Elegí el tipo de daño'
+      : !n.foto ? 'Falta la foto'
+      : 'Agregar el daño';
 
     return `
       <div class="pc-nuevo">
         <div class="cab">
-          <span class="eq-label">Nuevo daño</span>
+          <span class="eq-label">Nuevo daño${form.danos.length ? ' · ' + (form.danos.length + 1) + '.º' : ''}</span>
           <button type="button" class="ib sm" id="pc-cancel-dano" aria-label="Cancelar">${ico('x', 14)}</button>
         </div>
-
-        <span class="eq-label">Parte</span>
-        <div class="tags fila">
-          ${grupos.map((g) => `<button type="button" class="tag${g === grupo ? ' sel' : ''}" data-grupo="${esc(g)}">${esc(g)}</button>`).join('')}
-        </div>
-        <div class="tags">
-          ${partes.map((p) => `<button type="button" class="tag${String(p.id) === String(n.parte_id) ? ' sel' : ''}" data-parte="${esc(p.id)}">${esc(p.nombre)}</button>`).join('')}
-        </div>
-
-        <span class="eq-label pc-sep">Tipo de daño</span>
-        <div class="tags">
-          ${((CATA && CATA.tipos_dano) || []).map((d) => `<button type="button" class="tag${String(d.id) === String(n.tipo_dano_id) ? ' sel' : ''}" data-tipodano="${esc(d.id)}">${esc(d.nombre)}</button>`).join('')}
-        </div>
-
-        <label class="campo pc-sep">
-          <span>Comentario</span>
-          <input type="text" id="pc-com" value="${esc(n.comentario || '')}" placeholder="Opcional" autocomplete="off">
-        </label>
-
-        <span class="eq-label pc-sep">Foto del daño <b class="pc-req">obligatoria</b></span>
-        <div class="fotos una">
-          ${n.foto
-            ? `<div class="foto"><img src="${n.foto.url}" alt=""><button type="button" class="quitar" data-quitar-foto-dano>${ico('x', 12)}</button></div>`
-            : `<button type="button" class="foto-add" data-foto="dano">${ico('camera', 20)}<span>Foto del daño</span></button>`}
-        </div>
-
-        <button type="button" class="btn chico" id="pc-ok-dano" ${listo ? '' : 'disabled'}>
-          ${listo ? 'Agregar el daño' : 'Falta parte, tipo o foto'}
-        </button>
+        ${paso1}
+        ${paso2}
+        <button type="button" class="btn chico" id="pc-ok-dano" ${listo ? '' : 'disabled'}>${falta}</button>
       </div>`;
   }
 
@@ -807,6 +879,8 @@ const Precarga = (() => {
     if (!form || !form.nuevo) return;
     const c = $('#pc-com');
     if (c) form.nuevo.comentario = c.value.trim();
+    const b = $('#pc-busca');
+    if (b) form.nuevo.busca = b.value;
   }
 
   document.addEventListener('click', (e) => {
@@ -847,7 +921,8 @@ const Precarga = (() => {
 
     if (t.closest('#pc-add-dano')) {
       capturar();
-      form.nuevo = { grupo: null, parte_id: null, tipo_dano_id: null, comentario: '', foto: null };
+      form.nuevo = { grupo: (form.ultima && form.ultima.grupo) || null, busca: '',
+                     parte_id: null, tipo_dano_id: null, comentario: '', foto: null };
       pintarUnidad();
       return;
     }
@@ -865,7 +940,17 @@ const Precarga = (() => {
     const parte = t.closest('[data-parte]');
     if (parte && form.nuevo) {
       capturar();
-      form.nuevo.parte_id = form.nuevo.parte_id === parte.dataset.parte ? null : parte.dataset.parte;
+      form.nuevo.parte_id = parte.dataset.parte;
+      const p = parteDe(form.nuevo.parte_id);
+      if (p) form.nuevo.grupo = p.grupo;   // el sector queda donde esta la parte
+      form.nuevo.busca = '';
+      pintarUnidad();
+      return;
+    }
+
+    if (t.closest('#pc-cambiar-parte')) {
+      capturar();
+      form.nuevo.parte_id = null;
       pintarUnidad();
       return;
     }
@@ -892,6 +977,7 @@ const Precarga = (() => {
       const n = form.nuevo;
       if (!n || !n.parte_id || !n.tipo_dano_id || !n.foto) return;
       form.danos.push(n);
+      form.ultima = { grupo: n.grupo, parte_id: n.parte_id };
       form.nuevo = null;
       pintarUnidad();
       return;
@@ -903,8 +989,21 @@ const Precarga = (() => {
   // Escribir NO repinta: repintar en cada tecla le roba el foco al teclado y el
   // inspector pierde la palabra a medio escribir. Solo se actualiza el modelo.
   document.addEventListener('input', (e) => {
-    if (!form || !form.nuevo || !e.target.matches('#pc-com')) return;
-    form.nuevo.comentario = e.target.value.trim();
+    if (!form || !form.nuevo) return;
+
+    if (e.target.matches('#pc-com')) { form.nuevo.comentario = e.target.value.trim(); return; }
+
+    if (e.target.matches('#pc-busca')) {
+      // Repintar la pantalla entera le robaria el foco al teclado y el inspector
+      // perderia la palabra a medio escribir. Solo se rehace la lista.
+      form.nuevo.busca = e.target.value;
+      const caja = $('#pc-lista-partes');
+      if (caja) caja.innerHTML = filasPartes(form.nuevo);
+      // Con texto escrito la busqueda cruza todos los sectores, asi que el
+      // filtro por sector deja de significar algo y estorba.
+      const sect = $('#pc-sectores');
+      if (sect) sect.hidden = !!form.nuevo.busca.trim();
+    }
   });
 
   /** Lo llama app.js cuando la cola sincroniza, para que deje de decir "sin sincronizar". */
