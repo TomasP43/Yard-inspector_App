@@ -27,6 +27,30 @@ deduplicación del catálogo, las trampas de los datos— está en
 
 ---
 
+## Orden de trabajo de precarga
+
+Sale del benchmark contra las apps de la categoria y del cotejo con el estandar
+AIAG. **Uno por vez: se desarrolla, se valida corriendo, se commitea, y recien
+ahi arranca el siguiente.**
+
+| # | Que | Toca | Estado |
+|---|---|---|---|
+| 1 | **El borrador sobrevive a que se cierre la app** — hoy vive en memoria y se pierde el trabajo | front | pendiente |
+| 2 | **Buscar un VIN** y ver todo su historial | front + `YI-016` | pendiente |
+| 3 | **Codigos AIAG y gravedad** | datos + front + `YI-015` | bloqueado: falta M-14/M-22 |
+| 4 | **PDF del legajo** y envio | front + decision | pendiente |
+| 5 | **Punto exacto** sobre el esquema, no sector | front | pendiente |
+| 6 | **Captura guiada** de fotos | front | pendiente |
+| 7 | **Descarga en destino** | modulo nuevo | se planifica aparte |
+
+El orden sale de **lo que cuesta no tenerlo**, no de lo que cuesta hacerlo.
+
+**Fuera de alcance, decidido:** IA que detecta el daño sola, portico de escaneo,
+grado de condicion y costo de reparacion, video 360, y accion correctiva. Decirlo
+evita que vuelvan a aparecer en cada conversacion.
+
+---
+
 ## Pendientes
 
 ### YI-001 — Filtrar el historial por tipo de control
@@ -1030,6 +1054,46 @@ deduplicación del catálogo, las trampas de los datos— está en
 
 - **Mientras tanto:** el catálogo guarda el nombre y el número de parte, que es
   el *area code*. Lo que falta es el tipo y la gravedad.
+
+---
+
+### YI-016 — Buscar un VIN y ver todo su historial
+- **Estado:** pendiente
+- **Prioridad:** alta
+- **Tipo:** endpoint
+
+- **Qué necesito:** `GET api/precarga/unidades?vin=<parcial o completo>`, que
+  devuelva las inspecciones de esa unidad **cruzando jornadas**, cada una con su
+  solicitud, sus daños y su orden de bajada.
+
+- **Para qué:** es la pregunta que llega cuando hay un reclamo — «¿qué pasó con
+  este auto?». Hoy todo se consulta por jornada (`?jornada=`), así que el
+  registro existe pero no se puede interrogar. Es la función que ata a todas las
+  demás: sin ella, guardar bien no sirve de nada.
+
+- **Forma esperada:**
+
+  ```jsonc
+  { "vin": "8AJ…", "unidades": [
+      { "solicitud": { "codigo": "SOL-…", "hora": "…", "equipo": "…", "bahia": "…", "destino": "…" },
+        "jornada_clave": "2026-08-29-tarde",
+        "orden_solicitado": 3, "orden_real": 2,
+        "inspeccion": { "uuid": "…", "escaneado_en": "…", "inspector": {},
+                        "danos": [ { "parte_id": 1, "tipo_dano_id": 4, "comentario": null, "foto": "…" } ] } } ] }
+  ```
+
+- **La búsqueda va en el servidor, no en el cliente**, por lo mismo que el
+  historial de patrullas (`YI-001`): el cliente sólo tiene la jornada en curso, y
+  filtrar sobre eso daría una lista corta al lado de un total que es de otra cosa.
+
+- **Parcial y sin acentos.** Un VIN son 17 caracteres y nadie los escribe
+  enteros; con los últimos seis alcanza para encontrarlo.
+
+- **Un mismo VIN puede aparecer más de una vez**: el vehículo viaja más de una
+  vez. Por eso `unidades` es una lista y no un objeto — lo mismo que dice
+  `YI-013` sobre `ix_unidad_vin` no siendo único.
+
+- **Mientras tanto:** no hay forma. El historial sólo llega por jornada.
 
 ---
 
