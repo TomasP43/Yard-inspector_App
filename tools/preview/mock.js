@@ -632,32 +632,178 @@
   /**
    * Catalogo de partes y tipos de daño.
    *
-   * **PROVISIONAL, a proposito.** Se puso para poder ver la pantalla mientras no
-   * este la planilla real (ver YI-013). Los nombres son de relleno; lo que si es
-   * definitivo es la forma -- la parte trae su `grupo`, que es lo que parte la
-   * lista en tres toques en vez de un scroll de setenta nombres, igual que las
-   * zonas del equipo en patrullas.
+   * **Salen de las planillas reales**, cruzando dos documentos:
+   *
+   * | Documento | Que aporta |
+   * |---|---|
+   * | `Checklist control de precarga y recepcion.xlsx`, hoja UNID1 | La planilla Furlong: 95 partes numeradas y repartidas en seis sectores, mas los codigos de daño |
+   * | `Estado de unidades Precarga.xlsx`, hoja Parte | Las 70 partes del catalogo de AppSheet |
+   *
+   * **Cuando las dos nombran la misma pieza gana el nombre de "Estado de
+   * unidades Precarga"**, que es el que los inspectores ya tienen a la vista.
+   * Pasa en 52 de las 95. Las 43 restantes quedan con el nombre de la planilla,
+   * y de "Estado" se suman 16 que la planilla no tiene. Total: 111.
+   *
+   * El `grupo` es el **sector de la planilla Furlong**, que es como el inspector
+   * recorre el auto: dos toques en vez de un scroll de cien nombres.
+   *
+   * Tres partes se dejaron una sola vez: el Nº 41 esta dos veces en la planilla,
+   * y las alfombras 18/19 repiten a las 68/97 -- quedan en Interior, que es
+   * donde va un tapete.
+   *
+   * ⚠ Lo que NO sale de los documentos y hay que confirmar: el sector de esas 16
+   * partes agregadas (la planilla no las trae, asi que lo puse yo), y que el
+   * sector "Extremo derecho" en realidad agrupa el extremo TRASERO -- son sus
+   * propias filas las que lo dicen (luneta trasera, tapa de baul, faro trasero).
    */
   const PARTES = [
-    'Paragolpe delantero', 'Paragolpe trasero', 'Capot', 'Techo',
-    'Puerta delantera izquierda', 'Puerta delantera derecha',
-    'Puerta trasera izquierda', 'Puerta trasera derecha',
-    'Guardabarro delantero izquierdo', 'Guardabarro trasero izquierdo',
-    'Zócalo lateral izquierdo', 'Espejo exterior izquierdo',
-    'Óptica delantera derecha', 'Parabrisas', 'Llantas'
-  ].map((nombre, i) => ({ id: i + 1, nombre, grupo: 'Exterior' }))
-    .concat([
-      'Asiento delantero izquierdo', 'Asiento trasero', 'Alfombra delantera',
-      'Tablero', 'Volante', 'Panel de puerta izquierda'
-    ].map((nombre, i) => ({ id: 100 + i, nombre, grupo: 'Interior' })))
-    .concat([
-      'Batería', 'Radiador', 'Herramientas / gato', 'Rueda de auxilio'
-    ].map((nombre, i) => ({ id: 200 + i, nombre, grupo: 'Mecánica' })));
+    // Frente
+    { id: 1, nombre: 'Antena', grupo: 'Frente' },
+    { id: 3, nombre: 'Paragolpe delantero', grupo: 'Frente' },
+    { id: 5, nombre: 'Protector paragolpe / fleje', grupo: 'Frente' },
+    { id: 20, nombre: 'Parabrisas delantero', grupo: 'Frente' },
+    { id: 22, nombre: 'Parrilla', grupo: 'Frente' },
+    { id: 23, nombre: 'Plancha sup/ext, baul', grupo: 'Frente' },
+    { id: 24, nombre: 'Faro cubierta luz de giro', grupo: 'Frente' },
+    { id: 25, nombre: 'Luces niebla medias pos', grupo: 'Frente' },
+    { id: 27, nombre: 'Capot', grupo: 'Frente' },
+    { id: 41, nombre: 'Suplem. paragolpe', grupo: 'Frente' },
+    { id: 42, nombre: 'Panel salpicadura del', grupo: 'Frente' },
+    { id: 59, nombre: 'Limpiaparabrisas', grupo: 'Frente' },
+    { id: 80, nombre: 'Cubretablero', grupo: 'Frente' },
+    { id: 1001, nombre: 'Optica delantera derecha', grupo: 'Frente' },
+    { id: 1002, nombre: 'Optica delantera izquierda', grupo: 'Frente' },
+    // Lateral izquierdo
+    { id: 10, nombre: 'Puerta delantera izquierda', grupo: 'Lateral izquierdo' },
+    { id: 11, nombre: 'Puerta trasera izquierda', grupo: 'Lateral izquierdo' },
+    { id: 14, nombre: 'Guardabarro delantero izquierdo', grupo: 'Lateral izquierdo' },
+    { id: 15, nombre: 'Cuarto trasero izq.', grupo: 'Lateral izquierdo' },
+    { id: 30, nombre: 'Espejo exterior izquierdo', grupo: 'Lateral izquierdo' },
+    { id: 35, nombre: 'Zócalo lateral izquierdo', grupo: 'Lateral izquierdo' },
+    { id: 38, nombre: 'Estribo lateral izquierdo', grupo: 'Lateral izquierdo' },
+    { id: 70, nombre: 'Pilar medio izquierdo', grupo: 'Lateral izquierdo' },
+    { id: 72, nombre: 'Pilar delantero izquierdo', grupo: 'Lateral izquierdo' },
+    { id: 74, nombre: 'Pilar trasero izquierdo', grupo: 'Lateral izquierdo' },
+    { id: 75, nombre: 'Panel de cabina lat. izq.', grupo: 'Lateral izquierdo' },
+    { id: 78, nombre: 'Ext. cuarto trasero izq.', grupo: 'Lateral izquierdo' },
+    { id: 82, nombre: 'Guardabarro trasero izquierdo', grupo: 'Lateral izquierdo' },
+    { id: 88, nombre: 'Puerta de cabina de cucheta', grupo: 'Lateral izquierdo' },
+    // Lateral derecho
+    { id: 9, nombre: 'Puerta carga derecha', grupo: 'Lateral derecho' },
+    { id: 12, nombre: 'Puerta delantera derecha', grupo: 'Lateral derecho' },
+    { id: 13, nombre: 'Puerta trasera derecha', grupo: 'Lateral derecho' },
+    { id: 16, nombre: 'Guardabarro delantero derecho', grupo: 'Lateral derecho' },
+    { id: 17, nombre: 'Cuarto trasero der.', grupo: 'Lateral derecho' },
+    { id: 31, nombre: 'Espejo exterior derecho', grupo: 'Lateral derecho' },
+    { id: 36, nombre: 'Zócalo lateral derecho', grupo: 'Lateral derecho' },
+    { id: 39, nombre: 'Estribo lateral derecho', grupo: 'Lateral derecho' },
+    { id: 69, nombre: 'Pilar medio derecho', grupo: 'Lateral derecho' },
+    { id: 71, nombre: 'Pilar delantero derecho', grupo: 'Lateral derecho' },
+    { id: 73, nombre: 'Pilar trasero derecho', grupo: 'Lateral derecho' },
+    { id: 76, nombre: 'Panel cabina lat. der.', grupo: 'Lateral derecho' },
+    { id: 79, nombre: 'Ext. cuarto trasero der.', grupo: 'Lateral derecho' },
+    { id: 83, nombre: 'Guardabarro trasero derecho', grupo: 'Lateral derecho' },
+    { id: 89, nombre: 'Puerta cabina cucheta derecha (si aplica)', grupo: 'Lateral derecho' },
+    // Extremo derecho
+    { id: 4, nombre: 'Paragolpe trasero', grupo: 'Extremo derecho' },
+    { id: 6, nombre: 'Protector paragolpe / fleje', grupo: 'Extremo derecho' },
+    { id: 7, nombre: 'Puerta carga tras. der.', grupo: 'Extremo derecho' },
+    { id: 8, nombre: 'Puerta carga tras. izq.', grupo: 'Extremo derecho' },
+    { id: 21, nombre: 'Luneta trasera', grupo: 'Extremo derecho' },
+    { id: 34, nombre: 'Panel extremo trasero', grupo: 'Extremo derecho' },
+    { id: 40, nombre: 'Neumático / Rueda auxiliar', grupo: 'Extremo derecho' },
+    { id: 43, nombre: 'Panel salpicadura tras.', grupo: 'Extremo derecho' },
+    { id: 45, nombre: 'Faro trasero / aro', grupo: 'Extremo derecho' },
+    { id: 52, nombre: 'Tapa baul / puerta de cola', grupo: 'Extremo derecho' },
+    { id: 55, nombre: 'Area de carga - otros', grupo: 'Extremo derecho' },
+    { id: 57, nombre: 'Tazas de ruedas', grupo: 'Extremo derecho' },
+    { id: 61, nombre: 'Interior caja pick-up (Hilux)', grupo: 'Extremo derecho' },
+    { id: 64, nombre: 'Deflector viento / spoiler', grupo: 'Extremo derecho' },
+    { id: 77, nombre: 'Panel cabina trasero', grupo: 'Extremo derecho' },
+    { id: 84, nombre: 'Herramientas / Gato / Kit / Traba auxiliar', grupo: 'Extremo derecho' },
+    { id: 87, nombre: 'Panel frontal compartim.', grupo: 'Extremo derecho' },
+    { id: 92, nombre: 'Soporte chapa patente', grupo: 'Extremo derecho' },
+    { id: 1003, nombre: 'Optica trasera derecha', grupo: 'Extremo derecho' },
+    { id: 1004, nombre: 'Optica trasera izquierda', grupo: 'Extremo derecho' },
+    // Tren inferior, techo y varios
+    { id: 2, nombre: 'Batería (visible)', grupo: 'Tren inferior, techo y varios' },
+    { id: 37, nombre: 'Techo', grupo: 'Tren inferior, techo y varios' },
+    { id: 44, nombre: 'Tanque de nafta', grupo: 'Tren inferior, techo y varios' },
+    { id: 47, nombre: 'Neumáticos (no de auxilio)', grupo: 'Tren inferior, techo y varios' },
+    { id: 53, nombre: 'Techo corredizo / Capota textil', grupo: 'Tren inferior, techo y varios' },
+    { id: 54, nombre: 'Tren inferior - otros', grupo: 'Tren inferior, techo y varios' },
+    { id: 56, nombre: 'Cub. techo conv. / vinilico', grupo: 'Tren inferior, techo y varios' },
+    { id: 62, nombre: 'Convertidor catalítico', grupo: 'Tren inferior, techo y varios' },
+    { id: 63, nombre: 'Largueros - bancada camion', grupo: 'Tren inferior, techo y varios' },
+    { id: 65, nombre: 'Portaequipaje / Barras de techo', grupo: 'Tren inferior, techo y varios' },
+    { id: 81, nombre: 'Tapa de carga de combustible', grupo: 'Tren inferior, techo y varios' },
+    { id: 86, nombre: 'Filtro de aire (visible)', grupo: 'Tren inferior, techo y varios' },
+    { id: 90, nombre: 'Bastidor', grupo: 'Tren inferior, techo y varios' },
+    { id: 91, nombre: 'Sistema de escape', grupo: 'Tren inferior, techo y varios' },
+    { id: 93, nombre: 'Sistema de suspension', grupo: 'Tren inferior, techo y varios' },
+    { id: 99, nombre: 'Compar. motor/otros', grupo: 'Tren inferior, techo y varios' },
+    { id: 1000, nombre: 'Vidrios laterales (delanteros y traseros)', grupo: 'Tren inferior, techo y varios' },
+    { id: 1005, nombre: 'Sensores de estacionamiento', grupo: 'Tren inferior, techo y varios' },
+    { id: 1006, nombre: 'Llantas', grupo: 'Tren inferior, techo y varios' },
+    { id: 1015, nombre: 'Radiador (visible)', grupo: 'Tren inferior, techo y varios' },
+    // Interior
+    { id: 26, nombre: 'Forro de techo', grupo: 'Interior' },
+    { id: 28, nombre: 'Llaves', grupo: 'Interior' },
+    { id: 29, nombre: 'Espejo interior', grupo: 'Interior' },
+    { id: 32, nombre: 'Informacion especial', grupo: 'Interior' },
+    { id: 33, nombre: 'Sistema de audio', grupo: 'Interior' },
+    { id: 48, nombre: 'Panel tapizado del. izq.', grupo: 'Interior' },
+    { id: 50, nombre: 'Panel tapizado del. der.', grupo: 'Interior' },
+    { id: 58, nombre: 'Parlantes', grupo: 'Interior' },
+    { id: 66, nombre: 'Tablero digital / velocímetro', grupo: 'Interior' },
+    { id: 67, nombre: 'Encendedor / Cenicero', grupo: 'Interior' },
+    { id: 68, nombre: 'Alfombra delantera', grupo: 'Interior' },
+    { id: 85, nombre: 'Microfono cb / telefono', grupo: 'Interior' },
+    { id: 94, nombre: 'Asiento delantero izquierdo', grupo: 'Interior' },
+    { id: 95, nombre: 'Asiento delantero derecho', grupo: 'Interior' },
+    { id: 96, nombre: 'Asiento trasero', grupo: 'Interior' },
+    { id: 97, nombre: 'Alfombra trasera', grupo: 'Interior' },
+    { id: 98, nombre: 'Interior', grupo: 'Interior' },
+    { id: 1007, nombre: 'Tapizados (asientos y puertas)', grupo: 'Interior' },
+    { id: 1008, nombre: 'Cinturones de seguridad (todos)', grupo: 'Interior' },
+    { id: 1009, nombre: 'Airbags (conductor, acompañante, laterales, cortina)', grupo: 'Interior' },
+    { id: 1010, nombre: 'Volante', grupo: 'Interior' },
+    { id: 1011, nombre: 'Palanca de cambios', grupo: 'Interior' },
+    { id: 1012, nombre: 'Pantalla multimedia', grupo: 'Interior' },
+    { id: 1013, nombre: 'Cámara / sensores (vista interior)', grupo: 'Interior' },
+    { id: 1014, nombre: 'Interior compartimiento trasero (Hiace)', grupo: 'Interior' }
+  ];
 
   const TIPOS_DANO = [
-    'Abollado', 'Rayado', 'Fallo de pintura', 'Filo de panel', 'Desprendido',
-    'Mellado', 'Roto', 'Faltante', 'Contaminado (no daño)', 'Doblado'
-  ].map((nombre, i) => ({ id: i + 1, nombre }));
+    { id: 1, nombre: 'Doblado' },
+    { id: 2, nombre: 'Roto (exc. vidrio)' },
+    { id: 3, nombre: 'Cortado' },
+    { id: 4, nombre: 'Abollado (pintura rota o quebrada)' },
+    { id: 5, nombre: 'Mellado (exc. vidrio y bloque de panel)' },
+    { id: 6, nombre: 'Quebrado (exc. vidrio)' },
+    { id: 7, nombre: 'Rozado' },
+    { id: 8, nombre: 'Faltante (exc. moldura)' },
+    { id: 9, nombre: 'Raspado' },
+    { id: 10, nombre: 'Manchado / sucio int.' },
+    { id: 11, nombre: 'Perforado' },
+    { id: 12, nombre: 'Rayado (exc. vidrio)' },
+    { id: 13, nombre: 'Desgarrado' },
+    { id: 14, nombre: 'Abollado pintura, cromado no dañado' },
+    { id: 15, nombre: 'Moldura / burlete / emb. dañado' },
+    { id: 19, nombre: 'Moldura / burlete / emb. suelto o faltante' },
+    { id: 20, nombre: 'Vidrio rajado' },
+    { id: 21, nombre: 'Vidrio roto' },
+    { id: 22, nombre: 'Vidrio mellado' },
+    { id: 23, nombre: 'Vidrio rayado' },
+    { id: 24, nombre: 'Luz indicadora dañada' },
+    { id: 25, nombre: 'Daño en calcomanía / franja de pintura / veta de madera' },
+    { id: 33, nombre: 'Derrame de fluido ext.' },
+    { id: 34, nombre: 'Borde panel mellado' },
+    { id: 35, nombre: 'Pieza incorrecta' },
+    { id: 36, nombre: 'Opcional no facturado' },
+    { id: 37, nombre: 'Herrajes ext. dañados' },
+    { id: 38, nombre: 'Herrajes exteriores sueltos o faltantes' }
+  ];
 
   const CATALOGOS_PC = { partes: PARTES, tipos_dano: TIPOS_DANO };
 
@@ -718,6 +864,12 @@
   })();
 
   const CLAVE_PC = 'yard-preview-precarga';
+
+  // `?limpiar` tiene que llevarse tambien lo de precarga, o "empezar de cero"
+  // deja media demo con datos viejos y la otra media en blanco.
+  if (location.search.includes('limpiar')) {
+    try { localStorage.removeItem(CLAVE_PC); } catch (e) { /* modo privado */ }
+  }
 
   const leerPC = () => { try { return JSON.parse(localStorage.getItem(CLAVE_PC) || '[]'); } catch (e) { return []; } };
 

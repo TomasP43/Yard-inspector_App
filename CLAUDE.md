@@ -392,9 +392,9 @@ Un registro por unidad con sus daños adentro, no un POST por daño: los daños 
 una unidad son un hecho solo, y partirlo la dejaria guardada a medias si la señal
 se corta en el medio.
 
-Por daño: **parte** (agrupada en Exterior / Interior / Mecanica, dos toques en
-vez de un scroll, igual que las zonas del equipo), **tipo de daño**, comentario
-opcional y **foto obligatoria**. Nada arranca preseleccionado, por lo mismo que
+Por daño: **parte** (agrupada en los seis sectores de la planilla Furlong, dos
+toques en vez de un scroll de cien nombres, igual que las zonas del equipo),
+**tipo de daño**, comentario opcional y **foto obligatoria**. Nada arranca preseleccionado, por lo mismo que
 el checklist de bahias.
 
 Guardar con cero daños es «la mire y no tenia nada»: el escaneo ya prueba que se
@@ -406,11 +406,41 @@ sesion de ttfa, mas la hora y la foto — mas fuerte que un garabato con el dedo
 el **cuadrante** (en AppSheet es un numero suelto que sin saber que significa
 mide a quien lo carga) y la **gravedad**. Los tres estan anotados en YI-013.
 
-**El catalogo de partes y tipos de daño del mock es PROVISIONAL** y hay que
-reemplazarlo por la planilla real. La forma si es la definitiva. Hay uno completo
-ya derivado de las planillas en el historial de git (`0e569d9`,
-`migrations/006_unidades_catalogos.sql`): 70 partes con grupo y cuadrantes, 15
-tipos de daño y las 7 gravedades Furlong.
+### El catalogo sale de cruzar las dos planillas
+
+**109 partes y 28 tipos de daño**, de dos documentos:
+
+| Documento | Que aporta |
+|---|---|
+| `Checklist control de precarga y recepcion.xlsx`, hoja UNID1 | La planilla Furlong: 95 partes numeradas y repartidas en **seis sectores**, mas los codigos de daño y las gravedades |
+| `Estado de unidades Precarga.xlsx`, hoja Parte | Las 70 partes del catalogo de AppSheet |
+
+**Cuando las dos nombran la misma pieza gana el nombre de AppSheet**, que es el
+que los inspectores ya tienen a la vista. Pasa en **52 de las 95**; las 43
+restantes quedan con el nombre de la planilla y de AppSheet se suman **16** que
+la planilla no trae.
+
+El `grupo` es el **sector Furlong**, que es como el inspector recorre el auto.
+No es un invento nuestro: es la division del formulario que ya usa.
+
+**Tres cosas no salen de los documentos y las decidio una persona** — que es la
+unica forma admitida de fusionar (ver D-004):
+
+- El **sector de las 16 partes agregadas**: la planilla no las trae, asi que se
+  asignaron a ojo.
+- **Tres piezas listadas dos veces** en la planilla: el Nº 41 (en dos sectores) y
+  las alfombras 18/19, que repiten a las 68/97. Quedan una sola vez; las
+  alfombras en Interior, que es donde va un tapete.
+- **`Protector paragolpe / fleje` queda dos veces a proposito**: son el delantero
+  y el trasero, y el sector los distingue.
+
+**Lo que hay que confirmar con la operacion:** el sector **"Extremo derecho"**
+agrupa en realidad el extremo **trasero** — son sus propias filas las que lo
+dicen (luneta trasera, tapa de baul, faro trasero, rueda de auxilio). Se dejo el
+nombre que el formulario tiene impreso en vez de corregirlo por cuenta propia.
+
+Las **gravedades Furlong** (los 8 codigos por tamaño del daño) estan en la misma
+planilla y **no se registran todavia**. Ver YI-013.
 
 ### La jornada cierra el viaje
 

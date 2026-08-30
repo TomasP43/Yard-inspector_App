@@ -802,16 +802,32 @@ deduplicación del catálogo, las trampas de los datos— está en
   entrada detrás de un adaptador, como la que tenía el módulo de unidades: el
   contrato del sistema de origen todavía no está definido.
 
-- **⚠ El catálogo de partes y tipos de daño del mock es PROVISIONAL.** Se puso
-  para poder ver la pantalla. Hay que reemplazarlo por la planilla real. Lo que
-  sí es definitivo es la forma: la parte trae su `grupo` (Exterior / Interior /
-  Mecánica), que es lo que parte la lista en tres toques en vez de un scroll.
+- **El catálogo son 109 partes y 28 tipos de daño**, de cruzar dos planillas:
+  `Checklist control de precarga y recepcion.xlsx` (hoja UNID1 — la planilla
+  Furlong: 95 partes en seis sectores, más los códigos de daño y de gravedad) y
+  `Estado de unidades Precarga.xlsx` (hoja Parte — las 70 de AppSheet).
 
-  > Hay un catálogo completo y ya derivado de las planillas en el historial de
-  > git, en el commit `0e569d9` (`migrations/006_unidades_catalogos.sql`): 70
-  > partes con grupo y cantidad de cuadrantes, 15 tipos de daño, 34 detalles y
-  > las 7 gravedades del estándar Furlong, todos con sus usos históricos. Se
-  > decidió empezar de cero, pero está ahí si sirve de referencia.
+  Cuando las dos nombran la misma pieza **gana el nombre de AppSheet**, que es el
+  que los inspectores ya tienen a la vista: pasa en 52 de las 95.
+
+  `precarga_parte.grupo` es el **sector Furlong**, no una categoría inventada.
+  Los seis: Frente, Lateral izquierdo, Lateral derecho, Extremo derecho, Tren
+  inferior/techo/varios, Interior.
+
+- **⚠ Dos cosas del catálogo para confirmar con la operación:**
+  - El sector **"Extremo derecho"** agrupa en realidad el extremo **trasero** —
+    lo dicen sus propias filas (luneta trasera, tapa de baúl, faro trasero). Se
+    dejó el nombre impreso en el formulario en vez de corregirlo por cuenta
+    propia.
+  - Cinco entradas de la planilla **no son piezas sino cajones de sastre**:
+    `Informacion especial` (32), `Interior` (98), `Tren inferior - otros` (54),
+    `Area de carga - otros` (55) y `Compar. motor/otros` (99). Se dejaron porque
+    están en el formulario, pero conviene decidir si se quedan.
+
+- **Las gravedades Furlong están disponibles y no se usan.** La misma planilla
+  trae los 8 códigos por tamaño del daño (0 sin excepción, 1 hasta 2,5 cm, …,
+  5 más de 30 cm, 6 sustitución/daño severo, 7 faltante). Es el tercer código del
+  estándar `AREA - TIPO - GRAVEDAD`; hoy no se registra.
 
 - **Lo que quedó afuera de esta entrega, a decidir:**
 
@@ -819,7 +835,7 @@ deduplicación del catálogo, las trampas de los datos— está en
   |---|---|
   | **Firmas** (inspector y TASA) | No van por ahora. El inspector queda identificado por la sesión de ttfa, más la hora y la foto — más fuerte que una firma dibujada con el dedo. Si auditoría las exige, es un pad en canvas |
   | **Cuadrante** | Queda para después. En AppSheet es un número suelto y obligatorio; sin saber qué significa cada número el dato termina midiendo a quien lo carga. La salida natural es una grilla de 3×3 sobre la parte, con `cantidad_cuadrantes` por parte |
-  | **Gravedad** | No se registra, igual que en AppSheet. Es el tercer código del estándar Furlong (`AREA - TIPO - GRAVEDAD`) y hoy falta |
+  | **Gravedad** | No se registra, igual que en AppSheet, aunque los 8 códigos ya salieron de la planilla. Es el tercer código del estándar Furlong (`AREA - TIPO - GRAVEDAD`) |
   | **Unidad sin daño** | Guardar con cero daños es «la miré y no tenía nada»; el escaneo prueba que se la miró. Queda como punto a revisar si hace falta distinguirlo más explícitamente |
 
 ---

@@ -21,13 +21,6 @@ const TableroPrecarga = (() => {
   /** Hasta donde se considera "lo que concentra el problema", igual que patrullas. */
   const UMBRAL = 80;
 
-  /** Los tres grupos de la ficha. Fijos: son las tres partes del auto, no un catalogo. */
-  const COLOR_GRUPO = {
-    Exterior: 'var(--ttfa-red)',
-    Interior: 'var(--status-warn)',
-    'Mecánica': 'var(--status-info)'
-  };
-
   let P = null;          // lo que devolvio el servidor
   let corte = 'anual';   // sigue al conmutador de arriba
 
@@ -178,16 +171,18 @@ const TableroPrecarga = (() => {
         </section>
 
         <section class="card">
-          <header><span class="eq-label">Reparto por parte del auto</span><b>Exterior, interior o mecánica</b></header>
-          <div class="rejilla-3 bordeada">
-            ${grupos.map((g) => `
-              <div>
-                <span class="eq-label">${esc(g.name)}</span>
-                <b style="color:${COLOR_GRUPO[g.name] || 'var(--text-strong)'}">${g.pct}<small>%</small></b>
-                <small>${g.count} ${g.count === 1 ? 'daño' : 'daños'}</small>
-              </div>`).join('')}
+          <header><span class="eq-label">Sectores de la planilla Furlong</span><b>En qué parte del auto</b></header>
+          <div class="barras-h">
+            ${(() => {
+              const maxG = Math.max(1, ...grupos.map((g) => g.count));
+              return grupos.map((g) => `
+                <div class="f">
+                  <div class="cab"><span>${esc(g.name)}</span><b>${g.count} · ${g.pct}%</b></div>
+                  <div class="pista"><i style="width:${Math.round((g.count / maxG) * 100)}%;background:var(--status-info)"></i></div>
+                </div>`).join('');
+            })()}
           </div>
-          <p class="nota">Van los tres números y no una cinta: el exterior se lleva más del 95% —es lo que se golpea al maniobrar— y una banda de un solo color no informa nada. Interior y mecánica son pocos casos, pero son los caros.</p>
+          <p class="nota">Son los seis sectores en los que la planilla parte el auto, que es también cómo lo recorre el inspector. Un sector que se despega dice dónde se está golpeando, no qué pieza.</p>
         </section>
       </div>`;
   }

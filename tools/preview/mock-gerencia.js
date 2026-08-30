@@ -466,19 +466,24 @@
 
   const MES = ['sep', 'oct', 'nov', 'dic', 'ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago'];
 
+  // Los nombres y los sectores salen del catalogo real (ver mock.js). El orden
+  // es el del historico: cuatro partes se llevan mas de la mitad del daño.
   const PARTES = [
-    ['Puerta trasera izquierda', 'Exterior'], ['Puerta delantera derecha', 'Exterior'],
-    ['Puerta delantera izquierda', 'Exterior'], ['Paragolpe delantero', 'Exterior'],
-    ['Puerta trasera derecha', 'Exterior'], ['Guardabarro trasero izquierdo', 'Exterior'],
-    ['Zócalo lateral izquierdo', 'Exterior'], ['Guardabarro trasero derecho', 'Exterior'],
-    ['Paragolpe trasero', 'Exterior'], ['Capot', 'Exterior'],
-    ['Techo', 'Exterior'], ['Espejo exterior izquierdo', 'Exterior'],
+    ['Puerta trasera izquierda', 'Lateral izquierdo'], ['Puerta delantera derecha', 'Lateral derecho'],
+    ['Puerta delantera izquierda', 'Lateral izquierdo'], ['Paragolpe delantero', 'Frente'],
+    ['Puerta trasera derecha', 'Lateral derecho'], ['Guardabarro trasero izquierdo', 'Lateral izquierdo'],
+    ['Zócalo lateral izquierdo', 'Lateral izquierdo'], ['Guardabarro trasero derecho', 'Lateral derecho'],
+    ['Paragolpe trasero', 'Extremo derecho'], ['Capot', 'Frente'],
+    ['Guardabarro delantero izquierdo', 'Lateral izquierdo'], ['Guardabarro delantero derecho', 'Lateral derecho'],
+    ['Pilar medio izquierdo', 'Lateral izquierdo'], ['Techo', 'Tren inferior, techo y varios'],
+    ['Espejo exterior izquierdo', 'Lateral izquierdo'], ['Luneta trasera', 'Extremo derecho'],
     ['Alfombra delantera', 'Interior'], ['Asiento trasero', 'Interior'],
-    ['Tablero', 'Interior'], ['Rueda de auxilio', 'Mecánica'],
-    ['Herramientas / gato', 'Mecánica']
+    ['Tablero digital / velocímetro', 'Interior'], ['Neumáticos (no de auxilio)', 'Tren inferior, techo y varios']
   ];
-  const TIPOS = ['Abollado', 'Rayado', 'Fallo de pintura', 'Filo de panel', 'Desprendido',
-                 'Mellado', 'Roto', 'Faltante', 'Contaminado (no daño)'];
+  // Los codigos de daño de la planilla Furlong.
+  const TIPOS = ['Abollado (pintura rota o quebrada)', 'Rayado (exc. vidrio)', 'Raspado',
+                 'Rozado', 'Mellado (exc. vidrio y bloque de panel)', 'Faltante (exc. moldura)',
+                 'Roto (exc. vidrio)', 'Doblado', 'Manchado / sucio int.'];
   const MODELOS = ['Hilux', 'Corolla Cross', 'Corolla', 'Yaris', 'Hiace', 'SW4'];
   const DESTINOS = ['TOYOTA DO BRASIL LTDA', 'TOYOTA CHILE S.A.', 'DELTA DOCK', 'TOYOSA S.A.'];
   const TRANSPORTISTAS = ['TTFA', 'Autoport', 'Green Mile'];
@@ -557,10 +562,14 @@
       name: x.name, count: x.count, pct: Math.round((x.count / danos) * 1000) / 10
     }));
 
-    const porGrupo = ['Exterior', 'Interior', 'Mecánica'].map((g) => {
+    // Los sectores salen de las partes que haya, no de una lista fija: la
+    // planilla Furlong tiene seis y antes esto asumia tres.
+    const sectores = [];
+    for (const p of pPartes) if (!sectores.includes(p.grupo)) sectores.push(p.grupo);
+    const porGrupo = sectores.map((g) => {
       const c = pPartes.filter((p) => p.grupo === g).reduce((a, p) => a + p.count, 0);
       return { name: g, count: c, pct: Math.round((c / danos) * 100) };
-    });
+    }).sort((a, b) => b.count - a.count);
 
     // Cada uno con su propio denominador: son las unidades que movio ese
     // transportista, no el total. Si no, el que mas mueve encabeza siempre.
