@@ -112,7 +112,8 @@ const Descarga = (() => {
     return urlDeBlob.get(f);
   }
 
-  const solPorId = (id) => ((DATOS && DATOS.solicitudes) || []).find((s) => String(s.id) === String(id));
+  const solPorId = (id) => ((DATOS && DATOS.solicitudes) || []).find((s) => String(s.id) === String(id))
+    || ((hist.solicitudes || []).find((s) => String(s.id) === String(id)));
   const unidadDe = (s, vin) => ((s && s.unidades) || []).find((u) => u.vin === vin);
   const danosDeOrigen = (u) => ((u && u.inspeccion && u.inspeccion.danos) || []);
 
@@ -466,6 +467,110 @@ const Descarga = (() => {
       ${lista('Se reparó', 'ok', d.reparado, true)}`;
   }
 
+  // ------------------------------------------------------------ historial
+
+  /**
+   * Jornadas cerradas, **con sus tres numeros**.
+   *
+   * Es la leccion que dejo el historial de bahias cuando era una lista: seis
+   * filas que dicen «completa» no informan nada. Lo que se viene a buscar aca
+   * es **en que jornada aparecio algo**, asi que eso es lo que se muestra.
+   */
+  const hist = { jornadas: null, cargando: false, clave: null, solicitudes: null };
+
+  function verHistorial() {
+    if (hist.clave) { pintarJornada(); return; }
+    if (!hist.jornadas && !hist.cargando) {
+      hist.cargando = true;
+      pedir('api/descarga/jornadas?limite=14')
+        .then((d) => { hist.jornadas = d.jornadas || []; })
+        .catch(() => { hist.jornadas = []; })
+        .then(() => { hist.cargando = false; pintarJornadas(); });
+    }
+    pintarJornadas();
+  }
+
+  function rotulo(clave) {
+    const p = String(clave).split('-');
+    const d = new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2]), 12);
+    return { dia: fmtDia(d), turno: p[3] === 'tarde' ? 'Segundo turno' : 'Primer turno' };
+  }
+
+  function pintarJornadas() {
+    const cuerpo = $('#dh-cuerpo');
+    if (!cuerpo) return;
+
+    if (!hist.jornadas) { cuerpo.innerHTML = '<p class="nota centro">Cargando…</p>'; return; }
+    if (!hist.jornadas.length) { cuerpo.innerHTML = '<p class="nota centro">Todavía no hay jornadas cerradas.</p>'; return; }
+
+    cuerpo.innerHTML = `<div class="pc-lista">${hist.jornadas.map((j) => {
+      const r = rotulo(j.clave);
+      return `
+        <button type="button" class="fila pc-jornada${j.con_nuevo ? ' desvio' : ''}" data-djornada="${esc(j.clave)}">
+          <span class="txt">
+            <b>${esc(r.dia)}</b>
+            <small>${esc(r.turno)} · ${j.solicitudes} ${j.solicitudes === 1 ? 'camión' : 'camiones'}</small>
+          </span>
+          <span class="pc-nums">
+            <span><b class="mono">${j.recibidas}</b><small>recib.</small></span>
+            <span class="${j.nuevos ? 'aviso' : ''}"><b class="mono">${j.nuevos}</b><small>nuevos</small></span>
+            <span class="${j.siguen ? 'malo' : ''}"><b class="mono">${j.siguen}</b><small>siguen</small></span>
+          </span>
+        </button>`;
+    }).join('')}</div>`;
+  }
+
+  function verJornada(clave) {
+    hist.clave = clave;
+    hist.solicitudes = null;
+    pintarJornada();
+    pedir('api/descarga/recepciones?jornada=' + encodeURIComponent(clave))
+      .then((d) => { hist.solicitudes = d.solicitudes || []; })
+      .catch(() => { hist.solicitudes = []; })
+      .then(pintarJornada);
+  }
+
+  function pintarJornada() {
+    const cuerpo = $('#dh-cuerpo');
+    if (!cuerpo) return;
+    const r = rotulo(hist.clave);
+    $('#titulo').textContent = r.dia;
+    $('#eyebrow').textContent = r.turno + ' · recepciones';
+
+    if (!hist.solicitudes) { cuerpo.innerHTML = '<p class="nota centro">Cargando…</p>'; return; }
+
+    cuerpo.innerHTML = `
+      <button type="button" class="btn sec chico" id="dh-volver">${ico('chevron-left', 14)} Todas las jornadas</button>
+      <div class="pc-lista" style="margin-top:10px">${hist.solicitudes.map((s) => {
+        const u = s.unidades || [];
+        const nuevos = u.reduce((a, x) => a + ((x.recepcion && x.recepcion.danos) || []).length, 0);
+        return `
+          <button type="button" class="fila pc-sol ${nuevos ? 'parcial' : 'ok'}" data-dsol="${esc(s.id)}">
+            <span class="txt">
+              <b class="mono">${esc(s.equipo || '—')}</b>
+              <small>${esc(s.destino || '')} · ${esc(s.codigo || '')}</small>
+            </span>
+            <span class="der">
+              <span class="mono">${u.length}</span>
+              ${nuevos ? `<span class="badge warn sin-punto">${nuevos} ${nuevos === 1 ? 'nuevo' : 'nuevos'}</span>` : ''}
+            </span>
+          </button>`;
+      }).join('')}</div>`;
+  }
+
+  /**
+   * Una solicitud del historial se abre en la misma pantalla de recepcion.
+   *
+   * `solPorId` busca en la jornada en curso **y despues en la del historial**,
+   * igual que en precarga: sin eso, entrar a un camion viejo dice «no se
+   * encontro».
+   */
+  function verSolHistorial(id) {
+    solAbierta = id;
+    irA('recepcion');
+    pintarRecepcion();
+  }
+
   // ----------------------------------------------------------------- hoja
 
   /**
@@ -608,6 +713,12 @@ const Descarga = (() => {
     const t = e.target;
     if (!(t instanceof Element)) return;
 
+    const dj = t.closest('[data-djornada]');
+    if (dj) { verJornada(dj.dataset.djornada); return; }
+    if (t.closest('#dh-volver')) { hist.clave = null; hist.solicitudes = null; irA('desc-hist'); return; }
+    const ds = t.closest('[data-dsol]');
+    if (ds) { verSolHistorial(ds.dataset.dsol); return; }
+
     const arr = t.closest('[data-arribo]');
     if (arr) { verRecepcion(arr.dataset.arribo); return; }
 
@@ -672,6 +783,9 @@ const Descarga = (() => {
     Danos.manejarInput(e, form);
   });
 
-  return { cargar, refrescar, verArribos, verRecepcion, verUnidad, verHoja,
-           pintarArribos, pintarRecepcion, pintarUnidad, pintarHoja, tomarFoto };
+  return { cargar, refrescar, verArribos, verRecepcion, verUnidad, verHoja, verHistorial,
+           pintarArribos, pintarRecepcion, pintarUnidad, pintarHoja, tomarFoto,
+           // Volver desde un camion del historial tiene que caer en la jornada
+           // abierta, no en los arribos de hoy.
+           vueltaDeRecepcion: () => (hist.clave ? 'desc-hist' : 'arribos') };
 })();

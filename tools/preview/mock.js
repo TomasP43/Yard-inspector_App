@@ -1566,6 +1566,82 @@
     return json({ recepcion: reg }, 201);
   }
 
+  /**
+   * Las recepciones de una jornada cerrada.
+   *
+   * Se derivan de las solicitudes de esa jornada, con semilla propia igual que
+   * `solicitudesDeJornada`: la misma jornada devuelve siempre lo mismo. Lo que
+   * define el caso es **que paso con cada daño de origen**, asi que se sortea
+   * eso y no un total suelto.
+   */
+  const CACHE_RECEP = new Map();
+  function recepcionesDeJornada(clave) {
+    if (CACHE_RECEP.has(clave)) return CACHE_RECEP.get(clave);
+
+    let s = 13;
+    for (let i = 0; i < clave.length; i++) s = (s * 37 + clave.charCodeAt(i)) % 2147483647;
+    const r = () => (s = (s * 1103515245 + 12345) % 2147483648) / 2147483648;
+    const ent = (a, b) => a + Math.floor(r() * (b - a + 1));
+
+    const sols = solicitudesDeJornada(clave).map((sol) => ({
+      ...sol,
+      unidades: sol.unidades.map((u) => {
+        // Una de cada doce queda sin recibir: llego el camion y esa unidad no
+        // se registro. **El mock no puede portarse mejor que produccion** -- si
+        // recibiera el 100% siempre, el contador `recibidas/total` mostraria
+        // siempre lo mismo y una recepcion incompleta no se veria nunca.
+        if (r() < 0.08) return { ...u, recepcion: null };
+
+        const origen = (u.inspeccion && u.inspeccion.danos) || [];
+        const resoluciones = {};
+        // Un daño de origen se repara pocas veces en el viaje: lo normal es que
+        // siga. Si fuera mitad y mitad, "reparado" dejaria de ser la excepcion.
+        origen.forEach((d, i) => { resoluciones[d.id || (u.vin + '-' + i)] = r() < 0.18 ? 'reparado' : 'sigue'; });
+
+        const nuevos = r() < 0.14 ? ent(1, 2) : 0;
+        const danos = [];
+        for (let k = 0; k < nuevos; k++) {
+          const p = PARTES[Math.floor(r() * PARTES.length)];
+          const ti = TIPOS_DANO[Math.floor(r() * TIPOS_DANO.length)];
+          danos.push({ id: u.vin + '-n' + k, parte_id: p.id, tipo_dano_id: ti.id,
+                       gravedad: ent(1, 5), comentario: null,
+                       foto: 'uploads/demo-' + ent(1, 4) + '.svg', foto_calidad: null });
+        }
+        return { ...u, recepcion: {
+          uuid: 'rec-' + clave + '-' + u.vin,
+          registrado_en: (u.inspeccion && u.inspeccion.escaneado_en) || null,
+          recibe: { nombre: uno(['Ramón Duarte', 'Silvia Ocampo', 'Julio Bermúdez', 'Ana Ferreyra']), rol: uno(['Transportista', 'Consignatario', 'Playa']) },
+          resoluciones, danos
+        } };
+      })
+    }));
+
+    CACHE_RECEP.set(clave, sols);
+    return sols;
+  }
+
+  /**
+   * El historial: **sus tres numeros por jornada**, no un renglon que diga
+   * «completa». Lo que se viene a buscar aca es en que jornada aparecio algo.
+   */
+  function jornadasRecibidas(cuantas) {
+    return jornadasCerradas(cuantas).map((j) => {
+      const sols = recepcionesDeJornada(j.clave);
+      let recibidas = 0, conNuevo = 0, nuevos = 0, siguen = 0;
+      for (const s of sols) {
+        for (const u of s.unidades) {
+          const rec = u.recepcion;
+          if (!rec) continue;
+          recibidas++;
+          const n = (rec.danos || []).length;
+          if (n) { conNuevo++; nuevos += n; }
+          siguen += Object.values(rec.resoluciones || {}).filter((x) => x === 'sigue').length;
+        }
+      }
+      return { clave: j.clave, solicitudes: sols.length, recibidas, con_nuevo: conNuevo, nuevos, siguen };
+    });
+  }
+
   const real = window.fetch.bind(window);
   window.fetch = (url, opts) => {
     const s = String(url && url.url ? url.url : url);
@@ -1597,6 +1673,16 @@
         items: ITEMS_BAHIA,
         bahias: BAHIAS
       });
+    }
+
+    if (s.includes('api/descarga/jornadas')) {
+      const q = new URLSearchParams(s.split('?')[1] || '');
+      return json({ jornadas: jornadasRecibidas(Number(q.get('limite') || 14)) });
+    }
+
+    if (s.includes('api/descarga/recepciones')) {
+      const q = new URLSearchParams(s.split('?')[1] || '');
+      return json({ jornada: q.get('jornada'), solicitudes: recepcionesDeJornada(q.get('jornada')) });
     }
 
     if (s.includes('api/descarga/arribos')) {

@@ -953,10 +953,14 @@ const MODULOS = {
   descarga: {
     titulo: 'Recepción en destino', icono: 'clipboard-check',
     pantallas: {
-      arribos: { titulo: 'Camiones llegados', eyebrow: 'Unidades por recibir', icono: 'truck', corto: 'Arribos' }
+      arribos: { titulo: 'Camiones llegados', eyebrow: 'Unidades por recibir', icono: 'truck', corto: 'Arribos' },
+      'desc-hist': { titulo: 'Recepciones anteriores', eyebrow: 'Jornadas cerradas', icono: 'file-text', corto: 'Historial' }
     },
     // Mismos dos niveles que precarga: camion -> unidad.
-    atras: (v) => (v === 'recibida' ? 'recepcion' : v === 'hoja-dest' ? 'recibida' : null)
+    atras: (v) => (v === 'recibida' ? 'recepcion'
+      : v === 'hoja-dest' ? 'recibida'
+      : v === 'recepcion' ? Descarga.vueltaDeRecepcion()
+      : null)
   }
 };
 
@@ -1017,6 +1021,7 @@ function irA(nombre) {
   if (nombre === 'recepcion') Descarga.pintarRecepcion();
   if (nombre === 'recibida') Descarga.pintarUnidad();
   if (nombre === 'hoja-dest') Descarga.pintarHoja();
+  if (nombre === 'desc-hist') Descarga.verHistorial();
 }
 
 function abrirDrawer() { $('#drawer').hidden = false; $('#scrim').hidden = false; }

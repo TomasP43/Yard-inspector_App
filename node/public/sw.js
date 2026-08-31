@@ -53,8 +53,9 @@
  *     con descarga. Cambian precarga.js y hoja.js, que son del SHELL.
  * v45: entra el modulo de recepcion en destino (descarga.js).
  * v46: la hoja completa el bloque de recepcion (hoja.js + hoja.css).
+ * v47: el historial de recepciones, con sus tres numeros por jornada.
  */
-const VERSION = 'v46';
+const VERSION = 'v47';
 const CACHE = `yard-${VERSION}`;
 
 // El app shell tiene que alcanzar para abrir la app sin conexion. Rutas
