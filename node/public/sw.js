@@ -54,8 +54,9 @@
  * v45: entra el modulo de recepcion en destino (descarga.js).
  * v46: la hoja completa el bloque de recepcion (hoja.js + hoja.css).
  * v47: el historial de recepciones, con sus tres numeros por jornada.
+ * v48: se van los textos que le explican al inspector por que hay que escanear.
  */
-const VERSION = 'v47';
+const VERSION = 'v48';
 const CACHE = `yard-${VERSION}`;
 
 // El app shell tiene que alcanzar para abrir la app sin conexion. Rutas

@@ -285,7 +285,6 @@ const Descarga = (() => {
     return `
       <section class="card gate">
         <p class="nota alerta">${ico('octagon-alert', 14)} Escaneá la etiqueta de VIN para recibir esta unidad.</p>
-        <p class="nota">Se registra al lado del auto, no en la oficina.</p>
         <button type="button" class="btn" id="dc-escanear-esta">${ico('scan-line', 18)} Escanear ${esc(u.vin.slice(-6))}</button>
       </section>`;
   }

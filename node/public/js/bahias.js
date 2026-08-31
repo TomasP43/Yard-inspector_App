@@ -300,9 +300,7 @@ const Bahias = (() => {
       <section class="card gate">
         <div class="gate-ico">${ico('qr-code', 34)}</div>
         <b>Escaneá el QR de la bahía ${esc(b.codigo)}</b>
-        <p>Está pegado en el cartel de la bahía. Sin escanearlo no se puede
-           cargar el control: es lo que deja constancia de que el control se
-           hizo acá.</p>
+        <p>Está pegado en el cartel de la bahía.</p>
         ${sinLector
           ? `<p class="nota alerta">${ico('alert-triangle', 14)}
                <span>Este teléfono no puede leer QR desde la app.</span></p>`

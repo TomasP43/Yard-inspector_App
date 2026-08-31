@@ -425,7 +425,7 @@ const Precarga = (() => {
           : 'Se bajaron todas.'}</p>`
       : pendientes
       ? `<button type="button" class="btn" id="pc-escanear">${ico('scan-line', 18)} Escanear unidad</button>
-         <p class="nota qr">La unidad se abre escaneando su etiqueta de VIN, parado al lado del auto. De ahí sale el orden real de bajada.</p>`
+         <p class="nota qr">La unidad se abre escaneando su etiqueta de VIN.</p>`
       : `<p class="nota">Las ${r.total} unidades de esta solicitud ya se bajaron.</p>`;
 
     const lista = ((s.unidades) || [])
