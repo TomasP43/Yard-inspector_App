@@ -1,9 +1,10 @@
 # Yard Inspector
 
-App de los inspectores de playa de **TTFA**. Tres módulos en la misma PWA:
+App de los inspectores de playa de **TTFA**. Cuatro módulos en la misma PWA:
 **patrullas** (observaciones sobre camiones y bateas), **control de bahías** (las
-herramientas de cada bahía, una vez por turno) e **inspección de precarga** (los
-daños de cada unidad antes de la carga).
+herramientas de cada bahía, una vez por turno), **inspección de precarga** (los
+daños de cada unidad antes de la carga) y **recepción en destino** (con cuáles
+llegó).
 
 Reemplaza las apps de **AppSheet** que corren hoy sobre Google Forms + Sheets.
 
@@ -38,9 +39,11 @@ Tocando cualquier fila se abre el **detalle del control**, y de ahí el **detall
 
 **Inspección de precarga** — reemplaza la carga de daños unidad por unidad. Las solicitudes de la jornada agrupadas por bahía, y la unidad se abre **escaneando la etiqueta de VIN que el auto trae de fábrica**, parado al lado del auto. De ahí sale el orden real de bajada, que en AppSheet se anotaba después.
 
+**Recepción en destino** — cierra la cadena de custodia. Precarga registra con qué daños **salió** el auto; esto registra con cuáles **llegó**, y de la diferencia sale lo único que la operación no podía contestar: **entre qué dos puntos apareció la marca**. Antes de recibir hay que decir de cada daño de origen si **sigue** o se **reparó**, y hasta contestarlos todos no se puede guardar.
+
 Tres cosas que en AppSheet no existían: el tablero, el detalle por equipo, y que antes de cargar un control nuevo haya que decir qué pasó con el NG anterior.
 
-Los inspectores trabajan **sin conexión**. En la playa la señal se corta, así que la app guarda todo en el dispositivo y lo sincroniza cuando vuelve la señal — una sola cola para los tres módulos.
+Los inspectores trabajan **sin conexión**. En la playa la señal se corta, así que la app guarda todo en el dispositivo y lo sincroniza cuando vuelve la señal — una sola cola para los cuatro módulos.
 
 ### La de gerencia — `/yard/gerencia/`
 
@@ -120,7 +123,8 @@ perl tools/preview/serve.pl .preview 4173
 │   ├── src/            # API Express + Sequelize — referencia, no se toca
 │   └── public/
 │       ├── css/tokens.css   # paleta compartida por las dos pantallas
-│       ├── index.html …     # PWA del inspector (patrullas, bahías, precarga)
+│       ├── js/danos.js      # el formulario del daño, que precarga y descarga comparten
+│       ├── index.html …     # PWA del inspector (los cuatro módulos)
 │       └── gerencia/        # tablero de gerencia
 ├── migrations/         # 001 esquema · 002 fotos · 003 histórico · 004 desvíos
 ├── tools/preview/      # mirar las dos pantallas con datos falsos

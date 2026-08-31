@@ -670,3 +670,74 @@ tarjeta se confirmo midiendo la suya: **16 px**.
 - **Las tarjetas KPI** llevan borde y esquina propia, y **el estado va en el
   borde** ademas del numero -- como las de Inicio, donde la que necesita atencion
   se reconoce de reojo sin leer la cifra.
+
+---
+
+## D-023 — El carry-forward ya estaba escrito, en otro modulo
+
+**Fecha:** 30-08-2026 · **Ambito:** descarga en destino
+
+Recibir una unidad en destino necesita que los daños de origen aparezcan solos y
+que el inspector diga de cada uno si **sigue** o se **reparo**. La primera idea
+fue diseñarlo de cero.
+
+**Ya existia.** `app.js pintarPendientes()` hace exactamente eso para patrullas
+desde hace meses: por cada desvio abierto pide *corrigio o reincidio*, y
+`const todo = p.dv.every(...)` mantiene el guardado bloqueado hasta contestar
+todo. Se porto tal cual, cambiando los sustantivos.
+
+Los **tres estados del viaje** tambien estaban: `.cmp-tag.sigue`, `.cmp-tag.ok` y
+`.cmp-tag.nuevo`, de la comparacion de dias del historial de bahias. *Siguio, se
+corrigio, aparecio* es la misma pregunta que *sigue, se reparo, aparecio* con
+otro sustantivo.
+
+**Decision:** portar, no diseñar. Y anotarlo, porque el hallazgo tiene una
+segunda parte que vale mas que el ahorro: **el rubro lo llama damage
+carry-forward** y es lo que hacen las plataformas de terminal --«un golpe
+detectado en el porton queda en el registro en cada inspeccion siguiente hasta
+que se repara o se cierra»--. Nosotros lo teniamos inventado para camiones antes
+de saber que tenia nombre.
+
+**Motivo:** un patron que ya se uso, se probo en la playa y sobrevivio es mejor
+punto de partida que uno nuevo, aunque el nuevo se vea mas prolijo. Y que la
+misma solucion aparezca dos veces de forma independiente --nosotros para
+patrullas, el rubro para unidades-- es señal de que el problema es el mismo.
+
+**Reversibilidad:** no aplica.
+
+---
+
+## D-024 — El formulario del daño se extrae, no se duplica
+
+**Fecha:** 30-08-2026 · **Ambito:** `js/danos.js`, `js/precarga.js`, `js/hoja.js`
+
+Descarga necesita el mismo formulario de daño que precarga: mismo catalogo de 110
+partes, mismos 14 tipos, mismas seis gravedades, misma foto obligatoria con su
+lectura de calidad. Las opciones eran copiarlo o sacarlo a un modulo compartido.
+
+**Decision:** extraerlo. Salen **10.382 caracteres** de `precarga.js`, que queda
+en 1.271 lineas contra 1.567, a `js/danos.js`. `hoja.js` pasa de `Precarga.*` a
+`Danos.*`, porque los nombres y el codigo que imprime son del dominio del daño y
+no de la pantalla de precarga.
+
+**Motivo:** es el mismo argumento con el que se decidio no escribir un generador
+de PDF propio (YI-017): **dos implementaciones del mismo documento se despegan**.
+Un formulario duplicado empieza identico y a los tres cambios ya no lo es, con la
+particularidad de que aca la diferencia seria **entre lo que se registra al salir
+y lo que se registra al llegar** -- justo las dos cosas que el modulo compara.
+
+**Como quedo el contrato:** `danos.js` **no guarda estado del formulario, lo
+recibe**. El `estado` que pide es `{ nuevo, ultima, danos }`, que es tal cual el
+`form` de los dos modulos, asi que se le pasa entero. Lo unico propio es el
+catalogo, que es de la app y no de una pantalla. El `<input type=file>` va por
+parametro, que es lo unico que cambia entre uno y otro.
+
+**El riesgo era real y el repo tiene la cicatriz.** Sacar `similitud.js` «por
+estar sin uso» se llevo puesta la app entera. Por eso la extraccion fue **su
+propia etapa** y precarga se valido corriendo antes de que descarga se apoyara:
+escaneo, busqueda sin acento, la cadena parte-tipo-tamaño-foto, el aviso de foto
+movida, el atajo del segundo daño, el POST, la hoja imprimiendo su codigo y el
+legajo entero.
+
+**Reversibilidad:** media. Volver a juntarlos es mecanico, pero descarga quedaria
+sin formulario.

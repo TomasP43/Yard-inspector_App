@@ -41,7 +41,7 @@ ahi arranca el siguiente.**
 | 4 | ~~**PDF del legajo**~~ | front | **hecho**: imprimir → guardar PDF |
 | 5 | ~~Punto exacto sobre el esquema~~ | front | **no se hace**: la zona alcanza (D-020) |
 | 6 | ~~**Captura guiada** de fotos~~ | front | **hecho**: avisa, no bloquea (D-019) |
-| 7 | **Descarga en destino** | modulo nuevo | se planifica aparte |
+| 7 | ~~**Descarga en destino**~~ | modulo + `YI-019` | **front hecho**, falta el backend |
 
 El orden sale de **lo que cuesta no tenerlo**, no de lo que cuesta hacerlo.
 
@@ -148,7 +148,14 @@ que tienen que estar de acuerdo, y eso la sesión no lo prueba.
 ---
 
 ### YI-003 — Tipografías del design system, servidas por nosotros
-- **Estado:** pendiente
+- **Estado:** **descartado** · se resolvió de otra forma (D-022)
+
+> Se pedía empaquetar Archivo e IBM Plex Mono para no traerlas de Google Fonts.
+> Leyendo el CSS de `appttfa.com.ar` aparecio que **la intranet declara Archivo y
+> no la usa**: su `--font-sans` es `"Inter", ui-sans-serif, system-ui` y no hay
+> un solo `@font-face`. O sea que ni la intranet la carga. Se sacó el pedido
+> externo y se copió su pila: cero peso nuevo y se ve igual que la app que la
+> rodea. Lo de abajo queda por lo que explica.
 - **Prioridad:** menor
 - **Tipo:** otro
 - **Qué necesito:** los `.woff2` de **Archivo** y **IBM Plex Mono** servidos
@@ -1280,3 +1287,79 @@ Los dos están marcados con un comentario en su router.
 
 - **Nullable a propósito:** el histórico de AppSheet no lo tiene, y una foto sin
   lectura tiene que mostrarse sin marca en vez de romper la hoja.
+
+---
+
+### YI-019 — Recepción de unidades en destino
+- **Estado:** pendiente · el front ya está armado y andando contra el mock
+- **Prioridad:** alta
+- **Tipo:** módulo (tablas + endpoints + migración)
+
+- **Qué necesito:** que el registro de la recepción exista del lado del servidor,
+  y —lo que hace distinto a este módulo— que **destino pueda leer lo que escribió
+  origen**.
+
+- **Para qué:** cierra la cadena de custodia. Precarga registra con qué daños
+  **salió** el auto; esto registra con cuáles **llegó**, y de la diferencia sale
+  lo único que la operación no podía contestar: **entre qué dos puntos apareció
+  la marca**.
+
+#### ⚠ Lo que este módulo arrastra y los otros tres no
+
+Patrullas, bahías y precarga son **un dispositivo escribiendo un hecho**, y por
+eso funcionan sin backend. Acá **origen escribe y destino lee**. Contra el mock
+se probó la pantalla y el camino; **el traspaso no**.
+
+Y arrastra una pregunta que no es técnica: **quién opera la app en destino.**
+Destino es TOYOSA en Bolivia, Toyota Chile, Delta Dock. O corren la misma app
+contra el mismo backend —lo que implica identidad para gente que no es de TTFA,
+y red allá— o el registro viaja con el camión en el legajo impreso y destino
+carga contra el papel. **Eso define si esto es un módulo o dos apps**, y no lo
+decide el código.
+
+#### Tablas
+
+| Tabla | Qué guarda |
+|---|---|
+| `precarga_recepcion` | `uuid`, `solicitud_id`, `vin`, `turno_clave`, `escaneado_en`, `registrado_en`, `recibe_nombre`, `recibe_rol` |
+| `precarga_recepcion_resolucion` | `recepcion_id`, `precarga_dano_id`, `estado` (`sigue` \| `reparado`) |
+| `precarga_recepcion_dano` | los daños nuevos, misma forma que `precarga_dano` |
+
+**⚠ `precarga_dano` necesita `id` expuesto en la API.** La recepción resuelve
+daño por daño y referirlos por su posición en el array se rompe apenas alguien
+edite el registro de origen. Hoy el mock lo completa al leer si falta, que es lo
+que tendría que hacer una migración con lo ya cargado.
+
+#### Endpoints
+
+| Método | Ruta | Devuelve |
+|---|---|---|
+| `GET` | `api/descarga/arribos?jornada=` | Los camiones llegados **con sus unidades y la inspección de origen adentro**, más la recepción si ya la hay |
+| `POST` | `api/descarga/recepciones` | Idempotente por `uuid`: reenviar da **200** con lo que ya existe, nunca 409 |
+| `GET` | `api/descarga/jornadas?limite=` | El historial: por jornada, `recibidas`, `nuevos` y `siguen` |
+| `GET` | `api/descarga/recepciones?jornada=` | El detalle de una jornada cerrada |
+
+**⚠ La inspección de origen viene en el mismo pedido que el arribo**, no en uno
+aparte. Es la misma razón que en precarga: en la playa no hay señal para ir al
+servidor por cada unidad, y acá además **sin lo de origen la pantalla no puede
+pintarse** — el paso de resolución es lo primero que se muestra.
+
+**⚠ Toda resolución es obligatoria.** El `POST` rechaza con
+`resolucion_incompleta` si algún daño de origen quedó sin `sigue` o `reparado`.
+El front ya lo bloquea, pero la regla vive en los dos lados: si se pudiera
+saltear, el daño de origen queda colgado para siempre.
+
+`turno_clave` y `escaneado_en` las manda el dispositivo y el servidor **no las
+recalcula**, misma regla que en los otros tres módulos.
+
+#### Migración
+
+La 009, con las tres tablas. Y el `id` de `precarga_dano` expuesto en la API.
+
+#### Lo que quedó afuera, decidido
+
+- **Firma con el dedo.** Va nombre y rol de quien recibe, obligatorios. Si en
+  destino hay que firmar sobre el papel sigue abierto —los recuadros están en la
+  hoja— y es una decisión legal que no toma el código.
+- **Metadata ambiental** (luz, clima) que captura el rubro. Se anota por si la
+  prueba tiene que aguantar un reclamo.

@@ -1,6 +1,6 @@
 # yard-inspector
 
-App de los inspectores de playa. Tres modulos en la misma PWA: **patrullas** (observaciones sobre camiones y bateas), **control de bahias** (las herramientas de cada bahia, por turno) e **inspeccion de precarga** (daños de cada unidad antes de la carga). Reemplaza las apps de **AppSheet** que corren hoy sobre Google Forms + Sheets.
+App de los inspectores de playa. Cuatro modulos en la misma PWA: **patrullas** (observaciones sobre camiones y bateas), **control de bahias** (las herramientas de cada bahia, por turno), **inspeccion de precarga** (daños de cada unidad antes de la carga) y **recepcion en destino** (con cuales llego). Reemplaza las apps de **AppSheet** que corren hoy sobre Google Forms + Sheets.
 
 **Donde corre hoy: solo el front, en GitHub Pages, con datos inventados.**
 
@@ -86,7 +86,9 @@ yard-inspector/
 │   │   ├── js/turnos.js     # los turnos de la playa, compartidos
 │   │   ├── js/sync.js       # cola de sincronizacion (patrullas y bahias)
 │   │   ├── js/bahias.js     # control de bahias: ronda, checklist, auditoria
+│   │   ├── js/danos.js      # el formulario del dano, compartido por precarga y descarga
 │   │   ├── js/precarga.js   # unidades en precarga: bajadas, escaneo del VIN, daños
+│   │   ├── js/descarga.js   # recepcion en destino: arribos, resolucion, lo nuevo
 │   │   ├── js/app.js        # UI
 │   │   ├── carteles/       # los carteles con el QR, para imprimir
 │   │   └── gerencia/        # tablero de gerencia, en /yard/gerencia/
@@ -676,6 +678,78 @@ Es la leccion que dejo el historial de bahias cuando era una lista.
 Tocando una jornada se ven sus solicitudes y de ahi se entra al mismo detalle.
 **El volver conserva la jornada abierta**, que es para lo que existe el estado
 `hist` aparte del de la jornada en curso.
+
+## Recepcion en destino
+
+Cuarto modulo de la PWA, en el mismo `/yard/`. **Cierra la cadena de custodia**:
+precarga registra con que daños **salio** el auto, esto registra con cuales
+**llego**, y de la diferencia sale lo unico que la operacion no podia contestar
+--entre que dos puntos aparecio la marca-- que es la propuesta de valor de toda
+la categoria.
+
+El camino es **arribos → camion → escanear el VIN → resolver lo de origen → lo
+que aparecio → quien recibe**.
+
+⚠ **Es el primer modulo donde dos sitios comparten un registro.** Patrullas,
+bahias y precarga son «un dispositivo escribiendo un hecho», y por eso funcionan
+sin backend. Aca **origen escribe y destino lee**: contra el mock se prueba la
+pantalla y el camino, no el traspaso. Y arrastra una pregunta que no es tecnica
+--**quien opera la app en destino**, que es TOYOSA, Toyota Chile o Delta Dock--
+porque define si esto es un modulo o dos apps. Ver YI-019.
+
+### Lo que salio de origen se resuelve primero
+
+**El patron ya estaba escrito, en patrullas.** Los daños de origen aparecen solos
+y por cada uno hay que decir **sigue** o **se reparo**; hasta contestarlos todos
+no se pregunta si aparecio algo nuevo y el boton de guardar esta bloqueado. Es
+identico a la resolucion del NG anterior (`app.js pintarPendientes`), y esta por
+el mismo motivo: si se pudiera saltear, el daño de origen queda colgado para
+siempre.
+
+El rubro lo llama **damage carry-forward** y es lo que hacen las plataformas de
+terminal: «un golpe detectado en el porton queda en el registro en cada
+inspeccion siguiente hasta que se repara o se cierra». Nosotros lo teniamos
+inventado para camiones antes de saber que tenia nombre.
+
+**Los tres estados reusan `.cmp-tag`** de la comparacion de dias de bahias --
+sigue, se corrigio, aparecio es la misma pregunta con otro sustantivo, asi que no
+habia nada que inventar.
+
+### Quien recibe, y por que aca si
+
+En origen las firmas se descartaron con buen motivo: el inspector sale de la
+sesion de ttfa, mas la hora y la foto, que es mas fuerte que un garabato con el
+dedo. **En destino no aplica.** Quien recibe no es usuario del sistema, y la
+sesion prueba quien cargo, no que el otro acepto -- en un traspaso hay dos partes
+que tienen que estar de acuerdo.
+
+Va **nombre obligatorio y rol** (transportista, consignatario, playa). Sin canvas
+de firma: si hace falta que firmen sobre el papel sigue abierto en la hoja, y es
+una decision legal que no toma el codigo.
+
+### La hoja completa su bloque
+
+`hoja.js` reservaba **Recepcion de destino** en blanco desde que se diseño, con
+el texto «la completa la app de descarga». Ahora la completa: fecha, quien
+recibio, su rol, y **las tres columnas** con cada parte y su codigo AIAG.
+
+Las tres columnas son lo que el papel no tiene: el impreso deja un renglon de
+observacion suelto, que no distingue lo que siguio de lo que aparecio. Si la
+unidad todavia no se recibio quedan los renglones vacios --la hoja viaja con el
+camion y en destino puede llenarse a mano si la app no esta--; lo que no puede
+hacer es mentir que ya se recibio.
+
+### El formulario del daño es uno solo
+
+Vive en `js/danos.js` y lo usan **precarga y descarga**: mismo catalogo de 110
+partes, mismos 14 tipos, mismas seis gravedades, misma foto obligatoria con su
+lectura de calidad. Se extrajo en vez de duplicarse por el mismo motivo por el
+que no se escribio un generador de PDF propio: **dos implementaciones del mismo
+formulario se despegan**.
+
+No guarda estado del formulario, lo recibe: el `estado` que pide es
+`{ nuevo, ultima, danos }`, que es tal cual el `form` de los dos modulos. Lo
+unico propio es el catalogo, que es de la app y no de una pantalla.
 
 ## El tablero de gerencia
 
