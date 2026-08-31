@@ -67,6 +67,70 @@ const Hoja = (() => {
    * `orden` es el numero real de bajada; se calcula afuera porque depende de las
    * otras unidades de la solicitud.
    */
+  /**
+   * El bloque de recepcion en destino.
+   *
+   * **Estaba reservado en blanco desde que se diseño la hoja**, con el texto «la
+   * completa la app de descarga». Ahora la completa.
+   *
+   * Si la unidad todavia no se recibio quedan los renglones vacios: la hoja
+   * viaja con el camion y en destino puede llenarse a mano si por lo que sea la
+   * app no esta. Lo que no puede hacer es mentir que ya se recibio.
+   *
+   * Las tres columnas son lo que el papel no tenia: **siguio**, **se reparo** y
+   * **aparecio**. Un renglon de observacion suelto no dice ninguna de las tres,
+   * y son la unica forma de saber entre que dos puntos aparecio la marca.
+   */
+  function recepcion(u) {
+    const r = u && u.recepcion;
+    if (!r) {
+      return `
+        <p class="hj-nota">La completa la app de destino. Si no está, se llena acá.</p>
+        <div class="hj-blanco">
+          <div><span>Fecha</span><i></i></div>
+          <div><span>Hora</span><i></i></div>
+          <div><span>Recibió</span><i></i></div>
+          <div><span>Rol</span><i></i></div>
+          <div class="ancho"><span>Observación</span><i></i></div>
+        </div>`;
+    }
+
+    const origen = (u.inspeccion && u.inspeccion.danos) || [];
+    const res = r.resoluciones || {};
+    const sigue = origen.filter((d) => res[d.id] === 'sigue');
+    const reparado = origen.filter((d) => res[d.id] === 'reparado');
+    const nuevos = r.danos || [];
+
+    const cual = (arr) => !arr.length ? '<i class="hj-cero">—</i>' : arr.map((d) => `
+      <span class="hj-item">
+        ${esc(Danos.nombreParte(d.parte_id))}
+        ${Danos.codigoAiag(d) ? `<b class="hj-cod">${Danos.codigoAiag(d)}</b>` : ''}
+      </span>`).join('');
+
+    return `
+      <div class="hj-par-fila">
+        <div class="hj-par"><span>Fecha</span><b>${esc(fmt(r.registrado_en))}</b></div>
+        <div class="hj-par"><span>Recibió</span><b>${esc((r.recibe && r.recibe.nombre) || '—')}</b></div>
+        <div class="hj-par"><span>Rol</span><b>${esc((r.recibe && r.recibe.rol) || '—')}</b></div>
+      </div>
+      <table class="hj-viaje">
+        <thead>
+          <tr>
+            <th>Apareció en el viaje <b>${nuevos.length}</b></th>
+            <th>Sigue desde origen <b>${sigue.length}</b></th>
+            <th>Se reparó <b>${reparado.length}</b></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="nuevo">${cual(nuevos)}</td>
+            <td class="sigue">${cual(sigue)}</td>
+            <td class="ok">${cual(reparado)}</td>
+          </tr>
+        </tbody>
+      </table>`;
+  }
+
   function unidad(s, u, orden) {
     const insp = u.inspeccion || {};
     const danos = insp.danos || [];
@@ -118,12 +182,7 @@ const Hoja = (() => {
 
             <section class="hj-caja hj-recepcion">
               <h2>Recepción de destino</h2>
-              <p class="hj-nota">La completa la app de descarga.</p>
-              <div class="hj-blanco">
-                <div><span>Fecha</span><i></i></div>
-                <div><span>Hora</span><i></i></div>
-                <div class="ancho"><span>Observación</span><i></i></div>
-              </div>
+              ${recepcion(u)}
             </section>
           </div>
 

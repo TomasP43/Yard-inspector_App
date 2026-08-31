@@ -458,9 +458,49 @@ const Descarga = (() => {
         <div class="kpi"><b class="k-val">${d.reparado.length}</b><span class="k-pie">Reparado</span></div>
         <div class="kpi${d.nuevos.length ? ' warn' : ''}"><b class="k-val">${d.nuevos.length}</b><span class="k-pie">Apareció</span></div>
       </div>
+      <div class="acciones-full" style="margin-top:12px">
+        <button type="button" class="btn sec" data-hoja-dest="${esc(u.vin)}">${ico('file-text', 16)} Ver la hoja</button>
+      </div>
       ${lista('Apareció en el viaje', 'nuevo', d.nuevos, false)}
       ${lista('Sigue desde origen', 'sigue', d.sigue, true)}
       ${lista('Se reparó', 'ok', d.reparado, true)}`;
+  }
+
+  // ----------------------------------------------------------------- hoja
+
+  /**
+   * La hoja de la unidad, ya con el bloque de recepcion lleno.
+   *
+   * **Es la misma hoja de precarga**, que ya reservaba el bloque en blanco con
+   * el texto «la completa la app de descarga». Vive en una vista propia y no en
+   * la de precarga porque el volver es distinto: desde aca se vuelve a la unidad
+   * recibida, no a la de origen.
+   */
+  function verHoja(vin) { vinAbierto = vin; irA('hoja-dest'); pintarHoja(); }
+
+  function pintarHoja() {
+    const cuerpo = $('#hd-cuerpo');
+    if (!cuerpo) return;
+    const s = solPorId(solAbierta);
+    const u = unidadDe(s, vinAbierto);
+    if (!u) { cuerpo.innerHTML = '<p class="nota centro">No se encontró la unidad.</p>'; return; }
+
+    $('#titulo').textContent = 'Hoja de la unidad';
+    $('#eyebrow').textContent = u.vin;
+    cuerpo.innerHTML = `
+      <div class="hj-acciones">
+        <button type="button" class="btn" id="hd-imprimir">${ico('file-text', 16)} Guardar PDF o imprimir</button>
+      </div>` + Hoja.unidad(s, u, u.orden_solicitado);
+  }
+
+  /** El nombre del archivo sale del titulo, igual que en precarga. Ver D-018. */
+  function imprimir() {
+    const antes = document.title;
+    document.title = 'recepcion-' + String(vinAbierto || '').replace(/[^A-Za-z0-9-]+/g, '-');
+    const volver = () => { document.title = antes; window.removeEventListener('afterprint', volver); };
+    window.addEventListener('afterprint', volver);
+    setTimeout(volver, 60000);
+    window.print();
   }
 
   // -------------------------------------------------------------- escaneo
@@ -571,6 +611,10 @@ const Descarga = (() => {
     const arr = t.closest('[data-arribo]');
     if (arr) { verRecepcion(arr.dataset.arribo); return; }
 
+    const hd = t.closest('[data-hoja-dest]');
+    if (hd) { verHoja(hd.dataset.hojaDest); return; }
+    if (t.closest('#hd-imprimir')) { imprimir(); return; }
+
     const rec = t.closest('[data-recibir]');
     if (rec) { verUnidad(rec.dataset.recibir); return; }
 
@@ -628,6 +672,6 @@ const Descarga = (() => {
     Danos.manejarInput(e, form);
   });
 
-  return { cargar, refrescar, verArribos, verRecepcion, verUnidad,
-           pintarArribos, pintarRecepcion, pintarUnidad, tomarFoto };
+  return { cargar, refrescar, verArribos, verRecepcion, verUnidad, verHoja,
+           pintarArribos, pintarRecepcion, pintarUnidad, pintarHoja, tomarFoto };
 })();

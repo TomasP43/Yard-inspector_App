@@ -323,3 +323,32 @@
 .hj-fotos .hj-foto-aviso {
   font-style: italic; color: var(--gris);
 }
+
+/* recepcion en destino ---------------------------------------------------- */
+
+.hj-par-fila { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 4px; }
+.hj-par-fila .hj-par { flex: 1 1 auto; }
+
+/* Las tres columnas del viaje. Es lo que el papel no tenia: un renglon de
+   observacion suelto no distingue lo que siguio de lo que aparecio. */
+.hj-viaje { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.hj-viaje th {
+  padding: 3px 5px;
+  background: var(--franja);
+  border: 1px solid var(--fina);
+  font-size: 7px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--gris);
+  text-align: left;
+}
+.hj-viaje th b { font-family: var(--font-mono); font-size: 9px; color: var(--tinta); margin-left: 3px; }
+.hj-viaje td { padding: 4px 5px; border: 1px solid var(--fina); vertical-align: top; font-size: 8.5px; }
+.hj-viaje .hj-item { display: block; margin-bottom: 2px; line-height: 1.25; }
+.hj-viaje .hj-cero { font-style: normal; color: var(--tenue); }
+/* Solo un filo de color: el resto de la hoja es tinta sobre papel, y tres
+   columnas pintadas enteras la vuelven un semaforo. */
+.hj-viaje td.nuevo { border-left: 2px solid var(--ambar, #B45309); }
+.hj-viaje td.sigue { border-left: 2px solid var(--rojo, #B91C1C); }
+.hj-viaje td.ok    { border-left: 2px solid var(--verde, #15803D); }

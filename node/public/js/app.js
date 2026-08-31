@@ -956,7 +956,7 @@ const MODULOS = {
       arribos: { titulo: 'Camiones llegados', eyebrow: 'Unidades por recibir', icono: 'truck', corto: 'Arribos' }
     },
     // Mismos dos niveles que precarga: camion -> unidad.
-    atras: (v) => (v === 'recibida' ? 'recepcion' : null)
+    atras: (v) => (v === 'recibida' ? 'recepcion' : v === 'hoja-dest' ? 'recibida' : null)
   }
 };
 
@@ -964,7 +964,7 @@ const MODULOS = {
 const DETALLES = { detalle: 'equipos', control: 'equipos', bahia: 'bahias',
                    solicitud: 'precarga', unidad: 'precarga', hoja: 'precarga',
                    vin: 'precarga',
-                   recepcion: 'descarga', recibida: 'descarga' };
+                   recepcion: 'descarga', recibida: 'descarga', 'hoja-dest': 'descarga' };
 
 let modulo = 'equipos';
 
@@ -1016,6 +1016,7 @@ function irA(nombre) {
   if (nombre === 'arribos') Descarga.verArribos();
   if (nombre === 'recepcion') Descarga.pintarRecepcion();
   if (nombre === 'recibida') Descarga.pintarUnidad();
+  if (nombre === 'hoja-dest') Descarga.pintarHoja();
 }
 
 function abrirDrawer() { $('#drawer').hidden = false; $('#scrim').hidden = false; }

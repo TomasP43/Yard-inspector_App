@@ -52,8 +52,9 @@
  * v44: el formulario del daño sale de precarga.js a danos.js, para compartirlo
  *     con descarga. Cambian precarga.js y hoja.js, que son del SHELL.
  * v45: entra el modulo de recepcion en destino (descarga.js).
+ * v46: la hoja completa el bloque de recepcion (hoja.js + hoja.css).
  */
-const VERSION = 'v45';
+const VERSION = 'v46';
 const CACHE = `yard-${VERSION}`;
 
 // El app shell tiene que alcanzar para abrir la app sin conexion. Rutas
