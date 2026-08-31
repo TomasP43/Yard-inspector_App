@@ -79,10 +79,10 @@ const Hoja = (() => {
            <tbody>${danos.map((d, i) => `
              <tr>
                <td class="n">${i + 1}</td>
-               <td class="cod">${Precarga.codigoAiag(d) || '<i>—</i>'}</td>
-               <td class="fuerte">${esc(Precarga.nombreParte(d.parte_id))}</td>
-               <td>${esc(Precarga.nombreDano(d.tipo_dano_id))}</td>
-               <td class="tam">${esc(Precarga.gravedadCorta(d.gravedad) || '—')}</td>
+               <td class="cod">${Danos.codigoAiag(d) || '<i>—</i>'}</td>
+               <td class="fuerte">${esc(Danos.nombreParte(d.parte_id))}</td>
+               <td>${esc(Danos.nombreDano(d.tipo_dano_id))}</td>
+               <td class="tam">${esc(Danos.gravedadCorta(d.gravedad) || '—')}</td>
                <td class="det">${esc(d.comentario || '')}</td>
              </tr>`).join('')}</tbody>
          </table>`
@@ -130,7 +130,7 @@ const Hoja = (() => {
           <div class="hj-der">
             <section class="hj-caja">
               <h2>Sector dañado</h2>
-              ${Vehiculo.marcado(u.modelo, danos.map((d) => ({ grupo: (Precarga.parte(d.parte_id) || {}).grupo })))}
+              ${Vehiculo.marcado(u.modelo, danos.map((d) => ({ grupo: (Danos.parte(d.parte_id) || {}).grupo })))}
               <p class="hj-pie-dibujo">Marcar con un círculo la zona dañada</p>
             </section>
           </div>
@@ -143,7 +143,7 @@ const Hoja = (() => {
             ${conFoto.map((d, i) => `
               <figure>
                 <img src="${esc(d.foto)}" alt="">
-                <figcaption><b>${i + 1}</b> ${esc(Precarga.nombreParte(d.parte_id))} · ${esc(Precarga.nombreDano(d.tipo_dano_id))}${Precarga.codigoAiag(d) ? ` <b class="hj-cod">${Precarga.codigoAiag(d)}</b>` : ''}${d.foto_calidad && d.foto_calidad.aviso ? ` <i class="hj-foto-aviso">${esc(Camara.TEXTO_AVISO[d.foto_calidad.aviso] || '').toLowerCase()}</i>` : ''}</figcaption>
+                <figcaption><b>${i + 1}</b> ${esc(Danos.nombreParte(d.parte_id))} · ${esc(Danos.nombreDano(d.tipo_dano_id))}${Danos.codigoAiag(d) ? ` <b class="hj-cod">${Danos.codigoAiag(d)}</b>` : ''}${d.foto_calidad && d.foto_calidad.aviso ? ` <i class="hj-foto-aviso">${esc(Camara.TEXTO_AVISO[d.foto_calidad.aviso] || '').toLowerCase()}</i>` : ''}</figcaption>
               </figure>`).join('')}
           </div>
         </section>` : ''}
@@ -165,10 +165,10 @@ const Hoja = (() => {
    * imprimir ocho veces lo mismo. Va adelante del legajo.
    */
   function referencia(s) {
-    const partes = Precarga.catalogo().partes || [];
+    const partes = Danos.catalogo().partes || [];
     // Ordenados por codigo, que es como se busca en una leyenda: el inspector
     // tiene el numero y quiere el nombre. Los sin codigo van al final.
-    const tipos = (Precarga.catalogo().tipos_dano || []).slice()
+    const tipos = (Danos.catalogo().tipos_dano || []).slice()
       .sort((a, b) => (a.aiag == null) - (b.aiag == null) || a.aiag - b.aiag);
 
     const filas = [];
@@ -229,7 +229,7 @@ const Hoja = (() => {
           <section>
             <h3>Tamaño del daño <small>· el 5.º dígito</small></h3>
             <ul class="grav">
-              ${(Precarga.catalogo().gravedades || []).map((g) => `<li><i>${g.id}</i>${esc(g.nombre)}</li>`).join('')}
+              ${(Danos.catalogo().gravedades || []).map((g) => `<li><i>${g.id}</i>${esc(g.nombre)}</li>`).join('')}
             </ul>
           </section>
         </div>

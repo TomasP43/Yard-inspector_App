@@ -49,8 +49,10 @@
  *     app.css, que son del SHELL.
  * v43: los tokens salen del CSS real de appttfa.com.ar y no de una captura.
  *     Cambia la tipografia, los radios y los colores de estado.
+ * v44: el formulario del daño sale de precarga.js a danos.js, para compartirlo
+ *     con descarga. Cambian precarga.js y hoja.js, que son del SHELL.
  */
-const VERSION = 'v43';
+const VERSION = 'v44';
 const CACHE = `yard-${VERSION}`;
 
 // El app shell tiene que alcanzar para abrir la app sin conexion. Rutas
@@ -78,6 +80,7 @@ const SHELL = [
   './js/bahias.js',
   './js/vehiculo.js',
   './js/hoja.js',
+  './js/danos.js',
   './js/precarga.js',
   './js/app.js'
 ];

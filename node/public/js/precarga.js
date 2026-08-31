@@ -28,7 +28,9 @@ const Precarga = (() => {
   const FORMATOS_VIN = ['code_128', 'code_39', 'data_matrix'];
 
   let DATOS = null;        // { jornada, solicitudes: [...] } tal como llega
-  let CATA = null;         // { partes: [...], tipos_dano: [...] }
+  // El catalogo lo tiene `danos.js`, que lo comparte con descarga. Se guarda
+  // aca la referencia nada mas que para las lecturas de esta pantalla.
+  let CATA = null;
   let puedeLeer = null;    // null = todavia no se pregunto; true/false = respuesta
 
   let solAbierta = null;   // id de la solicitud abierta en el detalle
@@ -179,7 +181,7 @@ const Precarga = (() => {
   async function cargar() {
     const t = Turnos.de(new Date());
     try {
-      if (!CATA) CATA = await pedir('api/precarga/catalogos');
+      CATA = await Danos.cargar();
       DATOS = await pedir('api/precarga/solicitudes?jornada=' + encodeURIComponent(t.clave));
     } catch (e) {
       // Sin señal se sigue con lo que ya estaba. Si no habia nada, la pantalla
@@ -257,63 +259,10 @@ const Precarga = (() => {
     || (hist.solicitudes || []).find((s) => String(s.id) === String(id));
   const unidadDe = (s, vin) => ((s && s.unidades) || []).find((u) => u.vin === vin);
 
-  const parteDe = (id) => ((CATA && CATA.partes) || []).find((p) => String(p.id) === String(id));
-  const danoDe = (id) => ((CATA && CATA.tipos_dano) || []).find((d) => String(d.id) === String(id));
-  const nombreParte = (id) => { const p = parteDe(id); return p ? p.nombre : 'Parte ' + id; };
-  const nombreDano = (id) => { const d = danoDe(id); return d ? d.nombre : 'Daño ' + id; };
 
-  /**
-   * El codigo AIAG de un daño: **area + tipo + gravedad**, cinco digitos.
-   *
-   * No se le pide al inspector: **se arma solo con lo que ya eligio**. El area
-   * es el numero de la parte, el tipo el del daño, y la gravedad el unico paso
-   * que se sumo. Pedirle un codigo a alguien que ya dijo «puerta delantera
-   * izquierda, abollado, hasta 7,5 cm» seria pedirle lo mismo dos veces, y en
-   * AppSheet ese campo se tipeaba a mano.
-   *
-   * Devuelve null cuando falta alguno de los tres, y eso pasa de verdad: las 16
-   * partes que vinieron del catalogo de AppSheet no tienen numero de area, y
-   * `Fallo de pintura` no tiene tipo --AIAG es un estandar de daño de TRANSPORTE
-   * y un defecto de pintura viene de planta--. Un codigo a medias no es un
-   * codigo: en esos casos no se muestra ninguno y se dice por que.
-   */
-  function codigoAiag(d) {
-    const p = parteDe(d.parte_id);
-    const ti = danoDe(d.tipo_dano_id);
-    if (!p || !ti || p.aiag == null || ti.aiag == null || !d.gravedad) return null;
-    return String(p.aiag).padStart(2, '0')
-         + String(ti.aiag).padStart(2, '0')
-         + String(d.gravedad);
-  }
 
-  /** Por que este daño no tiene codigo. Se dice, no se esconde. */
-  function porQueSinCodigo(d) {
-    const p = parteDe(d.parte_id);
-    const ti = danoDe(d.tipo_dano_id);
-    if (p && p.aiag == null) return 'la parte no tiene código de área';
-    if (ti && ti.aiag == null) return 'ese tipo no existe en el estándar';
-    if (!d.gravedad) return 'falta la gravedad';
-    return 'faltan datos';
-  }
 
-  /**
-   * El codigo, o el motivo de que no haya.
-   *
-   * Un daño viejo --cargado antes de que existiera este paso-- no tiene
-   * gravedad, y la etiqueta lo dice en vez de romperse: el historico de
-   * AppSheet nunca la tuvo, y son 4.268 registros.
-   */
-  function etiquetaCodigo(d) {
-    const c = codigoAiag(d);
-    if (!c) return `<span class="pc-aiag sin">sin código · ${esc(porQueSinCodigo(d))}</span>`;
-    const p = parteDe(d.parte_id), ti = danoDe(d.tipo_dano_id);
-    return `<span class="pc-aiag" title="Área ${p.aiag} · tipo ${ti.aiag} · tamaño ${d.gravedad}">${c}</span>`;
-  }
 
-  const gravedadDe = (id) => ((CATA && CATA.gravedades) || []).find((x) => String(x.id) === String(id));
-  const nombreGravedad = (id) => { const g = gravedadDe(id); return g ? g.nombre : null; };
-  /** La version corta, para la tabla de la hoja: ahi el nombre entero se parte en tres lineas. */
-  const gravedadCorta = (id) => { const g = gravedadDe(id); return g ? (g.corto || g.nombre) : null; };
 
   /**
    * El orden real de bajada de cada VIN de la solicitud.
@@ -640,9 +589,9 @@ const Precarga = (() => {
           <span class="mono">${form.danos.length}</span>
         </div>
         ${form.danos.length
-          ? `<div class="pc-danos">${form.danos.map(filaDano).join('')}</div>`
+          ? `<div class="pc-danos">${form.danos.map(Danos.filaDano).join('')}</div>`
           : '<p class="nota">Cargá el primero: qué parte, de qué tipo y una foto.</p>'}
-        ${form.nuevo ? subformDano() : `<button type="button" class="btn sec chico" id="pc-add-dano">${ico('plus', 14)} Agregar daño</button>`}
+        ${form.nuevo ? Danos.subform(form, { foto: '#pc-file' }) : `<button type="button" class="btn sec chico" id="pc-add-dano">${ico('plus', 14)} Agregar daño</button>`}
       </section>`;
 
     const listo = form.resultado === 'OK' || (form.resultado === 'NG' && form.danos.length);
@@ -657,7 +606,7 @@ const Precarga = (() => {
     const revision = form.resultado === 'NG' && form.danos.length && !form.nuevo
       ? `<section class="paso">
            <div class="cab"><span class="eq-label">Antes de cerrar</span><span class="mono">${form.danos.length}</span></div>
-           ${Vehiculo.marcado(u.modelo, form.danos.map((d) => ({ grupo: (parteDe(d.parte_id) || {}).grupo })))}
+           ${Vehiculo.marcado(u.modelo, form.danos.map((d) => ({ grupo: (Danos.parte(d.parte_id) || {}).grupo })))}
          </section>`
       : '';
 
@@ -672,155 +621,9 @@ const Precarga = (() => {
     return cabecera + resultado + danos + revision + guardar;
   }
 
-  function filaDano(d, i) {
-    return `
-      <div class="pc-dano">
-        ${d.foto ? `<img src="${d.foto.url}" alt="">` : `<span class="pc-sinfoto">${ico('image', 16)}</span>`}
-        <span class="txt">
-          <b>${esc(nombreParte(d.parte_id))}</b>
-          <small>${esc(nombreDano(d.tipo_dano_id))}${d.comentario ? ' · ' + esc(d.comentario) : ''}</small>
-          ${etiquetaCodigo(d)}
-        </span>
-        <button type="button" class="quitar" data-quitar-dano="${i}">${ico('x', 12)}</button>
-      </div>`;
-  }
 
-  /**
-   * Las partes del paso, ya filtradas y ordenadas.
-   *
-   * Con texto escrito busca sobre **todos los sectores**: el inspector sabe que
-   * se golpeo la puerta trasera izquierda mucho antes de tener que decidir en
-   * que sector la puso el formulario, y obligarlo a elegir sector primero le
-   * cobra un paso por una clasificacion que es nuestra, no suya.
-   *
-   * Se normaliza con `Similitud.normalizar`, que saca los acentos: escribir
-   * "optica" tiene que encontrar "Óptica" -- con guantes nadie pone la tilde.
-   */
-  function partesDelPaso(n) {
-    const todas = (CATA && CATA.partes) || [];
-    const q = Similitud.normalizar(n.busca || '');
 
-    const base = q
-      ? todas.filter((p) => Similitud.normalizar(p.nombre).includes(q))
-      : todas.filter((p) => p.grupo === (n.grupo || todas[0].grupo));
 
-    // Lo mas usado primero: cuatro partes son el 55% de los daños. "Otros"
-    // siempre ultimo -- el cajon de sastre a mitad de lista invita a usarlo
-    // antes de haber buscado.
-    return base.slice().sort((a, b) =>
-      (a.nombre === 'Otros') - (b.nombre === 'Otros')
-      || (b.usos || 0) - (a.usos || 0)
-      || a.nombre.localeCompare(b.nombre));
-  }
-
-  /** Las filas de la lista. Se repinta sola al escribir, sin tocar el resto. */
-  function filasPartes(n) {
-    const lista = partesDelPaso(n);
-    if (!lista.length) {
-      return `<p class="nota centro">Ninguna parte se llama así. Probá con menos letras, o cargala en <b>Otros</b> y contala en el comentario.</p>`;
-    }
-    const buscando = !!(n.busca || '').trim();
-    return lista.map((p) => `
-      <button type="button" class="pc-fila-parte" data-parte="${esc(p.id)}">
-        <span class="txt">
-          <b>${esc(p.nombre)}</b>
-          ${buscando ? `<small>${esc(p.grupo)}</small>` : ''}
-        </span>
-        ${ico('chevron-left', 14)}
-      </button>`).join('');
-  }
-
-  /**
-   * El daño que se esta componiendo.
-   *
-   * Nada arranca preseleccionado, igual que el checklist de bahias: con un valor
-   * por defecto, guardar sin mirar vuelve a ser posible.
-   *
-   * El paso de la parte se **colapsa** cuando ya se eligio una. Antes quedaban
-   * los setenta chips arriba mientras se elegia el tipo, y en un telefono eso
-   * empuja el resto del formulario abajo del pliegue.
-   */
-  function subformDano() {
-    const n = form.nuevo;
-    const todas = (CATA && CATA.partes) || [];
-    const grupos = [];
-    for (const p of todas) if (!grupos.includes(p.grupo)) grupos.push(p.grupo);
-    const grupo = n.grupo || grupos[0];
-    const buscando = !!(n.busca || '').trim();
-
-    // Un auto golpeado suele estarlo en el mismo lugar, asi que el segundo daño
-    // arranca donde termino el anterior en vez de volver a cero.
-    const atajo = !n.parte_id && form.ultima && form.ultima.parte_id
-      ? `<button type="button" class="pc-atajo" data-parte="${esc(form.ultima.parte_id)}">
-           ${ico('plus', 14)} Otro en ${esc(nombreParte(form.ultima.parte_id))}
-         </button>`
-      : '';
-
-    const paso1 = n.parte_id
-      ? `<div class="pc-elegida">
-           ${ico('check', 14)}
-           <span class="txt"><b>${esc(nombreParte(n.parte_id))}</b><small>${esc(parteDe(n.parte_id).grupo)}</small></span>
-           <button type="button" class="btn sec chico" id="pc-cambiar-parte">Cambiar</button>
-         </div>`
-      : `${atajo}
-         <div class="buscador">
-           ${ico('search', 14)}
-           <input type="search" id="pc-busca" value="${esc(n.busca || '')}"
-                  placeholder="Buscar parte…" autocomplete="off" enterkeyhint="search">
-         </div>
-         <div class="tags" id="pc-sectores"${buscando ? ' hidden' : ''}>
-           ${grupos.map((g) => `<button type="button" class="tag${g === grupo ? ' sel' : ''}" data-grupo="${esc(g)}">${esc(g)}</button>`).join('')}
-         </div>
-         <div class="pc-partes" id="pc-lista-partes">${filasPartes(n)}</div>`;
-
-    // Los tipos van ordenados por uso: Abollado y Rayado son el 77% de los
-    // daños, y en el orden del catalogo quedaban cuarto y noveno.
-    const tipos = ((CATA && CATA.tipos_dano) || []).slice()
-      .sort((a, b) => (b.usos || 0) - (a.usos || 0));
-
-    const paso2 = !n.parte_id ? '' : `
-      <span class="eq-label pc-sep">Tipo de daño</span>
-      <div class="tags">
-        ${tipos.map((d) => `<button type="button" class="tag${String(d.id) === String(n.tipo_dano_id) ? ' sel' : ''}" data-tipodano="${esc(d.id)}">${esc(d.nombre)}</button>`).join('')}
-      </div>
-
-      ${!n.tipo_dano_id ? '' : `
-        <span class="eq-label pc-sep">Tamaño del daño <b class="pc-req">obligatorio</b></span>
-        <div class="pc-gravedad">
-          ${((CATA && CATA.gravedades) || []).map((g) => `<button type="button" class="tag${String(g.id) === String(n.gravedad) ? ' sel' : ''}" data-grav="${esc(g.id)}"><i>${g.id}</i>${esc(g.nombre)}</button>`).join('')}
-        </div>`}
-
-      <label class="campo pc-sep">
-        <span>Comentario</span>
-        <input type="text" id="pc-com" value="${esc(n.comentario || '')}" placeholder="Opcional" autocomplete="off">
-      </label>
-
-      <span class="eq-label pc-sep">Foto del daño <b class="pc-req">obligatoria</b></span>
-      <div class="fotos una">
-        ${n.foto
-          ? `<div class="foto"><img src="${n.foto.url}" alt=""><button type="button" class="quitar" data-quitar-foto-dano>${ico('x', 12)}</button></div>`
-          : `<button type="button" class="foto-add" data-foto="dano">${ico('camera', 20)}<span>Foto del daño</span></button>`}
-      </div>
-      ${avisoFoto(n.foto)}`;
-
-    const listo = n.parte_id && n.tipo_dano_id && n.gravedad && n.foto;
-    const falta = !n.parte_id ? 'Elegí la parte'
-      : !n.tipo_dano_id ? 'Elegí el tipo de daño'
-      : !n.gravedad ? 'Elegí el tamaño'
-      : !n.foto ? 'Falta la foto'
-      : 'Agregar el daño';
-
-    return `
-      <div class="pc-nuevo">
-        <div class="cab">
-          <span class="eq-label">Nuevo daño${form.danos.length ? ' · ' + (form.danos.length + 1) + '.º' : ''}</span>
-          <button type="button" class="ib sm" id="pc-cancel-dano" aria-label="Cancelar">${ico('x', 14)}</button>
-        </div>
-        ${paso1}
-        ${paso2}
-        <button type="button" class="btn chico" id="pc-ok-dano" ${listo ? '' : 'disabled'}>${falta}</button>
-      </div>`;
-  }
 
   /**
    * El aviso de que la foto puede no servir como prueba.
@@ -837,22 +640,7 @@ const Precarga = (() => {
    * El texto no reta. Dice que se ve y ofrece la salida; el boton de sacar otra
    * es el mismo que ya estaba.
    */
-  /** La marca que queda cuando la foto se aviso y se uso igual. */
-  function marcaFoto(d) {
-    const q = d.foto_calidad && d.foto_calidad.aviso;
-    if (!q) return '';
-    return `<span class="pc-aiag sin">foto: ${esc((Camara.TEXTO_AVISO[q] || q).toLowerCase())}</span>`;
-  }
 
-  function avisoFoto(foto) {
-    if (!foto || !foto.calidad || !foto.calidad.aviso) return '';
-    const q = foto.calidad.aviso;
-    return `
-      <p class="nota alerta pc-foto-aviso">
-        ${ico('octagon-alert', 14)}
-        <span>${esc(Camara.TEXTO_AVISO[q] || 'Puede no servir')}. Si es la única que se puede sacar, va igual.</span>
-      </p>`;
-  }
 
   /** Lo que se cargo, ya guardado. No se edita: se corrige del lado de quien mira. */
   function fichaUnidad(s, u) {
@@ -879,7 +667,7 @@ const Precarga = (() => {
         <button type="button" class="btn sec" id="pc-vin">${ico('search', 16)} Ver todo lo de este VIN</button>
       </div>
 
-      ${danos.length ? Vehiculo.marcado(u.modelo, danos.map((d) => ({ grupo: (parteDe(d.parte_id) || {}).grupo }))) : ''}
+      ${danos.length ? Vehiculo.marcado(u.modelo, danos.map((d) => ({ grupo: (Danos.parte(d.parte_id) || {}).grupo }))) : ''}
 
       <div class="cab-lista"><span class="eq-label">Daños</span><span class="mono">${danos.length}</span></div>
       ${danos.length
@@ -887,9 +675,9 @@ const Precarga = (() => {
             <div class="pc-dano">
               ${d.foto ? `<img src="${esc(d.foto)}" alt="" data-ver="${esc(d.foto)}">` : `<span class="pc-sinfoto">${ico('image', 16)}</span>`}
               <span class="txt">
-                <b>${esc(nombreParte(d.parte_id))}</b>
-                <small>${esc(nombreDano(d.tipo_dano_id))}${d.comentario ? ' · ' + esc(d.comentario) : ''}</small>
-                ${etiquetaCodigo(d)}${marcaFoto(d)}
+                <b>${esc(Danos.nombreParte(d.parte_id))}</b>
+                <small>${esc(Danos.nombreDano(d.tipo_dano_id))}${d.comentario ? ' · ' + esc(d.comentario) : ''}</small>
+                ${Danos.etiquetaCodigo(d)}${Danos.marcaFoto(d)}
               </span>
             </div>`).join('')}</div>`
         : '<p class="nota">Se revisó y no tenía daños.</p>'}`;
@@ -983,12 +771,7 @@ const Precarga = (() => {
    * caja vacia de 150 px entre el resultado y los daños.
    */
   async function tomarFoto(input) {
-    const file = input.files && input.files[0];
-    input.value = '';
-    if (!file || !form || !form.nuevo) return;
-    const { blob, calidad } = await Camara.comprimirConLectura(file);
-    form.nuevo.foto = { blob, url: URL.createObjectURL(blob), calidad };
-    pintarUnidad();
+    if (await Danos.tomarFoto(input, form)) pintarUnidad();
   }
 
   async function guardar() {
@@ -1325,9 +1108,9 @@ const Precarga = (() => {
               <div class="pc-dano">
                 ${d.foto ? `<img src="${esc(d.foto)}" alt="" data-ver="${esc(d.foto)}">` : `<span class="pc-sinfoto">${ico('image', 16)}</span>`}
                 <span class="txt">
-                  <b>${esc(nombreParte(d.parte_id))}</b>
-                  <small>${esc(nombreDano(d.tipo_dano_id))}${d.comentario ? ' · ' + esc(d.comentario) : ''}</small>
-                  ${etiquetaCodigo(d)}
+                  <b>${esc(Danos.nombreParte(d.parte_id))}</b>
+                  <small>${esc(Danos.nombreDano(d.tipo_dano_id))}${d.comentario ? ' · ' + esc(d.comentario) : ''}</small>
+                  ${Danos.etiquetaCodigo(d)}
                 </span>
               </div>`).join('')}</div>` : ''}
           </div>
@@ -1383,13 +1166,7 @@ const Precarga = (() => {
    * en el objeto se pierde. Es el mismo `capturar()` de bahias, y esta por el
    * mismo motivo.
    */
-  function capturar() {
-    if (!form || !form.nuevo) return;
-    const c = $('#pc-com');
-    if (c) form.nuevo.comentario = c.value.trim();
-    const b = $('#pc-busca');
-    if (b) form.nuevo.busca = b.value;
-  }
+  const capturar = () => Danos.capturar(form);
 
   document.addEventListener('click', (e) => {
     const t = e.target;
@@ -1437,74 +1214,16 @@ const Precarga = (() => {
     }
 
     if (t.closest('#pc-add-dano')) {
-      capturar();
-      form.nuevo = { grupo: (form.ultima && form.ultima.grupo) || null, busca: '',
-                     parte_id: null, tipo_dano_id: null, gravedad: null, comentario: '', foto: null };
-      pintarUnidad();
-      return;
-    }
-    if (t.closest('#pc-cancel-dano')) { form.nuevo = null; pintarUnidad(); return; }
-
-    const grupo = t.closest('[data-grupo]');
-    if (grupo && form.nuevo) {
-      capturar();
-      form.nuevo.grupo = grupo.dataset.grupo;
-      form.nuevo.parte_id = null;   // cambiar de grupo no puede dejar elegida una parte de otro
+      Danos.capturar(form);
+      form.nuevo = Danos.nuevoVacio(form);
       pintarUnidad();
       return;
     }
 
-    const parte = t.closest('[data-parte]');
-    if (parte && form.nuevo) {
-      capturar();
-      form.nuevo.parte_id = parte.dataset.parte;
-      const p = parteDe(form.nuevo.parte_id);
-      if (p) form.nuevo.grupo = p.grupo;   // el sector queda donde esta la parte
-      form.nuevo.busca = '';
-      pintarUnidad();
-      return;
-    }
-
-    if (t.closest('#pc-cambiar-parte')) {
-      capturar();
-      form.nuevo.parte_id = null;
-      pintarUnidad();
-      return;
-    }
-
-    const grav = t.closest('[data-grav]');
-    if (grav && form.nuevo) {
-      capturar();
-      const g = Number(grav.dataset.grav);
-      form.nuevo.gravedad = form.nuevo.gravedad === g ? null : g;
-      pintarUnidad();
-      return;
-    }
-
-    const tipo = t.closest('[data-tipodano]');
-    if (tipo && form.nuevo) {
-      capturar();
-      form.nuevo.tipo_dano_id = form.nuevo.tipo_dano_id === tipo.dataset.tipodano ? null : tipo.dataset.tipodano;
-      pintarUnidad();
-      return;
-    }
-
-    if (t.closest('[data-foto]')) { capturar(); $('#pc-file').click(); return; }
-    if (t.closest('[data-quitar-foto-dano]')) { capturar(); form.nuevo.foto = null; pintarUnidad(); return; }
-
-    const quitar = t.closest('[data-quitar-dano]');
-    if (quitar) { form.danos.splice(Number(quitar.dataset.quitarDano), 1); pintarUnidad(); return; }
-
-    if (t.closest('#pc-ok-dano')) {
-      capturar();
-      const n = form.nuevo;
-      if (!n || !n.parte_id || !n.tipo_dano_id || !n.foto) return;
-      form.danos.push(n);
-      form.ultima = { grupo: n.grupo, parte_id: n.parte_id };
-      form.nuevo = null;
-      pintarUnidad();
-      return;
-    }
+    // Todo lo que pasa adentro del formulario del daño --sector, parte, tipo,
+    // tamaño, foto, sacarlo-- lo maneja `danos.js`, que es el mismo modulo que
+    // usa descarga. Devuelve true si lo agarro.
+    if (form && Danos.manejarClic(t, form, pintarUnidad, { foto: '#pc-file' })) return;
 
     if (t.closest('#pc-guardar')) { capturar(); guardar(); return; }
   });
@@ -1512,21 +1231,7 @@ const Precarga = (() => {
   // Escribir NO repinta: repintar en cada tecla le roba el foco al teclado y el
   // inspector pierde la palabra a medio escribir. Solo se actualiza el modelo.
   document.addEventListener('input', (e) => {
-    if (!form || !form.nuevo) return;
-
-    if (e.target.matches('#pc-com')) { form.nuevo.comentario = e.target.value.trim(); return; }
-
-    if (e.target.matches('#pc-busca')) {
-      // Repintar la pantalla entera le robaria el foco al teclado y el inspector
-      // perderia la palabra a medio escribir. Solo se rehace la lista.
-      form.nuevo.busca = e.target.value;
-      const caja = $('#pc-lista-partes');
-      if (caja) caja.innerHTML = filasPartes(form.nuevo);
-      // Con texto escrito la busqueda cruza todos los sectores, asi que el
-      // filtro por sector deja de significar algo y estorba.
-      const sect = $('#pc-sectores');
-      if (sect) sect.hidden = !!form.nuevo.busca.trim();
-    }
+    if (form) Danos.manejarInput(e, form);
   });
 
   /** Lo llama app.js cuando cambia el buscador del historial. */
@@ -1555,10 +1260,6 @@ const Precarga = (() => {
   return { cargar, refrescar, verBajadas, verSolicitud, verUnidad, verHistorial,
            verVin, pintarVin, buscar,
            pintarSolicitud, tomarFoto, verHoja, pintarHoja,
-           // Los usa js/hoja.js para escribir los nombres en el documento.
-           parte: parteDe, nombreParte, nombreDano, nombreGravedad, gravedadCorta,
-           codigoAiag, porQueSinCodigo, etiquetaCodigo,
-           catalogo: () => CATA || { partes: [], tipos_dano: [] },
            // A donde vuelve la hoja: depende de si se abrio desde una unidad o
            // desde la solicitud. Lo consulta `atras` en app.js.
            vueltaDeHoja: () => (hojaTipo === 'legajo' ? 'solicitud' : 'unidad'),
