@@ -35,7 +35,8 @@ const Sync = (() => {
     inspeccion: 'api/inspecciones',
     bahia:      'api/bahias/control',
     auditoria:  'api/bahias/auditoria',
-    unidad:     'api/precarga/inspecciones'
+    unidad:     'api/precarga/inspecciones',
+    recepcion:  'api/descarga/recepciones'
   };
 
   /**
@@ -49,6 +50,7 @@ const Sync = (() => {
     if (tipoDe(item) === 'bahia') return payloadBahia(item);
     if (tipoDe(item) === 'auditoria') return payloadAuditoria(item);
     if (tipoDe(item) === 'unidad') return payloadUnidad(item);
+    if (tipoDe(item) === 'recepcion') return payloadRecepcion(item);
 
     const fotos = [];
     for (const f of item.fotos || []) {
@@ -123,6 +125,38 @@ const Sync = (() => {
    * bajada sin señal a las 10:05 puede sincronizar a las 14:00, y el orden en
    * que se bajo es el de cuando se bajo.
    */
+  /**
+   * La recepcion en destino.
+   *
+   * Lleva las `resoluciones` --que paso con cada daño de origen-- ademas de los
+   * daños nuevos. Sin eso el registro no dice **entre que dos puntos** aparecio
+   * la marca, que es todo el sentido del modulo.
+   */
+  async function payloadRecepcion(item) {
+    const danos = [];
+    for (const d of item.danos || []) {
+      danos.push({
+        parte_id: d.parte_id,
+        tipo_dano_id: d.tipo_dano_id,
+        gravedad: d.gravedad || null,
+        comentario: d.comentario || null,
+        foto_calidad: d.foto_calidad || null,
+        foto: d.foto ? await Camara.aBase64(d.foto) : null
+      });
+    }
+    return {
+      uuid: item.uuid,
+      registrado_en: item.registrado_en,
+      solicitud_id: item.solicitud_id,
+      vin: item.vin,
+      turno_clave: item.turno_clave,
+      escaneado_en: item.escaneado_en,
+      recibe: item.recibe,
+      resoluciones: item.resoluciones || {},
+      danos
+    };
+  }
+
   async function payloadUnidad(item) {
     const danos = [];
     for (const d of item.danos || []) {

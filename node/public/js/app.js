@@ -949,13 +949,22 @@ const MODULOS = {
       : v === 'hoja' ? Precarga.vueltaDeHoja()   // la unidad, o la solicitud si es el legajo
       : v === 'vin' ? Precarga.vueltaDeVin()
       : null)
+  },
+  descarga: {
+    titulo: 'Recepción en destino', icono: 'clipboard-check',
+    pantallas: {
+      arribos: { titulo: 'Camiones llegados', eyebrow: 'Unidades por recibir', icono: 'truck', corto: 'Arribos' }
+    },
+    // Mismos dos niveles que precarga: camion -> unidad.
+    atras: (v) => (v === 'recibida' ? 'recepcion' : null)
   }
 };
 
 /** Las vistas de detalle no tienen pestaña, pero pertenecen a un modulo. */
 const DETALLES = { detalle: 'equipos', control: 'equipos', bahia: 'bahias',
                    solicitud: 'precarga', unidad: 'precarga', hoja: 'precarga',
-                   vin: 'precarga' };
+                   vin: 'precarga',
+                   recepcion: 'descarga', recibida: 'descarga' };
 
 let modulo = 'equipos';
 
@@ -1004,6 +1013,9 @@ function irA(nombre) {
   if (nombre === 'solicitud') Precarga.pintarSolicitud();
   if (nombre === 'hoja') Precarga.pintarHoja();
   if (nombre === 'vin') Precarga.pintarVin();
+  if (nombre === 'arribos') Descarga.verArribos();
+  if (nombre === 'recepcion') Descarga.pintarRecepcion();
+  if (nombre === 'recibida') Descarga.pintarUnidad();
 }
 
 function abrirDrawer() { $('#drawer').hidden = false; $('#scrim').hidden = false; }
@@ -1204,6 +1216,7 @@ $('#c-file').addEventListener('change', (e) => tomarFoto(e.target, 'foto'));
 $('#c-file-chk').addEventListener('change', (e) => tomarFoto(e.target, 'chk'));
 $('#b-file').addEventListener('change', (e) => Bahias.tomarFoto(e.target));
 $('#pc-file').addEventListener('change', (e) => Precarga.tomarFoto(e.target));
+$('#dc-file').addEventListener('change', (e) => Descarga.tomarFoto(e.target));
 
 Sync.alCambiar((s) => {
   if (s.tipo === 'sincronizando') estado('Sincronizando…', 'aviso');
@@ -1224,6 +1237,7 @@ Sync.alCambiar((s) => {
     // sincronizar" pasan a mostrar hora y auditor de verdad.
     if (s.enviadas && (vista === 'ronda' || vista === 'bahia')) Bahias.refrescar(vista);
       if (s.enviadas && (vista === 'bajadas' || vista === 'solicitud' || vista === 'unidad')) Precarga.refrescar(vista);
+      if (s.enviadas && (vista === 'arribos' || vista === 'recepcion' || vista === 'recibida')) Descarga.refrescar();
   }
 });
 

@@ -1843,3 +1843,31 @@ details.ficha[open] .ver-obs .ico { transform: rotate(90deg); }
   align-items: flex-start; gap: 6px;
 }
 .pc-foto-aviso .ico { flex: 0 0 auto; margin-top: 1px; }
+
+/* descarga: la resolucion de lo que salio de origen ----------------------- */
+
+/* Es el mismo par de botones que la resolucion del NG de patrullas, pero el
+   renglon lleva mas texto --parte, tipo, comentario y codigo AIAG-- asi que va
+   apilado en vez de en una fila sola. */
+.dc-resol { display: grid; gap: 8px; }
+.dc-f {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 11px;
+  background: var(--surface-card);
+  border: 1px solid var(--line-hairline);
+  border-radius: var(--radius-md);
+}
+.dc-f .txt { flex: 1; min-width: 0; display: grid; gap: 1px; }
+.dc-f .txt b { font-size: 13px; font-weight: var(--weight-semibold); color: var(--text-strong); }
+.dc-f .txt small { font-size: 11.5px; color: var(--text-muted); }
+.dc-f .par { margin-top: 2px; }
+/* Mas anchos que los de patrullas: "Reparado" no entra en 46 px. */
+.dc-f .par button { width: auto; padding: 0 10px; }
+.dc-f .par button.sel[data-v="sigue"]    { background: var(--status-risk-bg); color: var(--status-risk); font-weight: var(--weight-semibold); }
+.dc-f .par button.sel[data-v="reparado"] { background: var(--status-ok-bg);   color: var(--status-ok);   font-weight: var(--weight-semibold); }
+
+/* Los tres estados del viaje. Reusan .cmp-tag de la comparacion de bahias --
+   siguio, se corrigio, aparecio es la misma pregunta con otro sustantivo. */
+.pc-unidad .cmp-tags { justify-content: flex-end; max-width: 130px; }

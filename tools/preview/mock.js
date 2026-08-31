@@ -1152,6 +1152,17 @@
   })();
 
   /** Las solicitudes con lo guardado encima. El servidor real haria el join. */
+  /**
+   * Los daños de una inspeccion, con su id completado si no lo tiene.
+   *
+   * Pasa con lo sembrado y pasaria con lo que ya estuviera cargado antes de que
+   * el campo existiera. **Tiene que estar en un solo lugar**: se completaba solo
+   * al leer las solicitudes, y el POST de la recepcion --que valida contra el
+   * registro crudo-- comparaba contra daños sin id y rechazaba todo con
+   * `resolucion_incompleta`. Lo encontro la prueba sin señal.
+   */
+  const conId = (r) => (r.danos || []).map((d, i) => (d.id ? d : { ...d, id: r.uuid + '-' + i }));
+
   function solicitudesConEstado() {
     const guardadas = new Map();
     for (const r of leerPC()) guardadas.set(r.solicitud_id + '|' + r.vin, r);
@@ -1164,7 +1175,11 @@
           uuid: r.uuid,
           escaneado_en: r.escaneado_en,
           registrado_en: r.registrado_en,
-          danos: r.danos || []
+          // El id se completa al leer si el registro no lo tiene. Pasa con lo
+          // sembrado y pasaria con lo que ya estuviera cargado antes de que el
+          // campo existiera: la recepcion en destino resuelve daño por daño y
+          // sin id no puede nombrarlos.
+          danos: conId(r)
         } : null };
       })
     }));
@@ -1210,7 +1225,11 @@
       // Las fotos se guardan como ruta, igual que en produccion. Si el preview
       // devolviera el base64 que le llego, el front tendria que tratarlas
       // distinto que a las del servidor y ese camino quedaria sin probar.
-      danos: (b.danos || []).map((d) => ({
+      danos: (b.danos || []).map((d, i) => ({
+        // El id lo pone el servidor. La recepcion en destino resuelve dano por
+        // dano, y referirlos por su posicion en el array se rompe apenas
+        // alguien edite el registro de origen.
+        id: b.uuid + '-' + i,
         parte_id: d.parte_id,
         tipo_dano_id: d.tipo_dano_id,
         gravedad: d.gravedad,
@@ -1375,14 +1394,28 @@
    * que es donde el lector exige ese VIN y no otro.
    */
   function opcionesVin() {
-    const sols = solicitudesConEstado();
-    const todas = sols.flatMap((s) => s.unidades.map((u) => ({ u, s })));
+    // Que VIN sirve depende del modulo abierto: en precarga los que faltan
+    // bajar, en descarga los que llegaron sin recibir. Ofrecer los de precarga
+    // en la pantalla de descarga haria que el lector rechace todo y el camino
+    // quede sin probar.
+    const enDescarga = !!document.querySelector('#v-recepcion:not([hidden]), #v-recibida:not([hidden])');
 
-    const libres = todas.filter((x) => !x.u.inspeccion).slice(0, 5)
-      .map((x) => ({ vin: x.u.vin, txt: `${x.u.vin} · ${x.s.codigo}` }));
+    let libres, usada;
+    if (enDescarga) {
+      const todas = arribos().flatMap((s) => s.unidades.map((u) => ({ u, s })));
+      libres = todas.filter((x) => !x.u.recepcion).slice(0, 5)
+        .map((x) => ({ vin: x.u.vin, txt: `${x.u.vin} · equipo ${x.s.equipo}` }));
+      const rec = todas.find((x) => x.u.recepcion);
+      usada = rec && { vin: rec.u.vin, txt: rec.u.vin + ' · ya recibida' };
+    } else {
+      const todas = solicitudesConEstado().flatMap((s) => s.unidades.map((u) => ({ u, s })));
+      libres = todas.filter((x) => !x.u.inspeccion).slice(0, 5)
+        .map((x) => ({ vin: x.u.vin, txt: `${x.u.vin} · ${x.s.codigo}` }));
+      const bajada = todas.find((x) => x.u.inspeccion);
+      usada = bajada && { vin: bajada.u.vin, txt: bajada.u.vin + ' · ya bajada' };
+    }
 
-    const bajada = todas.find((x) => x.u.inspeccion);
-    if (bajada) libres.push({ vin: bajada.u.vin, txt: bajada.u.vin + ' · ya bajada' });
+    if (usada) libres.push(usada);
     libres.push({ vin: '8AJZZ99ZZ99999999', txt: 'Un VIN de otra playa' });
 
     return libres.map((b) =>
@@ -1440,6 +1473,99 @@
     return out.slice(0, 40);
   }
 
+  // ---------------------------------------------------------------- descarga
+
+  /**
+   * La recepcion en destino.
+   *
+   * **Lee el mismo store donde precarga guarda**, que es la parte del modulo que
+   * el preview tiene que probar de verdad: en produccion origen escribe y
+   * destino lee, y si el mock inventara sus propios datos de origen no estaria
+   * probando nada del traspaso.
+   *
+   * Un arribo es una solicitud con al menos una unidad bajada. En produccion
+   * seria «despachada y con fecha estimada de arribo cumplida»; aca alcanza con
+   * que se haya cargado, y ademas deja el ciclo cerrado en una sola sesion:
+   * se carga una unidad en precarga y aparece para recibir.
+   */
+  const CLAVE_DESC = 'yard-preview-descarga';
+  const leerDesc = () => { try { return JSON.parse(localStorage.getItem(CLAVE_DESC) || '[]'); } catch (e) { return []; } };
+  function persistirDesc(reg) {
+    const todas = leerDesc().filter((x) => x.uuid !== reg.uuid);
+    todas.push(reg);
+    try { localStorage.setItem(CLAVE_DESC, JSON.stringify(todas)); } catch (e) { /* sin espacio: se sigue */ }
+  }
+
+  function arribos() {
+    const recibidas = new Map();
+    for (const r of leerDesc()) recibidas.set(r.solicitud_id + '|' + r.vin, r);
+
+    return solicitudesConEstado()
+      .map((s) => ({
+        ...s,
+        unidades: s.unidades
+          .filter((u) => u.inspeccion)                 // solo lo que salio cargado
+          .map((u) => ({ ...u, recepcion: recibidas.get(s.id + '|' + u.vin) || null }))
+      }))
+      .filter((s) => s.unidades.length);
+  }
+
+  /**
+   * Alta de una recepcion. Mismo contrato que el servidor, POST propio.
+   *
+   * Va antes que cualquier `includes('api/descarga')` por lo mismo que las
+   * otras dos: un handler de listado contestando 200 al POST haria que la cola
+   * lo diera por guardado sin haber probado nada.
+   */
+  function crearRecepcion(cuerpo) {
+    let b;
+    try { b = JSON.parse(cuerpo); } catch (e) { return json({ error: 'json_invalido' }, 400); }
+    if (!b.uuid) return json({ error: 'uuid_requerido' }, 400);
+    if (!b.vin) return json({ error: 'vin_requerido' }, 400);
+    if (!b.escaneado_en) return json({ error: 'escaneo_requerido' }, 400);
+    if (!b.recibe || !b.recibe.nombre) return json({ error: 'quien_recibe_requerido' }, 400);
+
+    // Cada dano de origen tiene que estar resuelto. Es la regla del modulo: si
+    // se pudiera saltear, el dano de origen queda colgado para siempre.
+    const reg0 = leerPC().find((x) => x.solicitud_id === b.solicitud_id && x.vin === b.vin);
+    const origen = reg0 ? conId(reg0) : [];
+    for (const d of origen) {
+      const r = (b.resoluciones || {})[d.id];
+      if (r !== 'sigue' && r !== 'reparado') return json({ error: 'resolucion_incompleta' }, 400);
+    }
+    for (const d of b.danos || []) {
+      if (!d.parte_id) return json({ error: 'parte_requerida' }, 400);
+      if (!d.tipo_dano_id) return json({ error: 'tipo_requerido' }, 400);
+      if (!d.gravedad) return json({ error: 'gravedad_requerida' }, 400);
+      if (!d.foto) return json({ error: 'foto_de_dano_requerida' }, 400);
+    }
+
+    const ya = leerDesc().find((x) => x.uuid === b.uuid);
+    if (ya) return json({ recepcion: ya, duplicada: true }, 200);
+
+    const reg = {
+      uuid: b.uuid,
+      solicitud_id: b.solicitud_id,
+      vin: b.vin,
+      turno_clave: b.turno_clave,
+      escaneado_en: b.escaneado_en,
+      registrado_en: b.registrado_en || new Date().toISOString(),
+      recibe: { nombre: String(b.recibe.nombre).trim(), rol: b.recibe.rol || null },
+      resoluciones: b.resoluciones || {},
+      danos: (b.danos || []).map((d, i) => ({
+        id: b.uuid + '-' + i,
+        parte_id: d.parte_id,
+        tipo_dano_id: d.tipo_dano_id,
+        gravedad: d.gravedad,
+        comentario: d.comentario || null,
+        foto: 'uploads/demo-' + entre(1, 4) + '.svg',
+        foto_calidad: d.foto_calidad || null
+      }))
+    };
+    persistirDesc(reg);
+    return json({ recepcion: reg }, 201);
+  }
+
   const real = window.fetch.bind(window);
   window.fetch = (url, opts) => {
     const s = String(url && url.url ? url.url : url);
@@ -1449,6 +1575,7 @@
     if (metodo === 'POST' && s.includes('api/bahias/control')) return crearBahia(opts && opts.body);
     if (metodo === 'POST' && s.includes('api/bahias/auditoria')) return crearAuditoria(opts && opts.body);
     if (metodo === 'POST' && s.includes('api/precarga/inspecciones')) return crearUnidad(opts && opts.body);
+    if (metodo === 'POST' && s.includes('api/descarga/recepciones')) return crearRecepcion(opts && opts.body);
     if (metodo === 'POST' && s.includes('api/inspecciones')) return crear(opts && opts.body);
 
     if (s.includes('api/bahias/dia')) {
@@ -1470,6 +1597,11 @@
         items: ITEMS_BAHIA,
         bahias: BAHIAS
       });
+    }
+
+    if (s.includes('api/descarga/arribos')) {
+      const q = new URLSearchParams(s.split('?')[1] || '');
+      return json({ jornada: q.get('jornada') || 'sin-jornada', solicitudes: arribos() });
     }
 
     if (s.includes('api/precarga/catalogos')) return json(CATALOGOS_PC);
